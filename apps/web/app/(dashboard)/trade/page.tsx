@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { WatchlistPanel } from "@/components/trade/watchlist/WatchlistPanel";
 import { GlobalSearchModal } from "@/components/trade/search/GlobalSearchModal";
 import { PositionsTable } from "@/components/positions/PositionsTable";
-import { toCanonicalSymbol } from "@/lib/market/symbol-normalization";
+import { toCanonicalSymbol } from "@paper-market/core";
 import { AdaptiveTradeLayout } from "@/components/trade/layout/AdaptiveTradeLayout";
 import { MobileTradeTopBar } from "@/components/trade/mobile/MobileTradeTopBar";
 import { PositionsCards } from "@/components/trade/mobile/PositionsCards";
