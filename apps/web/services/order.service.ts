@@ -323,7 +323,7 @@ export class OrderService {
             
             return order;
         } catch (error) {
-            console.error(error); // DEBUG: Raw stack trace
+            logger.error({ err: error }, "Raw stack trace"); // DEBUG: Raw stack trace
             if (error instanceof ApiError) throw error;
             if (isApiErrorLike(error)) {
                 throw new ApiError(error.message, error.statusCode, error.code);
