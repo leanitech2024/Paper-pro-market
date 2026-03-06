@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
-import { orders, positions, type Instrument, type NewOrder } from "@paper-market/core";
+import { type Instrument, type NewOrder, isInstrumentAllowed } from "@paper-market/core";
+import { orders, positions } from "@paper-market/core/db";
 import { logger } from "@/lib/logger";
 import { ApiError } from "@/lib/errors";
 import { eq, and, sql } from "drizzle-orm";
@@ -14,9 +15,9 @@ import { assertTradingEnabled } from "@/lib/system-control";
 import { assertFeedHealthy } from "@/services/feed-health.service";
 import { OrderAcceptanceService } from "@/services/order-acceptance.service";
 
-import { isInstrumentAllowed } from "@/lib/trading-universe";
+// isInstrumentAllowed moved to top import
 import { requireInstrumentTokenForIdentityLookup } from "@/lib/trading/token-identity-guard";
-import { instrumentStore } from "@/stores/instrument.store";
+import { instrumentRepository } from "@/lib/instruments/repository";
 
 const IST_TIME_ZONE = "Asia/Kolkata";
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
@@ -131,11 +132,9 @@ export class OrderService {
             // Validate instrument exists and is active
             logger.info({ lookupSymbol: payload.symbol, lookupToken: payload.instrumentToken }, "Looking up instrument");
 
-            if (!instrumentStore.isReady()) {
-                await instrumentStore.initialize();
-            }
-            if (!instrumentStore.isReady()) {
-                throw new ApiError("Instrument store not ready", 503, "INSTRUMENT_STORE_NOT_READY");
+            await instrumentRepository.ensureInitialized();
+            if (!instrumentRepository.getStats().isInitialized) {
+                throw new ApiError("Instrument repository not ready", 503, "INSTRUMENT_STORE_NOT_READY");
             }
 
             let instrumentToken: string;
@@ -149,7 +148,7 @@ export class OrderService {
                 throw new ApiError("Instrument Token REQUIRED", 400, "MISSING_INSTRUMENT_TOKEN");
             }
 
-            const instrument = instrumentStore.getByToken(instrumentToken);
+            const instrument = instrumentRepository.get(instrumentToken);
 
             if (instrument && instrument.tradingsymbol !== payload.symbol) {
                     logger.warn({ 
