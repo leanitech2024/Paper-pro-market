@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { eq, inArray, or, and } from "drizzle-orm";
+import { z } from "zod";
 import {
     ledgerAccounts,
     ledgerEntries,
@@ -13,8 +14,9 @@ import {
     watchlistItems,
     watchlists,
     instruments,
-} from "@paper-market/core";
+} from "@paper-market/core/db";
 import { handleError, ApiError } from "@/lib/errors";
+import { logger } from "@/lib/logger";
 import { WalletService } from "@/services/wallet.service";
 import { bootstrapLedgerAccounts } from "@/services/ledger-bootstrap.service";
 import { ledgerCacheService } from "@/services/ledger-cache.service";
@@ -31,7 +33,21 @@ export async function POST(req: NextRequest) {
         }
 
         const userId = session.user.id;
-        console.log(`[RESET] Resetting account for user: ${userId}`);
+        const role = typeof (session.user as any)?.role === "string" ? String((session.user as any).role) : "";
+        if (role.toLowerCase() !== "admin") {
+            return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+        }
+
+        const BodySchema = z.object({
+            reason: z.string().max(200).optional(),
+        });
+        const body = await req.json().catch(() => ({}));
+        const validatedBody = BodySchema.parse(body);
+
+        logger.info(
+            { actorUserId: userId, targetUserId: userId, reason: validatedBody.reason },
+            "Admin account reset triggered"
+        );
 
         await db.transaction(async (tx) => {
             await tx.delete(trades).where(eq(trades.userId, userId));
@@ -152,12 +168,12 @@ export async function POST(req: NextRequest) {
                     }
                 }
 
-                if (defaultWatchlist) {
+                if (defaultWatchlist?.id) {
                     await tx
                         .insert(watchlistItems)
                         .values(
                             foundInstruments.map((inst) => ({
-                                watchlistId: defaultWatchlist!.id,
+                                watchlistId: defaultWatchlist?.id,
                                 instrumentToken: inst.instrumentToken,
                             }))
                         )
@@ -168,7 +184,6 @@ export async function POST(req: NextRequest) {
 
         mtmEngineService.requestRefresh(userId);
 
-        console.log(`[RESET] Account reset successful for user: ${userId}`);
         return NextResponse.json({
             success: true,
             message: "Account reset successfully. Wallet set to 1000000 and default watchlist created.",
