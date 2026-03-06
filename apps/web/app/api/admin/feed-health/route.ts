@@ -14,45 +14,54 @@ export const runtime = 'nodejs';
  * via its subscribers Map (formerly in market-feed-supervisor).
  */
 export async function GET(req: NextRequest) {
-    const session = await auth();
-    if (!session?.user) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    try {
+        const session = await auth();
+        if (!session?.user) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
 
-    // Get tick stats from TickBus
-    const tickStats = tickBus.getStats();
+        const role = typeof (session.user as any)?.role === 'string' ? String((session.user as any).role) : '';
+        if (role.toLowerCase() !== 'admin') {
+            return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+        }
 
-    // Event loop lag measurement
-    const start = Date.now();
-    await new Promise(resolve => setImmediate(resolve));
-    const eventLoopLag = Date.now() - start;
+        // Get tick stats from TickBus
+        const tickStats = tickBus.getStats();
 
-    // Memory usage
-    const memUsage = process.memoryUsage();
+        // Event loop lag measurement
+        const start = Date.now();
+        await new Promise(resolve => setImmediate(resolve));
+        const eventLoopLag = Date.now() - start;
 
-    const health = {
-        status: 'ok',
-        timestamp: new Date().toISOString(),
+        // Memory usage
+        const memUsage = process.memoryUsage();
 
-        feed: {
-            totalTicks: tickStats.totalTicks,
-            symbolCounts: tickStats.symbolCounts,
-            activeListeners: tickStats.activeListeners,
-        },
+        const health = {
+            status: 'ok',
+            timestamp: new Date().toISOString(),
 
-        performance: {
-            eventLoopLagMs: eventLoopLag,
-            memoryMB: {
-                rss: Math.round(memUsage.rss / 1024 / 1024),
-                heapUsed: Math.round(memUsage.heapUsed / 1024 / 1024),
-                heapTotal: Math.round(memUsage.heapTotal / 1024 / 1024),
+            feed: {
+                totalTicks: tickStats.totalTicks,
+                symbolCounts: tickStats.symbolCounts,
+                activeListeners: tickStats.activeListeners,
             },
-        },
 
-        uptime: {
-            processUptimeSeconds: Math.floor(process.uptime()),
-        },
-    };
+            performance: {
+                eventLoopLagMs: eventLoopLag,
+                memoryMB: {
+                    rss: Math.round(memUsage.rss / 1024 / 1024),
+                    heapUsed: Math.round(memUsage.heapUsed / 1024 / 1024),
+                    heapTotal: Math.round(memUsage.heapTotal / 1024 / 1024),
+                },
+            },
 
-    return NextResponse.json(health);
+            uptime: {
+                processUptimeSeconds: Math.floor(process.uptime()),
+            },
+        };
+
+        return NextResponse.json(health);
+    } catch {
+        return NextResponse.json({ error: 'Failed to load feed health' }, { status: 500 });
+    }
 }

@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ExecutionService } from "@/services/execution.service";
 import { handleError } from "@/lib/errors";
+import { auth } from "@/lib/auth";
+import { z } from "zod";
 
 /**
  * Manually trigger execution of all OPEN orders.
@@ -8,6 +10,24 @@ import { handleError } from "@/lib/errors";
  */
 export async function POST(req: NextRequest) {
     try {
+        if (process.env.NODE_ENV === "production") {
+            return NextResponse.json({ error: "Not Found" }, { status: 404 });
+        }
+
+        const session = await auth();
+        if (!session?.user?.id) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        }
+
+        const role = typeof (session.user as any)?.role === "string" ? String((session.user as any).role) : "";
+        if (role.toLowerCase() !== "admin") {
+            return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+        }
+
+        const BodySchema = z.object({}).passthrough();
+        const body = await req.json().catch(() => ({}));
+        BodySchema.parse(body);
+
         const executedCount = await ExecutionService.executeOpenOrders();
         
         return NextResponse.json({

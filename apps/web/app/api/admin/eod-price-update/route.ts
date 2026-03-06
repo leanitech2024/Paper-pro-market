@@ -36,10 +36,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  // TODO: Add admin role check in production
-  // if (session.user.role !== 'admin') {
-  //   return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-  // }
+  const role = typeof (session.user as any)?.role === 'string' ? String((session.user as any).role) : '';
+  if (role.toLowerCase() !== 'admin') {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
 
   try {
     const result = await EODPriceUpdateService.updateAllPrices();

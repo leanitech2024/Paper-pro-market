@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { WalletService } from "@/services/wallet.service";
 import { handleError } from "@/lib/errors";
 import { auth } from "@/lib/auth";
+import { logger } from "@/lib/logger";
+import { z } from "zod";
 
 /**
  * POST /api/v1/admin/wallet/recalculate/[userId]
@@ -21,12 +23,23 @@ export async function POST(
             return new NextResponse("Unauthorized", { status: 401 });
         }
 
-        // TODO: Add admin role check
-        // if (session.user.role !== "ADMIN") {
-        //     return new NextResponse("Forbidden - Admin access required", { status: 403 });
-        // }
+        const role = typeof (session.user as any)?.role === "string" ? String((session.user as any).role) : "";
+        if (role.toLowerCase() !== "admin") {
+            return new NextResponse("Forbidden", { status: 403 });
+        }
+
+        const BodySchema = z.object({
+            reason: z.string().max(200).optional(),
+        });
+        const body = await req.json().catch(() => ({}));
+        const validatedBody = BodySchema.parse(body);
 
         const targetUserId = userId;
+
+        logger.info(
+            { actorUserId: session.user.id, targetUserId, reason: validatedBody.reason },
+            "Admin wallet recalculation triggered"
+        );
 
         // 2. Call service to recalculate
         await WalletService.recalculateFromLedger(targetUserId);
