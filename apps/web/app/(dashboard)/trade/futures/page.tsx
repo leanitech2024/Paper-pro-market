@@ -6,7 +6,7 @@ import { GlobalSearchModal } from "@/components/trade/search/GlobalSearchModal";
 import { FuturesTradeForm } from "@/components/trade/FuturesTradeForm";
 import { ChartLoadingIndicator } from "@/components/trade/chart/ChartLoadingIndicator";
 import { Stock } from "@paper-market/core";
-import { symbolToIndexInstrumentKey } from "@/lib/market/symbol-normalization";
+import { symbolToIndexInstrumentKey } from "@paper-market/core";
 import { AdaptiveTradeLayout } from "@/components/trade/layout/AdaptiveTradeLayout";
 import { PositionsCards } from "@/components/trade/mobile/PositionsCards";
 import { useWalletStore } from "@/stores/wallet.store";

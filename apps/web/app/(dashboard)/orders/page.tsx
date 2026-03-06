@@ -23,7 +23,7 @@ import { useOrdersStore } from '@/stores/trading/orders.store';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { Search, ArrowUpDown, History, TrendingUp, TrendingDown, Download, X } from 'lucide-react';
-import { formatExpiryLabel, daysToExpiry, isExpired } from '@/lib/expiry-utils';
+import { formatExpiryLabel, daysToExpiry, isExpired } from '@paper-market/core';
 import Spinner from '@/components/ui/spinner';
 
 const OrdersPage = () => {

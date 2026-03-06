@@ -19,8 +19,8 @@ import { Label } from '@/components/ui/label';
 import { Stock } from '@paper-market/core'; // Fixed import path
 import { cn } from '@/lib/utils';
 import { Check, ChevronsUpDown, Search } from 'lucide-react';
-import { parseOptionSymbol } from '@/lib/fno-utils';
-import { formatExpiryLabel, daysToExpiry, isExpired } from '@/lib/expiry-utils';
+import { parseOptionSymbol } from '@paper-market/core';
+import { formatExpiryLabel, daysToExpiry, isExpired } from '@paper-market/core';
 import { toast } from 'sonner';
 
 interface StockSearchProps {

@@ -2,7 +2,7 @@ import { useEffect, useState, type MutableRefObject } from 'react';
 import type { ISeriesApi } from 'lightweight-charts';
 import { ChartController } from '@/lib/trading/chart-controller';
 import { chartRegistry } from '@/lib/trading/chart-registry';
-import { toCanonicalSymbol, toInstrumentKey } from '@/lib/market/symbol-normalization';
+import { toCanonicalSymbol, toInstrumentKey } from '@paper-market/core';
 import type { LastAppliedDataRef, TimeMapRef, IntervalHintRef } from '../types/chart.types';
 
 type UseChartControllerArgs = {

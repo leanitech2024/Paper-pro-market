@@ -4,7 +4,7 @@ import { useGlobalStore } from "@/stores/global.store";
 import { useMarketStore } from "@/stores/trading/market.store";
 import { useWalletStore } from "@/stores/wallet.store";
 import { cn } from "@/lib/utils";
-import { symbolToIndexInstrumentKey, toCanonicalSymbol, toInstrumentKey } from "@/lib/market/symbol-normalization";
+import { symbolToIndexInstrumentKey, toCanonicalSymbol, toInstrumentKey } from "@paper-market/core";
 
 const INDEX_CONFIG = [
   {

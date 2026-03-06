@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/select";
 import { Search, TrendingDown, TrendingUp, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { formatExpiryLabel } from "@/lib/expiry-utils";
+import { formatExpiryLabel } from "@paper-market/core";
 import { calculateFuturesRequiredMargin } from "@/lib/trading/futures-margin";
 import { Stock } from "@paper-market/core";
 import { toast } from "sonner";

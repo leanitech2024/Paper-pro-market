@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { UserPosition as Position } from '@paper-market/core';
 import { useTradeExecutionStore } from './tradeExecution.store';
 import { toast } from 'sonner';
-import { toCanonicalSymbol, toSymbolKey } from '@/lib/market/symbol-normalization';
+import { toCanonicalSymbol, toSymbolKey } from '@paper-market/core';
 
 interface PositionsState {
   positions: Position[];

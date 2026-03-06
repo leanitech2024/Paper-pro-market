@@ -4,7 +4,7 @@ import { logger } from "@/lib/logger";
 import { db } from "@/lib/db";
 import { instruments } from "@paper-market/core";
 import { inArray } from "drizzle-orm";
-import { toInstrumentKey } from "@/lib/market/symbol-normalization";
+import { toInstrumentKey } from "@paper-market/core";
 import { resolveUpstoxPreviousClose } from "@/lib/market/upstox-quote-normalization";
 
 const UPSTOX_API_URL = "https://api.upstox.com/v2";

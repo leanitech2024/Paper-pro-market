@@ -19,8 +19,8 @@ import { TooltipProvider } from '@/components/ui/tooltip';
 import { InstrumentSelector, InstrumentType } from './form/InstrumentSelector';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { parseOptionSymbol } from '@/lib/fno-utils';
-import { formatExpiryLabel } from '@/lib/expiry-utils';
+import { parseOptionSymbol } from '@paper-market/core';
+import { formatExpiryLabel } from '@paper-market/core';
 import {
   StockSearch,
   OrderTypeToggle,

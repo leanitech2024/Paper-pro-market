@@ -1,5 +1,5 @@
-import { JournalEntry } from '@paper-market/core';
-import { analyzeBehavior, BehaviorType } from '@/lib/behavior-analytics';
+import { JournalEntry } from '../types/journal.types';
+import { analyzeBehavior, BehaviorType } from './behavior-analytics';
 
 // --- Types ---
 

@@ -2,7 +2,7 @@ import { and, eq, ne, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { instruments, positions, wallets } from "@paper-market/core";
 import { logger } from "@/lib/logger";
-import { toInstrumentKey } from "@/lib/market/symbol-normalization";
+import { toInstrumentKey } from "@paper-market/core";
 import { tickBus, type NormalizedTick } from "@/lib/trading/tick-bus";
 import { eventBus } from "@/lib/event-bus";
 import { marginCurveService } from "@/services/margin-curve.service";

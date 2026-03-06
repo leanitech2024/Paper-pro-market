@@ -1,4 +1,4 @@
-import { JournalEntry } from '@paper-market/core';
+import { JournalEntry } from '../types/journal.types';
 
 // --- Types ---
 

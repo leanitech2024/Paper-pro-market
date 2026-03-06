@@ -11,8 +11,8 @@ import {
   ReferenceLine
 } from 'recharts';
 import { Stock } from '@paper-market/core';
-import { parseOptionSymbol } from '@/lib/fno-utils';
-import { generateCallPayoff, generatePutPayoff } from '@/lib/fno-payoff-utils';
+import { parseOptionSymbol } from '@paper-market/core';
+import { generateCallPayoff, generatePutPayoff } from '@paper-market/core';
 
 interface OptionsPayoffChartProps {
   selectedStock: Stock | null;

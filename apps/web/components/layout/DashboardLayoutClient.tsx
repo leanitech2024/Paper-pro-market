@@ -13,7 +13,7 @@ import { useMarketStore } from '@/stores/trading/market.store';
 import { MarketStatusBar } from '@/components/layout/MarketStatusBar';
 import { MobileBottomNav } from '@/components/layout/MobileBottomNav';
 import { cn } from '@/lib/utils';
-import { toInstrumentKey } from '@/lib/market/symbol-normalization';
+import { toInstrumentKey } from '@paper-market/core';
 
 export default function DashboardLayoutClient({ children }: { children: ReactNode }) {
   

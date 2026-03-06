@@ -1,6 +1,6 @@
 import { logger } from "@/lib/logger";
 import { tickBus, type NormalizedTick } from "@/lib/trading/tick-bus";
-import { toInstrumentKey } from "@/lib/market/symbol-normalization";
+import { toInstrumentKey } from "@paper-market/core";
 
 type FeedHealthSnapshot = {
     lastTickTimestamp: number;

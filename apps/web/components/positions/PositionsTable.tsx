@@ -27,9 +27,9 @@ import { usePositionsStore } from '@/stores/trading/positions.store';
 import { useMarketStore } from '@/stores/trading/market.store';
 import { cn } from '@/lib/utils';
 import { X, TrendingUp, TrendingDown } from 'lucide-react';
-import { formatExpiryLabel, daysToExpiry, isExpired } from '@/lib/expiry-utils';
+import { formatExpiryLabel, daysToExpiry, isExpired } from '@paper-market/core';
 import Spinner from '@/components/ui/spinner';
-import { toInstrumentKey } from '@/lib/market/symbol-normalization';
+import { toInstrumentKey } from '@paper-market/core';
 
 interface PositionsTableProps {
   loading?: boolean;

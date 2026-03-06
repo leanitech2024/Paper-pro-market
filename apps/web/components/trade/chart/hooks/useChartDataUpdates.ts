@@ -2,7 +2,7 @@ import { useEffect, type MutableRefObject } from 'react';
 import type { CandlestickData, HistogramData, ISeriesApi } from 'lightweight-charts';
 import type { ChartStyle } from '@/stores/trading/analysis.store';
 import { trackAnalysisEvent } from '@/lib/analysis/telemetry';
-import { toInstrumentKey } from '@/lib/market/symbol-normalization';
+import { toInstrumentKey } from '@paper-market/core';
 import { rebuildRenderTimeline } from '../utils/timeline';
 import { toHeikinAshiData } from '../utils/heikinAshi';
 import type { IntervalHintRef, LastAppliedDataRef, TimeMapRef } from '../types/chart.types';

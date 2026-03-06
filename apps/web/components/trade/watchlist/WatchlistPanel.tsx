@@ -18,7 +18,7 @@ import { toast } from 'sonner';
 import { WatchlistItemMenu } from './WatchlistItemMenu';
 import { WatchlistSkeleton } from './WatchlistSkeleton';
 import { useWatchlists, useWatchlistInstruments, useCreateWatchlist } from '@/hooks/queries/use-watchlists';
-import { toCanonicalSymbol, toInstrumentKey, toSymbolKey } from '@/lib/market/symbol-normalization';
+import { toCanonicalSymbol, toInstrumentKey, toSymbolKey } from '@paper-market/core';
 
 interface WatchlistPanelProps {
   instruments: Stock[];

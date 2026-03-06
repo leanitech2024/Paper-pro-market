@@ -1,6 +1,6 @@
 import { MarketSlice } from '../types';
-import { isMarketOpenIST } from '@/lib/market-hours';
-import { toCanonicalSymbol, toInstrumentKey } from '@/lib/market/symbol-normalization';
+import { isMarketOpenIST } from '@paper-market/core';
+import { toCanonicalSymbol, toInstrumentKey } from '@paper-market/core';
 
 // Helper to add color to volume based on candle open/close
 const enrichVolumeWithColor = (volume: any[], candles: any[]) => {

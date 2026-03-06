@@ -1,6 +1,6 @@
 import WebSocket from "ws";
 import { logger } from "@/lib/logger";
-import { toInstrumentKey } from "@/lib/market/symbol-normalization";
+import { toInstrumentKey } from "@paper-market/core";
 import {
   feedHealthService,
   recordFeedPrice,

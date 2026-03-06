@@ -22,8 +22,8 @@ import {
   symbolToIndexInstrumentKey,
   toCanonicalSymbol,
   toInstrumentKey,
-} from "@/lib/market/symbol-normalization";
-import { isMarketOpenIST } from "@/lib/market-hours";
+} from "@paper-market/core";
+import { isMarketOpenIST } from "@paper-market/core";
 
 export const dynamic = "force-dynamic";
 

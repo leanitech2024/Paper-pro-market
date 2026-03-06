@@ -1,7 +1,7 @@
 "use client";
 import { useMemo } from 'react';
 import { useJournalStore } from '@/stores/trading/journal.store';
-import { generateWeeklySummaries, WeeklySummary } from '@/lib/weekly-analytics';
+import { generateWeeklySummaries, WeeklySummary } from '@paper-market/core';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';

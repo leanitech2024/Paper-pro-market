@@ -12,7 +12,7 @@ import { BottomBar } from "@/components/trade/options/BottomBar";
 import { OptionChainRow } from "@/components/trade/options/types";
 import { Stock } from "@paper-market/core";
 import { useMarketStore } from "@/stores/trading/market.store";
-import { symbolToIndexInstrumentKey } from "@/lib/market/symbol-normalization";
+import { symbolToIndexInstrumentKey } from "@paper-market/core";
 import { AdaptiveTradeLayout } from "@/components/trade/layout/AdaptiveTradeLayout";
 import { PositionsCards } from "@/components/trade/mobile/PositionsCards";
 import { useWalletStore } from "@/stores/wallet.store";

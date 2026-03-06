@@ -11,7 +11,7 @@ import { ChartOverlayLegend } from './ChartOverlayLegend';
 import { ChartTradingPanel } from './ChartTradingPanel';
 import { ChartLoadingIndicator } from './ChartLoadingIndicator';
 import { debounce } from '@/lib/utils/debounce';
-import { toCanonicalSymbol, toInstrumentKey } from '@/lib/market/symbol-normalization';
+import { toCanonicalSymbol, toInstrumentKey } from '@paper-market/core';
 import { computeIndicators, scheduleIndicatorComputation, type ComputedIndicator } from '@/lib/analysis/indicator-engine';
 import { trackAnalysisEvent } from '@/lib/analysis/telemetry';
 import { Eye, EyeOff, Lock, Unlock, Trash2 } from 'lucide-react';

@@ -1,5 +1,5 @@
 import { logger } from "@/lib/logger";
-import { toInstrumentKey } from "@/lib/market/symbol-normalization";
+import { toInstrumentKey } from "@paper-market/core";
 import { realTimeMarketService } from "@/services/realtime-market.service";
 import { UpstoxService, type SystemQuoteDetail } from "@/services/upstox.service";
 import { marketSimulation } from "@/services/market-simulation.service";

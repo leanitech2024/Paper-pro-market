@@ -6,7 +6,7 @@ import {
   calculateMaxDrawdownPct,
   getIstDayBoundsUtc,
   roundTo,
-} from "@/lib/dashboard-metrics";
+} from "@paper-market/core";
 import type { DashboardOverviewData, DashboardPosition } from "@paper-market/core";
 import { WalletService } from "@/services/wallet.service";
 import { realTimeMarketService } from "@/services/realtime-market.service";

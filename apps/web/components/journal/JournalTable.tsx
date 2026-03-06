@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { JournalEntry } from "@paper-market/core";
 import { cn } from "@/lib/utils";
 import { TrendingUp, TrendingDown } from "lucide-react";
-import { analyzeBehavior, BehaviorInsight, BehaviorSeverity } from "@/lib/behavior-analytics";
+import { analyzeBehavior, BehaviorInsight, BehaviorSeverity } from "@paper-market/core";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface JournalTableProps {

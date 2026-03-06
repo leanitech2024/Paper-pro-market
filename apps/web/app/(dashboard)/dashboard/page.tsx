@@ -3,7 +3,7 @@ import Link from "next/link";
 import { useMemo } from "react";
 import { useDashboardOverview } from '@/hooks/queries/use-dashboard-overview';
 import { useMarketStore } from '@/stores/trading/market.store';
-import { toInstrumentKey } from '@/lib/market/symbol-normalization';
+import { toInstrumentKey } from '@paper-market/core';
 import {
   ArrowUpRight,
   BookOpenText,

@@ -1,6 +1,6 @@
 "use client";
 import { useJournalEntries } from '@/hooks/use-journal-entries';
-import { calculatePerformanceMetrics } from '@/lib/performance-utils';
+import { calculatePerformanceMetrics } from '@paper-market/core';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { Activity, Target, TrendingUp, AlertTriangle } from 'lucide-react';

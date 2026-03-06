@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useMarketStore } from '@/stores/trading/market.store';
 import { usePositionsStore } from '@/stores/trading/positions.store';
 import { getMarketWebSocket } from '@/lib/market-ws';
-import { toCanonicalSymbol, toInstrumentKey } from '@/lib/market/symbol-normalization';
+import { toCanonicalSymbol, toInstrumentKey } from '@paper-market/core';
 
 const ISIN_LIKE = /^[A-Z]{2}[A-Z0-9]{8,14}$/i;
 const CORE_INDEX_KEYS = [

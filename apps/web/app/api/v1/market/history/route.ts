@@ -5,7 +5,7 @@ import {
   CandleOrchestrator,
   type CandleResult,
 } from "@/lib/market/candle-orchestrator";
-import { toInstrumentKey } from "@/lib/market/symbol-normalization";
+import { toInstrumentKey } from "@paper-market/core";
 
 const ONE_MINUTE_MS = 60_000;
 const MAX_SYMBOLS_PER_REQUEST = Number(
