@@ -1,10 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { OptionChainSchema } from "@paper-market/core";
 import { OptionChainService } from "@/services/option-chain.service";
-import { handleError } from "@/lib/errors";
+import { handleError, ApiError } from "@/lib/errors";
+import { auth } from "@/lib/auth";
 
 export async function GET(req: NextRequest) {
     try {
+        const session = await auth();
+        if (!session?.user?.id) {
+            throw new ApiError("Unauthorized", 401, "UNAUTHORIZED");
+        }
+
         const { searchParams } = new URL(req.url);
 
         const input = OptionChainSchema.parse({

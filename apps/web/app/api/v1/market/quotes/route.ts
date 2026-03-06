@@ -2,14 +2,16 @@ import { NextRequest, NextResponse } from "next/server";
 import { ApiError, handleError } from "@/lib/errors";
 import { logger } from "@/lib/logger";
 import { db } from "@/lib/db";
-import { instruments } from "@paper-market/core";
+import { instruments } from "@paper-market/core/db";
 import { inArray } from "drizzle-orm";
 import { toInstrumentKey } from "@paper-market/core";
 import { resolveUpstoxPreviousClose } from "@/lib/market/upstox-quote-normalization";
+import { auth } from "@/lib/auth";
+import { z } from "zod";
 
 const UPSTOX_API_URL = "https://api.upstox.com/v2";
 
-type UpstoxQuoteMap = Record<string, any>;
+type UpstoxQuoteMap = Record<string, { last_price?: string | number; close_price?: string | number; [key: string]: unknown }>;
 
 function sanitizeInstrumentKeys(input: unknown): string[] {
     if (!Array.isArray(input)) return [];
@@ -169,8 +171,19 @@ function toRequestedKeyPayload(
 
 export async function POST(req: NextRequest) {
     try {
+        const session = await auth();
+        if (!session?.user?.id) {
+            throw new ApiError("Unauthorized", 401, "UNAUTHORIZED");
+        }
+
         const body = await req.json();
-        const requestKeys = sanitizeInstrumentKeys(body?.instrumentKeys);
+        const payload = z.object({
+            symbols: z.array(z.string()).max(100).optional(),
+            instrumentKeys: z.array(z.string()).max(100).optional()
+        }).parse(body);
+
+        const rawKeys = payload.symbols || payload.instrumentKeys || [];
+        const requestKeys = sanitizeInstrumentKeys(rawKeys);
         const instrumentKeys = Array.from(
             new Set(
                 requestKeys
