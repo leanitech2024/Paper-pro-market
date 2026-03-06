@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { OptionChainSchema } from "@/lib/validation/option-chain";
+import { OptionChainSchema } from "@paper-market/core";
 import { OptionChainService } from "@/services/option-chain.service";
 import { handleError } from "@/lib/errors";
 

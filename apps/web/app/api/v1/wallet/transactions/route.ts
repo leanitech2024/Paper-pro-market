@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { WalletService } from "@/services/wallet.service";
 import { handleError } from "@/lib/errors";
 import { auth } from "@/lib/auth";
-import { TransactionQuerySchema } from "@/lib/validation/wallet";
+import { TransactionQuerySchema } from "@paper-market/core";
 
 /**
  * GET /api/v1/wallet/transactions

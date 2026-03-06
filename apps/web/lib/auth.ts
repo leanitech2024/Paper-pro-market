@@ -3,7 +3,7 @@ import { authConfig } from "./auth.config";
 import Credentials from "next-auth/providers/credentials";
 import { compare } from "bcryptjs";
 import { eq } from "drizzle-orm";
-import { LoginSchema } from "@/lib/validation/auth";
+import { LoginSchema } from "@paper-market/core";
 import { db } from "@/lib/db";
 import { users } from "@paper-market/core";
 import { WalletService } from "@/services/wallet.service";

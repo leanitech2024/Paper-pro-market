@@ -3,7 +3,7 @@ import { instruments, type NewInstrument } from "@paper-market/core";
 import { logger } from "@/lib/logger";
 import { ApiError } from "@/lib/errors";
 import { eq, ilike, and, gte, lte, or, sql, inArray } from "drizzle-orm";
-import type { InstrumentFilter } from "@/lib/validation/instruments";
+import type { InstrumentFilter } from "@paper-market/core";
 import { TRADING_UNIVERSE } from "@/lib/trading-universe";
 
 export class InstrumentService {

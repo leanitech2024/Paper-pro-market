@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { handleError, ApiError } from "@/lib/errors";
-import { AdminSyncTriggerSchema } from "@/lib/validation/instruments";
+import { AdminSyncTriggerSchema } from "@paper-market/core";
 import { logger } from "@/lib/logger";
 
 export async function POST(req: NextRequest) {

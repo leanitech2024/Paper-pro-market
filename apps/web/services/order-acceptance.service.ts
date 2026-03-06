@@ -1,4 +1,4 @@
-import type { PlaceOrder } from "@/lib/validation/oms";
+import type { PlaceOrder } from "@paper-market/core";
 import type { Instrument } from "@paper-market/core";
 import { ApiError } from "@/lib/errors";
 import { logger } from "@/lib/logger";

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { instrumentRepository } from "@/lib/instruments/repository";
 import { handleError } from "@/lib/errors";
-import { InstrumentSearchSchema } from "@/lib/validation/instruments";
+import { InstrumentSearchSchema } from "@paper-market/core";
 
 // Force dynamic since we access query params (though Next.js handles this)
 export const dynamic = 'force-dynamic';

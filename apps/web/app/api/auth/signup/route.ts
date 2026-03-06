@@ -3,7 +3,7 @@ import { db } from "@/lib/db";
 import { users } from "@paper-market/core";
 import { hash } from "bcryptjs";
 import { eq } from "drizzle-orm";
-import { SignupSchema } from "@/lib/validation/auth";
+import { SignupSchema } from "@paper-market/core";
 import { handleError, ApiError } from "@/lib/errors";
 import { WalletService } from "@/services/wallet.service";
 import { bootstrapUserLedgerState } from "@/services/ledger-bootstrap.service";

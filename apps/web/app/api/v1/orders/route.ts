@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { OrderService } from "@/services/order.service";
 import { handleError, ApiError } from "@/lib/errors";
-import { PlaceOrderSchema, OrderQuerySchema } from "@/lib/validation/oms";
+import { PlaceOrderSchema, OrderQuerySchema } from "@paper-market/core";
 
 /**
  * Place a new order.

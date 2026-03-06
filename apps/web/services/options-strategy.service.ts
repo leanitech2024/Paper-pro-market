@@ -7,8 +7,8 @@ import type {
     OptionStrategyExecuteInput,
     OptionStrategyPreviewInput,
     OptionStrategyType,
-} from "@/lib/validation/options-strategy";
-import type { PlaceOrder } from "@/lib/validation/oms";
+} from "@paper-market/core";
+import type { PlaceOrder } from "@paper-market/core";
 import { MarginService } from "@/services/margin.service";
 import { OrderService } from "@/services/order.service";
 import type { SystemQuoteDetail } from "@/services/upstox.service";

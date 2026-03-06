@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { InstrumentService } from "@/services/instrument.service";
 import { handleError } from "@/lib/errors";
-import { InstrumentLookupSchema } from "@/lib/validation/instruments";
+import { InstrumentLookupSchema } from "@paper-market/core";
 
 export async function GET(
     req: NextRequest,

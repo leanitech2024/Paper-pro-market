@@ -1,7 +1,7 @@
 export * from "./market/symbol-normalization";
 export * from "./db";
 
-// Shared Types - Explicitly exported to resolve naming collisions between schema and domain types
+// Shared Types
 export { 
     type InstrumentTypeUnion,
     InstrumentTypes,
@@ -26,3 +26,11 @@ export {
     type JournalEntry
 } from "./types/journal.types";
 export * from "./types/dashboard.types";
+
+// Validation Logic
+export * from "./validation/auth";
+export * from "./validation/instruments";
+export * from "./validation/oms";
+export * from "./validation/option-chain";
+export * from "./validation/options-strategy";
+export * from "./validation/wallet";

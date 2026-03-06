@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { ApiError, handleError } from "@/lib/errors";
-import { OptionStrategyPreviewSchema } from "@/lib/validation/options-strategy";
+import { OptionStrategyPreviewSchema } from "@paper-market/core";
 import { OptionsStrategyService } from "@/services/options-strategy.service";
 
 export async function POST(req: NextRequest) {

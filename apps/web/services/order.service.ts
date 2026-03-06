@@ -4,7 +4,7 @@ import { logger } from "@/lib/logger";
 import { ApiError } from "@/lib/errors";
 import { eq, and, sql } from "drizzle-orm";
 import { performance } from "node:perf_hooks";
-import type { PlaceOrder, OrderQuery } from "@/lib/validation/oms";
+import type { PlaceOrder, OrderQuery } from "@paper-market/core";
 import { WalletService } from "@/services/wallet.service";
 import { MarginService } from "@/services/margin.service";
 import { ExecutionService } from "@/services/execution.service";

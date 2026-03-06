@@ -2,7 +2,7 @@ import { db } from "@/lib/db";
 import { instruments, InstrumentType } from "@paper-market/core";
 import { and, eq, asc } from "drizzle-orm";
 import { marketSimulation } from "@/services/market-simulation.service";
-import { OptionChainInput } from "@/lib/validation/option-chain";
+import { OptionChainInput } from "@paper-market/core";
 import { UpstoxService } from "@/services/upstox.service";
 
 const UNDERLYING_ALIAS: Record<string, string> = {

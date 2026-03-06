@@ -6,7 +6,7 @@ import { logger } from "@/lib/logger";
 import { UpstoxService } from "@/services/upstox.service";
 import { realTimeMarketService } from "@/services/realtime-market.service";
 import { marketSimulation } from "@/services/market-simulation.service";
-import type { PlaceOrder } from "@/lib/validation/oms";
+import type { PlaceOrder } from "@paper-market/core";
 import { PreTradeRiskService } from "@/services/pretrade-risk.service";
 
 const STALE_TICK_MAX_AGE_SECONDS = 8;
