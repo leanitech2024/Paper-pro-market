@@ -147,7 +147,10 @@ export function createWebSocketServer(server: HttpServer): WebSocketServer {
     logger.info('WebSocket server attached to HTTP server');
 
     wss.on('connection', (ws: WebSocket, request: IncomingMessage) => {
-        void onConnection(ws, request);
+        void onConnection(ws, request).catch(err => {
+            logger.error({ err }, 'onConnection failed');
+            ws.terminate();
+        });
     });
 
     // ═══════════════════════════════════════════════════════════
