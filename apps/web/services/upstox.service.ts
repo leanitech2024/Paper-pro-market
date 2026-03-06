@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
-import { upstoxTokens, type NewUpstoxToken, instruments } from "@paper-market/core";
+import { upstoxTokens, instruments } from "@paper-market/core/db";
+import { type NewUpstoxToken } from "@paper-market/core";
 import { eq, gt, desc } from "drizzle-orm";
 import { logger } from "@/lib/logger";
 import { ApiError } from "@/lib/errors";
@@ -77,12 +78,12 @@ export class UpstoxService {
   /**
    * Generate the Authorization URL for user login
    */
-  static getAuthUrl(): string {
+  static getAuthUrl(state?: string): string {
     const params = new URLSearchParams({
       response_type: "code",
       client_id: this.config.apiKey,
       redirect_uri: this.config.redirectUri,
-      state: "random_state_string",
+      state: state || "random_state_string",
     });
 
     return `${UPSTOX_API_URL}/login/authorization/dialog?${params.toString()}`;

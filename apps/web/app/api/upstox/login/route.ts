@@ -1,10 +1,28 @@
-
 import { NextRequest, NextResponse } from "next/server";
 import { UpstoxService } from "@/services/upstox.service";
+import { auth } from "@/lib/auth";
+import { handleError, ApiError } from "@/lib/errors";
 
 export async function GET(req: NextRequest) {
-  // Redirect user to Upstox Auth Dialog
-  const url = UpstoxService.getAuthUrl();
-  console.log("Redirecting to Upstox Auth:", url);
-  return NextResponse.redirect(url);
+  try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      throw new ApiError("Unauthorized", 401, "UNAUTHORIZED");
+    }
+
+    const state = crypto.randomUUID();
+    const url = UpstoxService.getAuthUrl(state);
+    
+    const response = NextResponse.redirect(url);
+    response.cookies.set("upstox_oauth_state", state, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      maxAge: 300,
+      path: "/",
+    });
+
+    return response;
+  } catch (error) {
+    return handleError(error);
+  }
 }

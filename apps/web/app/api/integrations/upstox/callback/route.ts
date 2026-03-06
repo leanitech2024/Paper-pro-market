@@ -2,35 +2,39 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { UpstoxService } from "@/services/upstox.service";
+import { cookies } from "next/headers";
 
 export async function GET(req: NextRequest) {
-  // Hard debugging: Log everything
-  console.log("🔥 Upstox Callback HIT!");
-  
   const session = await auth();
   if (!session?.user?.id) {
-    console.error("❌ Upstox Callback: No Session Found");
     return NextResponse.json({ error: "Unauthorized - Please Login First" }, { status: 401 });
   }
 
   const { searchParams } = new URL(req.url);
   const code = searchParams.get("code");
   const error = searchParams.get("error");
+  const state = searchParams.get("state");
+
+  const cookieStore = await cookies();
+  const storedState = cookieStore.get("upstox_oauth_state")?.value;
+  cookieStore.delete("upstox_oauth_state");
+
+  if (!state || state !== storedState) {
+    return NextResponse.redirect(new URL("/admin/upstox?status=error&error=oauth_failed", req.url));
+  }
 
   if (error) {
-    return NextResponse.redirect(new URL("/admin/upstox?status=error&message=" + error, req.url));
+    return NextResponse.redirect(new URL("/admin/upstox?status=error&error=oauth_failed", req.url));
   }
 
   if (!code) {
-    return NextResponse.redirect(new URL("/admin/upstox?status=error&message=No+code+provided", req.url));
+    return NextResponse.redirect(new URL("/admin/upstox?status=error&error=oauth_failed", req.url));
   }
 
   try {
     await UpstoxService.generateToken(code, session.user.id);
-    console.log("✅ Upstox Token Generated Successfully for user:", session.user.id);
     return NextResponse.redirect(new URL("/admin/upstox?status=success", req.url));
   } catch (err: any) {
-    console.error("Upstox Callback Error:", err);
-    return NextResponse.redirect(new URL("/admin/upstox?status=error&message=" + encodeURIComponent(err.message), req.url));
+    return NextResponse.redirect(new URL("/admin/upstox?status=error&error=oauth_failed", req.url));
   }
 }
