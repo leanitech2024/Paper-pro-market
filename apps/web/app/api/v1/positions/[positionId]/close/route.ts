@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { PositionService } from "@/services/position.service";
 import { handleError } from "@/lib/errors";
 import { logger } from "@/lib/logger";
+import { z } from "zod";
 
 /**
  * Close a position (full or partial)
@@ -25,7 +26,9 @@ export async function POST(
 
         const { positionId } = params;
         const body = await req.json();
-        const { quantity } = body; // Optional: for partial close
+        const { quantity } = z.object({ 
+            quantity: z.number().int().positive().optional() 
+        }).parse(body);
 
         logger.info({ userId: session.user.id, positionId, quantity }, "Closing position");
 
