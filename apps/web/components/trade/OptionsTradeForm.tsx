@@ -2,7 +2,7 @@
 
 import { TradingForm } from "@/components/trade/TradingForm";
 import { InstrumentType } from "@/components/trade/form/InstrumentSelector";
-import { Stock } from "@/types/equity.types";
+import { Stock } from "@paper-market/core";
 
 interface OptionsTradeFormProps {
   selectedStock: Stock | null;

@@ -1,4 +1,4 @@
-import { Trade } from '@/types/order.types';
+import { EnrichedTrade as Trade } from '@paper-market/core';
 
 export const dummyTrades: Trade[] = [
   {

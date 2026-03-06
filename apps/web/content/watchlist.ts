@@ -1,4 +1,4 @@
-import { Stock } from '@/types/equity.types';
+import { Stock } from '@paper-market/core';
 
 export const stocksList: Stock[] = [
   { symbol: 'RELIANCE', name: 'Reliance Industries Ltd', price: 0, change: 0, changePercent: 0, volume: 0, lotSize: 1 },

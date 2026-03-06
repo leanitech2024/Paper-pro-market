@@ -1,6 +1,6 @@
-import { ProductType, Side, InstrumentMode } from './general.types';
+import { ProductType, Side, InstrumentMode } from '../types/general.types';
 
-export interface Position {
+export interface UserPosition {
   id: string;
   symbol: string;
   instrumentToken?: string;

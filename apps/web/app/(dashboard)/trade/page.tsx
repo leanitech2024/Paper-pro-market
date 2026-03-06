@@ -1,9 +1,9 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect, Suspense, useMemo } from "react";
 import dynamic from "next/dynamic";
 import { EquityTradeForm } from "@/components/trade/EquityTradeForm";
-import { Stock } from "@/types/equity.types";
+import { Stock } from "@paper-market/core";
 import { useMarketStore } from "@/stores/trading/market.store";
 import { useWalletStore } from "@/stores/wallet.store";
 import { Skeleton } from "@/components/ui/skeleton";

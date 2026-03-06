@@ -1,8 +1,7 @@
-import { Side, InstrumentMode, ExitReason } from './general.types';
+import { Side, InstrumentMode, ExitReason, TradeStatus } from '../types/general.types';
 
 
-export type TradeStatus = 'FILLED' | 'CLOSED' | 'OPEN' | 'CANCELLED' | 'PENDING' | 'REJECTED';
-export type OrderType = 'MARKET' | 'LIMIT' | 'STOP';
+export type OrderExecutionType = 'MARKET' | 'LIMIT' | 'STOP';
 
 export interface TradeParams {
   instrumentToken: string;
@@ -10,10 +9,10 @@ export interface TradeParams {
   side: Side;
   quantity: number;
   entryPrice?: number;
-  orderType?: OrderType;
+  orderType?: OrderExecutionType;
 }
 
-export interface Trade {
+export interface EnrichedTrade {
   id: string;
   instrumentToken?: string;
   symbol: string;
@@ -34,13 +33,6 @@ export interface Trade {
   stopLoss?: number;
   target?: number;
   exitReason?: ExitReason;
-  orderType?: OrderType;
+  orderType?: OrderExecutionType;
   exchangeOrderId?: string;
-}
-
-export interface JournalEntry {
-  tradeId: string;
-  whyEntered: string;
-  whatWentRight: string;
-  whatWentWrong: string;
 }

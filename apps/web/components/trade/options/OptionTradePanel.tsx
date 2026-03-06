@@ -18,7 +18,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
-import { Stock } from "@/types/equity.types";
+import { Stock } from "@paper-market/core";
 import { useTradeExecutionStore } from "@/stores/trading/tradeExecution.store";
 import { useWalletStore } from "@/stores/wallet.store";
 import { useMarketStore } from "@/stores/trading/market.store";

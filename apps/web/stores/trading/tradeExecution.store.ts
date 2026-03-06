@@ -1,11 +1,11 @@
 import { create } from "zustand";
-import { Position } from "@/types/position.types";
-import { Trade } from "@/types/order.types";
-import { InstrumentMode } from "@/types/general.types";
+import { UserPosition as Position } from "@paper-market/core";
+import { EnrichedTrade as Trade } from "@paper-market/core";
+import { InstrumentMode } from "@paper-market/core";
 import { usePositionsStore } from "./positions.store";
 import { useJournalStore } from "./journal.store";
 import { useWalletStore } from "@/stores/wallet.store";
-import { ExitReason } from "@/types/journal.types";
+import { ExitReason } from "@paper-market/core";
 
 type OrderPlacementParams = {
   instrumentToken: string;

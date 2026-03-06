@@ -15,7 +15,7 @@ import {
 } from "recharts";
 import { useMarketStore } from "@/stores/trading/market.store";
 import type { OptionChainRow, StrategyKind } from "@/components/trade/options/types";
-import type { Stock } from "@/types/equity.types";
+import type { Stock } from "@paper-market/core";
 import type { MultiLegPayoffLeg } from "@/lib/options/multi-leg-payoff";
 import { findBreakevenPrices, generateMultiLegPayoffSeries } from "@/lib/options/multi-leg-payoff";
 import { cn } from "@/lib/utils";

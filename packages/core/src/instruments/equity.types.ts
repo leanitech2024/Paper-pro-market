@@ -1,4 +1,4 @@
-import { ExpiryType } from './general.types';
+import { ExpiryType } from '../types/general.types';
 
 export interface Stock {
   symbol: string;

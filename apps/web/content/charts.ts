@@ -1,4 +1,4 @@
-import { EquityPoint } from '@/types/pnl.types';
+import { EquityPoint } from '@paper-market/core';
 
 const INITIAL_BALANCE = 1000000; // ₹10,00,000
 

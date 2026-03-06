@@ -1,4 +1,4 @@
-import { Stock } from '@/types/equity.types';
+import { Stock } from '@paper-market/core';
 import { WatchlistInstrument, MarketSlice } from '../types';
 import { indicesList } from '@/content/indices';
 

@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { JournalEntry } from '@/types/journal.types';
+import { JournalEntry } from '@paper-market/core';
 
 interface JournalState {
   entries: JournalEntry[];

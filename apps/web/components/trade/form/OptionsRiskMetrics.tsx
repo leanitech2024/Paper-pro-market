@@ -1,5 +1,5 @@
 "use client";
-import { Stock } from '@/types/equity.types';
+import { Stock } from '@paper-market/core';
 import { useMarketStore } from '@/stores/trading/market.store';
 import { parseOptionSymbol, calculateOptionRiskMetrics } from '@/lib/fno-utils';
 

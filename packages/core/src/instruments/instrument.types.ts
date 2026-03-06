@@ -1,4 +1,4 @@
-export type InstrumentType = 'EQUITY' | 'FUTURE' | 'OPTION' | 'INDEX';
+export type InstrumentTypeUnion = 'EQUITY' | 'FUTURE' | 'OPTION' | 'INDEX';
 
 export const InstrumentTypes = {
   EQUITY: 'EQUITY',
@@ -7,7 +7,7 @@ export const InstrumentTypes = {
   INDEX: 'INDEX',
 } as const;
 
-export function normalizeInstrumentType(type: string): InstrumentType {
+export function normalizeInstrumentType(type: string): InstrumentTypeUnion {
   const t = type.toUpperCase();
   if (t === 'FUT' || t === 'FUTURES') return 'FUTURE';
   if (t === 'CE' || t === 'PE' || t === 'OPTIONS') return 'OPTION';

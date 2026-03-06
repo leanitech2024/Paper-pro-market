@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Stock } from '@/types/equity.types';
+import { Stock } from '@paper-market/core';
 import { toInstrumentKey } from '@/lib/market/symbol-normalization';
 
 // ═══════════════════════════════════════════════════════════

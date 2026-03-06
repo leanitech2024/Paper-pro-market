@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { Stock } from "@/types/equity.types";
+import { Stock } from "@paper-market/core";
 import { useTradeExecutionStore } from "@/stores/trading/tradeExecution.store";
 import { useWalletStore } from "@/stores/wallet.store";
 import { useMarketStore } from "@/stores/trading/market.store";

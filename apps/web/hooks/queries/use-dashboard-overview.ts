@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import type { DashboardOverviewResponse } from "@/types/dashboard.types";
+import type { DashboardOverviewResponse } from "@paper-market/core";
 
 async function fetchDashboardOverview() {
   const response = await fetch("/api/v1/dashboard/overview", {

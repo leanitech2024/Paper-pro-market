@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { Trade, JournalEntry } from '@/types/order.types';
+import { EnrichedTrade as Trade, JournalEntry } from '@paper-market/core';
 import { toast } from 'sonner';
 import { useWalletStore } from '@/stores/wallet.store';
 

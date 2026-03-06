@@ -22,7 +22,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Position } from '@/types/position.types';
+import { UserPosition as Position } from '@paper-market/core';
 import { usePositionsStore } from '@/stores/trading/positions.store';
 import { useMarketStore } from '@/stores/trading/market.store';
 import { cn } from '@/lib/utils';

@@ -1,7 +1,7 @@
 "use client";
 
 import { TradingForm } from "@/components/trade/TradingForm";
-import { Stock } from "@/types/equity.types";
+import { Stock } from "@paper-market/core";
 
 interface EquityTradeFormProps {
   selectedStock: Stock | null;

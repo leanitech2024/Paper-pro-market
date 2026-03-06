@@ -1,4 +1,4 @@
-import { User } from '@/types/user.types';
+import { UserProfile as User } from '@paper-market/core';
 
 export const mockUsers: User[] = [
   { id: '1', email: 'john@example.com', balance: 1000000, totalPnL: 15420, isAdmin: true },

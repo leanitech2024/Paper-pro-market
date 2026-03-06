@@ -9,7 +9,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Stock } from '@/types/equity.types';
+import { Stock } from '@paper-market/core';
 import { useMarketStore } from '@/stores/trading/market.store';
 import { useAddInstrument, useRemoveInstrument } from '@/hooks/queries/use-watchlists';
 import { toast } from 'sonner';

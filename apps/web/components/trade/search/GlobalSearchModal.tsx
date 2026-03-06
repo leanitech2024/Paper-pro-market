@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/tooltip";
 import { Search, TrendingUp, Bookmark } from "lucide-react";
 import { useMarketStore } from "@/stores/trading/market.store";
-import { Stock } from "@/types/equity.types";
+import { Stock } from "@paper-market/core";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useAddInstrument, useRemoveInstrument } from "@/hooks/queries/use-watchlists";

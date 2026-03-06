@@ -1,6 +1,6 @@
 import { StateCreator } from 'zustand';
-import { Stock } from '@/types/equity.types';
-import { InstrumentMode } from '@/types/general.types';
+import { Stock } from '@paper-market/core';
+import { InstrumentMode } from '@paper-market/core';
 
 // ─────────────────────────────────────────────────────────────────
 // 📋 Watchlist Types

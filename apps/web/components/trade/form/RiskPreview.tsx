@@ -1,5 +1,5 @@
 "use client";
-import { Stock } from '@/types/equity.types';
+import { Stock } from '@paper-market/core';
 
 interface RiskPreviewProps {
   selectedStock: Stock | null;

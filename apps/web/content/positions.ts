@@ -1,4 +1,4 @@
-import { Position } from '@/types/position.types';
+import { UserPosition as Position } from '@paper-market/core';
 
 export const dummyPositions: Position[] = [
   {

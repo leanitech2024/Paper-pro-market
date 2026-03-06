@@ -16,7 +16,7 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { Label } from '@/components/ui/label';
-import { Stock } from '@/types/equity.types'; // Fixed import path
+import { Stock } from '@paper-market/core'; // Fixed import path
 import { cn } from '@/lib/utils';
 import { Check, ChevronsUpDown, Search } from 'lucide-react';
 import { parseOptionSymbol } from '@/lib/fno-utils';

@@ -9,7 +9,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { JournalEntry } from "@/types/journal.types";
+import { JournalEntry } from "@paper-market/core";
 import { cn } from "@/lib/utils";
 import { TrendingUp, TrendingDown } from "lucide-react";
 import { analyzeBehavior, BehaviorInsight, BehaviorSeverity } from "@/lib/behavior-analytics";

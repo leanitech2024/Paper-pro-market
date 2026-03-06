@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
-import { Stock } from '@/types/equity.types';
+import { Stock } from '@paper-market/core';
 import { Plus, ChevronDown } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { useMarketStore } from '@/stores/trading/market.store';

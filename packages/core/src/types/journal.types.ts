@@ -1,6 +1,4 @@
-import { InstrumentMode, Side } from './general.types';
-
-export type ExitReason = 'MANUAL' | 'EXPIRY';
+import { InstrumentMode, Side, ExitReason } from './general.types';
 
 /**
  * Snapshot of risk metrics calculated at the moment of entry.

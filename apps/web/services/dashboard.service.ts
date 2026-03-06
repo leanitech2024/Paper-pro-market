@@ -7,7 +7,7 @@ import {
   getIstDayBoundsUtc,
   roundTo,
 } from "@/lib/dashboard-metrics";
-import type { DashboardOverviewData, DashboardPosition } from "@/types/dashboard.types";
+import type { DashboardOverviewData, DashboardPosition } from "@paper-market/core";
 import { WalletService } from "@/services/wallet.service";
 import { realTimeMarketService } from "@/services/realtime-market.service";
 import { logger } from "@/lib/logger";

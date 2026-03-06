@@ -1,4 +1,4 @@
-import { MonthlyPerformance } from '@/types/pnl.types';
+import { MonthlyPerformance } from '@paper-market/core';
 
 export const monthlyPerformance: MonthlyPerformance[] = [
   { month: 'Jan', pnl: 2500 },

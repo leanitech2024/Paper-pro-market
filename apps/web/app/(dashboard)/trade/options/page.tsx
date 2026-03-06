@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
@@ -10,7 +10,7 @@ import { EmptyPanel } from "@/components/trade/options/EmptyPanel";
 import { StrategyBuilderPanel } from "@/components/trade/options/StrategyBuilderPanel";
 import { BottomBar } from "@/components/trade/options/BottomBar";
 import { OptionChainRow } from "@/components/trade/options/types";
-import { Stock } from "@/types/equity.types";
+import { Stock } from "@paper-market/core";
 import { useMarketStore } from "@/stores/trading/market.store";
 import { symbolToIndexInstrumentKey } from "@/lib/market/symbol-normalization";
 import { AdaptiveTradeLayout } from "@/components/trade/layout/AdaptiveTradeLayout";
@@ -593,7 +593,7 @@ export default function OptionsPage() {
         open={searchOpen}
         onOpenChange={setSearchOpen}
         searchMode="OPTION"
-        placeholder="Search option contracts…"
+        placeholder="Search option contracts�"
         onSelectStock={handleSearchSelect}
       />
 

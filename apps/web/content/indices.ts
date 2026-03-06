@@ -1,4 +1,4 @@
-import { Stock } from '@/types/equity.types';
+import { Stock } from '@paper-market/core';
 
 export const indicesList: Stock[] = [
     {

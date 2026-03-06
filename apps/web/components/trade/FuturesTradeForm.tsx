@@ -12,7 +12,7 @@ import { Search, TrendingDown, TrendingUp, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatExpiryLabel } from "@/lib/expiry-utils";
 import { calculateFuturesRequiredMargin } from "@/lib/trading/futures-margin";
-import { Stock } from "@/types/equity.types";
+import { Stock } from "@paper-market/core";
 import { toast } from "sonner";
 import { useTradeExecutionStore } from "@/stores/trading/tradeExecution.store";
 import { useWalletStore } from "@/stores/wallet.store";

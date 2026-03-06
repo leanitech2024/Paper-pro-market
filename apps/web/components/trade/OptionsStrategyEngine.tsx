@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import type { Stock } from "@/types/equity.types";
+import type { Stock } from "@paper-market/core";
 import { useTradeExecutionStore } from "@/stores/trading/tradeExecution.store";
 import { useWalletStore } from "@/stores/wallet.store";
 import { useMarketStore } from "@/stores/trading/market.store";
