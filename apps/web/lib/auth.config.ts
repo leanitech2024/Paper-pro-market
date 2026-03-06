@@ -54,30 +54,27 @@ export const authConfig = {
         },
         async session({ session, token }) {
             if (session.user) {
-                const tokenId = typeof (token as any).id === "string" ? (token as any).id : token.sub;
+                const tokenId = token.id || token.sub;
                 if (tokenId) {
                     session.user.id = tokenId;
                 }
-                const tokenRole = (token as any).role;
-                if (typeof tokenRole === "string" && tokenRole.length > 0) {
-                    (session.user as any).role = tokenRole;
+                if (token.role) {
+                    session.user.role = token.role;
                 }
             }
             return session;
         },
         async jwt({ token, user }) {
             if (user) {
-                const userId = typeof (user as any).id === "string" ? (user as any).id : undefined;
-                const userRole = typeof (user as any).role === "string" ? (user as any).role : undefined;
-                if (userId) {
-                    token.sub = userId;
-                    (token as any).id = userId;
+                if (user.id) {
+                    token.sub = user.id;
+                    token.id = user.id;
                 }
-                if (userRole) {
-                    (token as any).role = userRole;
+                if (user.role) {
+                    token.role = user.role;
                 }
-            } else if (!(token as any).id && token.sub) {
-                (token as any).id = token.sub;
+            } else if (!token.id && token.sub) {
+                token.id = token.sub;
             }
             return token;
         },

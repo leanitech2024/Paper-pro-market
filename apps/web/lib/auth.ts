@@ -5,7 +5,7 @@ import { compare } from "bcryptjs";
 import { eq } from "drizzle-orm";
 import { LoginSchema } from "@paper-market/core";
 import { db } from "@/lib/db";
-import { users } from "@paper-market/core";
+import { users } from "@paper-market/core/db";;
 import { WalletService } from "@/services/wallet.service";
 import { bootstrapUserLedgerState } from "@/services/ledger-bootstrap.service";
 
@@ -74,7 +74,7 @@ const { handlers, auth: nextAuth, signIn, signOut } = NextAuth({
                     }
 
                     if (appUserId) {
-                        (user as any).id = appUserId;
+                        user.id = appUserId;
                     }
                 } catch (error) {
                     console.error("Error creating user in DB:", error);
@@ -85,20 +85,18 @@ const { handlers, auth: nextAuth, signIn, signOut } = NextAuth({
         },
         async jwt({ token, user }) {
             if (user) {
-                const userId = typeof (user as any).id === "string" ? (user as any).id : undefined;
-                const userRole = typeof (user as any).role === "string" ? (user as any).role : undefined;
-                if (userId) {
-                    token.sub = userId;
-                    (token as any).id = userId;
+                if (user.id) {
+                    token.sub = user.id;
+                    token.id = user.id;
                 }
-                if (userRole) {
-                    (token as any).role = userRole;
+                if (user.role) {
+                    token.role = user.role;
                 }
                 return token;
             }
 
-            if (!(token as any).id && token.sub) {
-                (token as any).id = token.sub;
+            if (!token.id && token.sub) {
+                token.id = token.sub;
             }
             return token;
         },
@@ -233,7 +231,7 @@ export const auth = async () => {
         }
 
         if (appUser?.id) {
-            (session.user as any).id = appUser.id;
+            session.user.id = appUser.id;
         }
     } catch (error) {
         console.error("Failed to align auth session user with app user:", error);
