@@ -17,7 +17,9 @@ import { cn } from '@/lib/utils';
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuLabel,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 
@@ -54,16 +56,75 @@ export function ChartHeader({
     isLoading = false,
     isFullscreen = false
 }: ChartHeaderProps) {
-  const { range, setRange } = useAnalysisStore();
+  const { range, setRange, timeframe, setTimeframe } = useAnalysisStore();
   const headerText = displaySymbol || symbol;
 
   const ranges = ['5Y', '1Y', '6M', '3M', '1M', '5D', '1D'];
+  const rangeToTimeframe: Record<string, string> = {
+    '1D': '1m',
+    '5D': '5m',
+    '1M': '15m',
+    '3M': '1h',
+    '6M': '1d',
+    '1Y': '1d',
+    '5Y': '1mo',
+  };
+  type TimeframeItem = { value: string; label: string };
+  const timeframeGroups: { label: string; items: TimeframeItem[] }[] = [
+    {
+      label: "Minutes",
+      items: [
+        { value: "1m", label: "1 minute" },
+        { value: "3m", label: "3 minutes" },
+        { value: "5m", label: "5 minutes" },
+        { value: "10m", label: "10 minutes" },
+        { value: "15m", label: "15 minutes" },
+        { value: "30m", label: "30 minutes" },
+      ],
+    },
+    {
+      label: "Hours",
+      items: [
+        { value: "1h", label: "1 hour" },
+        { value: "2h", label: "2 hours" },
+        { value: "3h", label: "3 hours" },
+        { value: "4h", label: "4 hours" },
+      ],
+    },
+    {
+      label: "Days",
+      items: [
+        { value: "1d", label: "1 day" },
+        { value: "1w", label: "1 week" },
+        { value: "1mo", label: "1 month" },
+      ],
+    },
+  ];
+  const effectiveTimeframe = range ? rangeToTimeframe[range] || timeframe : timeframe;
+  const activeTimeframeLabel =
+    timeframeGroups.flatMap((group) => group.items).find((item) => item.value === effectiveTimeframe)?.label || "1 minute";
   const styleLabels = {
+    BARS: "Bars",
     CANDLE: "Candles",
+    HOLLOW_CANDLES: "Hollow candles",
+    VOLUME_CANDLES: "Volume candles",
     LINE: "Line",
+    LINE_WITH_MARKERS: "Line with markers",
+    STEP_LINE: "Step line",
     AREA: "Area",
+    HLC_AREA: "HLC area",
+    BASELINE: "Baseline",
+    COLUMNS: "Columns",
+    HIGH_LOW: "High-low",
     HEIKIN_ASHI: "Heikin Ashi",
   } as const;
+  const styleGroups = [
+    ["BARS", "CANDLE", "HOLLOW_CANDLES", "VOLUME_CANDLES"],
+    ["LINE", "LINE_WITH_MARKERS", "STEP_LINE"],
+    ["AREA", "HLC_AREA", "BASELINE"],
+    ["COLUMNS", "HIGH_LOW"],
+    ["HEIKIN_ASHI"],
+  ] as const;
 
   return (
     <div
@@ -98,14 +159,14 @@ export function ChartHeader({
             <Button 
                 size="sm" 
                 className="h-7 px-2.5 bg-emerald-600 hover:bg-emerald-600/90 text-white text-[10px] font-bold uppercase transition-transform active:scale-95"
-                onClick={() => (window as any).triggerTrade?.('BUY')}
+                onClick={() => window.triggerTrade?.('BUY')}
             >
                 Buy
             </Button>
             <Button 
                 size="sm" 
                 className="h-7 px-2.5 bg-rose-600 hover:bg-rose-600/90 text-white text-[10px] font-bold uppercase transition-transform active:scale-95"
-                onClick={() => (window as any).triggerTrade?.('SELL')}
+                onClick={() => window.triggerTrade?.('SELL')}
             >
                 Sell
             </Button>
@@ -125,7 +186,11 @@ export function ChartHeader({
               {ranges.map((r) => (
                 <DropdownMenuItem
                   key={r}
-                  onClick={() => setRange(r)}
+                  onClick={() => {
+                    setRange(r);
+                    const mapped = rangeToTimeframe[r];
+                    if (mapped) setTimeframe(mapped);
+                  }}
                   className={`text-xs justify-center flex cursor-pointer ${range === r ? "bg-accent font-medium text-[#2d6cff]" : ""}`}
                 >
                   {r}
@@ -140,7 +205,11 @@ export function ChartHeader({
             {ranges.map((r) => (
                 <button
                     key={r}
-                    onClick={() => setRange(r)}
+                    onClick={() => {
+                      setRange(r);
+                      const mapped = rangeToTimeframe[r];
+                      if (mapped) setTimeframe(mapped);
+                    }}
                     className={`px-2 h-7 text-xs font-semibold rounded-sm transition-colors uppercase ${
                         range === r
                         ? 'text-[#2d6cff] bg-[#2d6cff]/10'
@@ -154,6 +223,43 @@ export function ChartHeader({
 
         <Separator orientation="vertical" className="h-4 bg-border/50 mx-0.5 shrink-0" />
 
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="sm" className="h-7 gap-1.5 px-2 text-[10px] md:text-xs text-muted-foreground hover:text-foreground transition-none">
+                <span className="hidden sm:inline-block">{activeTimeframeLabel}</span>
+                <span className="sm:hidden">{effectiveTimeframe.toUpperCase()}</span>
+              </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="w-56 bg-card border-border">
+            {timeframeGroups.map((group, groupIndex) => (
+              <div key={group.label}>
+                {groupIndex > 0 ? <DropdownMenuSeparator className="bg-border/50" /> : null}
+                <DropdownMenuLabel className="text-[10px] uppercase tracking-wider text-muted-foreground/70">
+                  {group.label}
+                </DropdownMenuLabel>
+                {group.items.map((item) => (
+                  <DropdownMenuItem
+                    key={item.value}
+                    onClick={() => {
+                      setTimeframe(item.value);
+                      setRange("");
+                    }}
+                    className={cn(
+                      "text-xs cursor-pointer text-foreground data-[highlighted]:bg-accent data-[highlighted]:text-foreground",
+                      effectiveTimeframe === item.value &&
+                        "bg-primary font-medium text-primary-foreground focus:bg-primary focus:text-primary-foreground data-[highlighted]:bg-primary data-[highlighted]:text-primary-foreground",
+                    )}
+                  >
+                    {item.label}
+                  </DropdownMenuItem>
+                ))}
+              </div>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+        <Separator orientation="vertical" className="h-4 bg-border/50 mx-0.5 shrink-0" />
+
         {/* Chart Style (Visible on both) */}
         <div className="flex items-center shrink-0">
           <DropdownMenu>
@@ -163,14 +269,37 @@ export function ChartHeader({
                 <span className="hidden sm:inline-block">{styleLabels[chartStyle]}</span>
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-40">
-              {(["CANDLE", "LINE", "AREA", "HEIKIN_ASHI"] as const).map((style) => (
+            <DropdownMenuContent align="start" className="w-56 bg-card border-border">
+              {styleGroups.map((group, groupIndex) => (
+                <div key={group.join("-")}>
+                  {groupIndex > 0 ? <DropdownMenuSeparator className="bg-border/50" /> : null}
+                  {group.map((style) => (
+                    <DropdownMenuItem
+                      key={style}
+                      onClick={() => onChartStyleChange?.(style)}
+                      className={cn(
+                        "text-xs cursor-pointer text-foreground data-[highlighted]:bg-accent data-[highlighted]:text-foreground",
+                        chartStyle === style &&
+                          "bg-primary font-medium text-primary-foreground focus:bg-primary focus:text-primary-foreground data-[highlighted]:bg-primary data-[highlighted]:text-primary-foreground",
+                      )}
+                    >
+                      {styleLabels[style]}
+                    </DropdownMenuItem>
+                  ))}
+                </div>
+              ))}
+
+              <DropdownMenuSeparator className="bg-border/50" />
+              <DropdownMenuLabel className="text-[10px] uppercase tracking-wider text-muted-foreground/70">
+                Advanced
+              </DropdownMenuLabel>
+              {["Renko", "Line break", "Kagi", "Point & figure"].map((label) => (
                 <DropdownMenuItem
-                  key={style}
-                  onClick={() => onChartStyleChange?.(style)}
-                  className={chartStyle === style ? "bg-accent font-medium" : ""}
+                  key={label}
+                  disabled
+                  className="text-xs text-muted-foreground/60 cursor-not-allowed"
                 >
-                  {styleLabels[style]}
+                  {label}
                 </DropdownMenuItem>
               ))}
             </DropdownMenuContent>

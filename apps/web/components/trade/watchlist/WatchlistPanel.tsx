@@ -291,7 +291,7 @@ export function WatchlistPanel({ instruments, onSelect, selectedSymbol, onOpenSe
                       onClick={(e) => {
                         e.stopPropagation();
                         onSelect(renderedStock);
-                        (window as any).triggerTrade?.('BUY');
+                        window.triggerTrade?.('BUY');
                       }}
                       className="h-7 px-3 text-xs font-bold border border-[#089981] text-[#089981] bg-transparent hover:bg-[#089981] hover:text-white transition-colors"
                     >
@@ -303,7 +303,7 @@ export function WatchlistPanel({ instruments, onSelect, selectedSymbol, onOpenSe
                       onClick={(e) => {
                         e.stopPropagation();
                         onSelect(renderedStock);
-                        (window as any).triggerTrade?.('SELL');
+                        window.triggerTrade?.('SELL');
                       }}
                       className="h-7 px-3 text-xs font-bold border border-[#F23645] text-[#F23645] bg-transparent hover:bg-[#F23645] hover:text-white transition-colors"
                     >

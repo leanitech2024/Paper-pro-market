@@ -85,7 +85,7 @@ export default function EquityPage() {
   }, [selectedSymbol, selectedFallback, stocksBySymbol]);
 
   useEffect(() => {
-    (window as any).triggerTrade = (_side: "BUY" | "SELL") => {
+    window.triggerTrade = (_side: "BUY" | "SELL") => {
       if (isMobile) {
         setMobileOrderOpen(true);
         return;
@@ -93,7 +93,7 @@ export default function EquityPage() {
       setShowOrderForm(true);
     };
     return () => {
-      (window as any).triggerTrade = undefined;
+      window.triggerTrade = undefined;
     };
   }, [isMobile]);
 
@@ -142,7 +142,13 @@ export default function EquityPage() {
 
   const orderPanelNode = selectedStock ? (
     <div className="h-full min-h-0 overflow-y-auto">
-      <EquityTradeForm selectedStock={selectedStock} onStockSelect={handleSelectStock} instruments={currentInstruments} sheetMode />
+      <EquityTradeForm
+        selectedStock={selectedStock}
+        onStockSelect={handleSelectStock}
+        instruments={currentInstruments}
+        sheetMode
+        onOpenSearch={() => setSearchModalOpen(true)}
+      />
     </div>
   ) : (
     <div className="flex h-full items-center justify-center p-4 text-xs text-slate-500">Select a stock to place an order.</div>
@@ -215,14 +221,14 @@ export default function EquityPage() {
           <div className="flex items-center gap-1.5">
             <button
               type="button"
-              onClick={() => (window as any).triggerTrade?.("BUY")}
+              onClick={() => window.triggerTrade?.("BUY")}
               className="h-7 rounded bg-emerald-600 px-3 text-[10px] uppercase font-bold text-white shadow"
             >
               Buy
             </button>
             <button
               type="button"
-              onClick={() => (window as any).triggerTrade?.("SELL")}
+              onClick={() => window.triggerTrade?.("SELL")}
               className="h-7 rounded bg-rose-600 px-3 text-[10px] uppercase font-bold text-white shadow"
             >
               Sell
@@ -297,6 +303,7 @@ export default function EquityPage() {
                         selectedStock={selectedStock}
                         onStockSelect={handleSelectStock}
                         instruments={currentInstruments}
+                        onOpenSearch={() => setSearchModalOpen(true)}
                       />
                     </div>
                   </div>
@@ -308,6 +315,7 @@ export default function EquityPage() {
           tabletLeft={tabletWatchlistNode}
           tabletRight={tabletOrderNode}
           mobileContent={mobileMainNode}
+          mobileOrderTitle={selectedStock ? `${selectedStock.symbol} equity order ticket` : "Equity order ticket"}
           mobileOrderOpen={mobileOrderOpen}
           onMobileOrderOpenChange={setMobileOrderOpen}
           mobileOrderDrawer={mobileOrderDrawerNode}

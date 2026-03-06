@@ -69,7 +69,7 @@ export default function TradePage() {
   }, []);
 
   useEffect(() => {
-    (window as any).triggerTrade = (_side: "BUY" | "SELL") => {
+    window.triggerTrade = (_side: "BUY" | "SELL") => {
       if (isMobile) {
         setMobileOrderOpen(true);
         return;
@@ -77,7 +77,7 @@ export default function TradePage() {
       setShowOrderForm(true);
     };
     return () => {
-      (window as any).triggerTrade = undefined;
+      window.triggerTrade = undefined;
     };
   }, [isMobile]);
 

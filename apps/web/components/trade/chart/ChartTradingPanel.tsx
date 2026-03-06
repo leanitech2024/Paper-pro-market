@@ -52,7 +52,7 @@ export function ChartTradingPanel({ symbol }: ChartTradingPanelProps) {
              {/* Sell Button */}
             <button 
                 className="flex flex-col items-center justify-center h-10 w-24 bg-[#EF4444] hover:bg-[#DC2626] text-white transition-colors border-r border-black/20"
-                onClick={() => (window as any).triggerTrade?.('SELL')}
+                onClick={() => window.triggerTrade?.('SELL')}
             >
                 <div className="text-[10px] font-bold uppercase opacity-80 mb-[-2px]">Sell</div>
                 <div className="text-xs font-bold">{fmt(livePrice - 0.10)}</div>
@@ -72,7 +72,7 @@ export function ChartTradingPanel({ symbol }: ChartTradingPanelProps) {
              {/* Buy Button */}
              <button 
                 className="flex flex-col items-center justify-center h-10 w-24 bg-[#22C55E] hover:bg-[#16A34A] text-white transition-colors border-l border-black/20"
-                onClick={() => (window as any).triggerTrade?.('BUY')}
+                onClick={() => window.triggerTrade?.('BUY')}
             >
                 <div className="text-[10px] font-bold uppercase opacity-80 mb-[-2px]">Buy</div>
                 <div className="text-xs font-bold">{fmt(livePrice)}</div>
