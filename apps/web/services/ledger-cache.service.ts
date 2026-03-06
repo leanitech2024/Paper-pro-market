@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { ledgerAccounts, type LedgerAccountType } from "@/lib/db/schema";
+import { ledgerAccounts, type LedgerAccountType } from "@paper-market/core";
 import { ApiError } from "@/lib/errors";
 
 type TxLike = typeof db | any;

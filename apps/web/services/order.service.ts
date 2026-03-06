@@ -1,5 +1,5 @@
 import { db } from "@/lib/db";
-import { orders, positions, type Instrument, type NewOrder } from "@/lib/db/schema";
+import { orders, positions, type Instrument, type NewOrder } from "@paper-market/core";
 import { logger } from "@/lib/logger";
 import { ApiError } from "@/lib/errors";
 import { eq, and, sql } from "drizzle-orm";

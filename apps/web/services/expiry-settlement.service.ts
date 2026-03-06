@@ -1,6 +1,6 @@
 import { and, eq, inArray, isNotNull, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { instruments, positions, type Instrument } from "@/lib/db/schema";
+import { instruments, positions, type Instrument } from "@paper-market/core";
 import { ApiError } from "@/lib/errors";
 import { logger } from "@/lib/logger";
 import { InstrumentRepository } from "@/lib/instruments/repository";

@@ -1,10 +1,10 @@
 import type { PlaceOrder } from "@/lib/validation/oms";
-import type { Instrument } from "@/lib/db/schema";
+import type { Instrument } from "@paper-market/core";
 import { ApiError } from "@/lib/errors";
 import { logger } from "@/lib/logger";
 import { priceOracle } from "@/services/price-oracle.service";
 import { db } from "@/lib/db";
-import { positions } from "@/lib/db/schema";
+import { positions } from "@paper-market/core";
 import { and, eq } from "drizzle-orm";
 
 type AcceptanceContext = {

@@ -5,7 +5,7 @@ import {
     ledgerEntries,
     type LedgerAccountType,
     type LedgerReferenceType,
-} from "@/lib/db/schema";
+} from "@paper-market/core";
 import { ApiError } from "@/lib/errors";
 import { ledgerCacheService } from "@/services/ledger-cache.service";
 

@@ -6,7 +6,7 @@ import {
     trades,
     writeAheadJournal,
     type WriteAheadOperationType,
-} from "@/lib/db/schema";
+} from "@paper-market/core";
 import { ApiError } from "@/lib/errors";
 import { logger } from "@/lib/logger";
 import { haltTrading } from "@/lib/system-control";

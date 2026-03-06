@@ -8,12 +8,12 @@ import {
     type LedgerAccountType,
     type LedgerReferenceType,
     type Wallet,
-} from "@/lib/db/schema";
+} from "@paper-market/core";
 import { ApiError } from "@/lib/errors";
 import { logger } from "@/lib/logger";
 import { LedgerService } from "@/services/ledger.service";
 import { WriteAheadJournalService } from "@/services/write-ahead-journal.service";
-import type { WriteAheadOperationType } from "@/lib/db/schema";
+import type { WriteAheadOperationType } from "@paper-market/core";
 
 type TxLike = typeof db | any;
 type LegacyTransactionType = "CREDIT" | "DEBIT" | "BLOCK" | "UNBLOCK" | "SETTLEMENT";

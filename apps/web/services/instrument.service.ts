@@ -1,5 +1,5 @@
 import { db } from "@/lib/db";
-import { instruments, type NewInstrument } from "@/lib/db/schema";
+import { instruments, type NewInstrument } from "@paper-market/core";
 import { logger } from "@/lib/logger";
 import { ApiError } from "@/lib/errors";
 import { eq, ilike, and, gte, lte, or, sql, inArray } from "drizzle-orm";

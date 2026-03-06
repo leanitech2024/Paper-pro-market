@@ -21,7 +21,7 @@
  */
 
 import { db } from '@/lib/db';
-import { instruments, type Instrument } from '@/lib/db/schema';
+import { instruments, type Instrument } from '@paper-market/core';
 import { logger } from '@/lib/logger';
 import { sql } from 'drizzle-orm';
 

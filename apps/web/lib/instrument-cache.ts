@@ -6,9 +6,9 @@
  */
 
 import { db } from '@/lib/db';
-import { instruments } from '@/lib/db/schema/market.schema';
+import { instruments } from '@paper-market/core';
 import { eq } from 'drizzle-orm';
-import type { Instrument } from '@/lib/db/schema/market.schema';
+import type { Instrument } from '@paper-market/core';
 
 interface CacheEntry {
     instrument: Instrument;

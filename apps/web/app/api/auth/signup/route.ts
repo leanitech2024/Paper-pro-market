@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { users } from "@/lib/db/schema";
+import { users } from "@paper-market/core";
 import { hash } from "bcryptjs";
 import { eq } from "drizzle-orm";
 import { SignupSchema } from "@/lib/validation/auth";

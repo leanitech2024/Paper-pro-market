@@ -1,5 +1,5 @@
 import { ApiError } from "@/lib/errors";
-import type { Instrument } from "@/lib/db/schema";
+import type { Instrument } from "@paper-market/core";
 import type { PlaceOrder } from "@/lib/validation/oms";
 import { priceOracle } from "@/services/price-oracle.service";
 import { instrumentStore } from "@/stores/instrument.store";

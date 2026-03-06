@@ -1,5 +1,5 @@
 import { db } from "@/lib/db";
-import { trades } from "@/lib/db/schema";
+import { trades } from "@paper-market/core";
 import { eq, desc } from "drizzle-orm";
 import { logger } from "@/lib/logger";
 

@@ -1,6 +1,6 @@
 import { ApiError } from "@/lib/errors";
 import { instrumentRepository } from "@/lib/instruments/repository";
-import type { Instrument } from "@/lib/db/schema";
+import type { Instrument } from "@paper-market/core";
 
 class InstrumentStore {
     private initialized = false;

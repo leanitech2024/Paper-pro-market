@@ -1,6 +1,6 @@
 import { and, eq, inArray } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { instruments, orders, positions, wallets, type Instrument, type NewOrder } from "@/lib/db/schema";
+import { instruments, orders, positions, wallets, type Instrument, type NewOrder } from "@paper-market/core";
 import { logger } from "@/lib/logger";
 import { InstrumentRepository } from "@/lib/instruments/repository";
 import { marginCurveService } from "@/services/margin-curve.service";

@@ -13,7 +13,7 @@ import {
     watchlistItems,
     watchlists,
     instruments,
-} from "@/lib/db/schema";
+} from "@paper-market/core";
 import { handleError, ApiError } from "@/lib/errors";
 import { WalletService } from "@/services/wallet.service";
 import { bootstrapLedgerAccounts } from "@/services/ledger-bootstrap.service";

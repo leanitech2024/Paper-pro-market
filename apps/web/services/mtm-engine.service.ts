@@ -1,6 +1,6 @@
 import { and, eq, ne, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { instruments, positions, wallets } from "@/lib/db/schema";
+import { instruments, positions, wallets } from "@paper-market/core";
 import { logger } from "@/lib/logger";
 import { toInstrumentKey } from "@/lib/market/symbol-normalization";
 import { tickBus, type NormalizedTick } from "@/lib/trading/tick-bus";

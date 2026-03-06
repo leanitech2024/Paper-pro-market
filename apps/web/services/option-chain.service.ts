@@ -1,5 +1,5 @@
 import { db } from "@/lib/db";
-import { instruments, InstrumentType } from "@/lib/db/schema";
+import { instruments, InstrumentType } from "@paper-market/core";
 import { and, eq, asc } from "drizzle-orm";
 import { marketSimulation } from "@/services/market-simulation.service";
 import { OptionChainInput } from "@/lib/validation/option-chain";

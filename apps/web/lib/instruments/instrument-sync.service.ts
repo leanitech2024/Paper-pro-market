@@ -20,7 +20,7 @@
  */
 
 import { db } from '@/lib/db';
-import { instruments, type Instrument } from '@/lib/db/schema';
+import { instruments, type Instrument } from '@paper-market/core';
 import { logger } from '@/lib/logger';
 import { ApiError } from '@/lib/errors';
 import { sql, and, inArray, eq } from 'drizzle-orm';

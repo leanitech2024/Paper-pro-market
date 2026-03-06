@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { ApiError, handleError } from "@/lib/errors";
 import { logger } from "@/lib/logger";
 import { db } from "@/lib/db";
-import { instruments } from "@/lib/db/schema";
+import { instruments } from "@paper-market/core";
 import { inArray } from "drizzle-orm";
 import { toInstrumentKey } from "@/lib/market/symbol-normalization";
 import { resolveUpstoxPreviousClose } from "@/lib/market/upstox-quote-normalization";

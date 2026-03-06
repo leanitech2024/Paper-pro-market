@@ -1,5 +1,5 @@
 import { db } from "@/lib/db";
-import { upstoxTokens } from "@/lib/db/schema";
+import { upstoxTokens } from "@paper-market/core";
 import { logger } from "@/lib/logger";
 import { ApiError } from "@/lib/errors";
 import { eq } from "drizzle-orm";

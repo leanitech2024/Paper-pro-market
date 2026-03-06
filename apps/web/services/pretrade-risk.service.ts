@@ -1,7 +1,7 @@
 import type { PlaceOrder } from "@/lib/validation/oms";
 import { ApiError } from "@/lib/errors";
 import { logger } from "@/lib/logger";
-import type { Instrument } from "@/lib/db/schema";
+import type { Instrument } from "@paper-market/core";
 import { mtmEngineService } from "@/services/mtm-engine.service";
 import { realTimeMarketService } from "@/services/realtime-market.service";
 import { WalletService } from "@/services/wallet.service";

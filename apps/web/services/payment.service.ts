@@ -1,5 +1,5 @@
 import { db } from "@/lib/db";
-import { users } from "@/lib/db/schema";
+import { users } from "@paper-market/core";
 import { eq, sql } from "drizzle-orm";
 import { ApiError } from "@/lib/errors";
 import { logger } from "@/lib/logger";

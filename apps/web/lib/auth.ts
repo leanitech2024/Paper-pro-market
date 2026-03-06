@@ -5,7 +5,7 @@ import { compare } from "bcryptjs";
 import { eq } from "drizzle-orm";
 import { LoginSchema } from "@/lib/validation/auth";
 import { db } from "@/lib/db";
-import { users } from "@/lib/db/schema";
+import { users } from "@paper-market/core";
 import { WalletService } from "@/services/wallet.service";
 import { bootstrapUserLedgerState } from "@/services/ledger-bootstrap.service";
 

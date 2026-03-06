@@ -6,7 +6,7 @@ import {
     type NewTrade,
     type LedgerReferenceType,
     type WriteAheadOperationType,
-} from "@/lib/db/schema";
+} from "@paper-market/core";
 import { logger } from "@/lib/logger";
 import { ApiError } from "@/lib/errors";
 import { performance } from "node:perf_hooks";

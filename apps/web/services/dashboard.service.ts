@@ -1,6 +1,6 @@
 import { and, desc, eq, isNotNull } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { instruments, orders, positions, transactions } from "@/lib/db/schema";
+import { instruments, orders, positions, transactions } from "@paper-market/core";
 import {
   calculateAnnualizedSharpeRatioFromEquityCurve,
   calculateMaxDrawdownPct,
