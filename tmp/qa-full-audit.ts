@@ -6,7 +6,6 @@ import { instruments, ledgerAccounts, ledgerEntries, orders, positions, trades, 
 import { instrumentRepository } from '@/lib/instruments/repository';
 import { instrumentStore } from '@/stores/instrument.store';
 import { prewarmCore } from '@/lib/startup/prewarm';
-import { marketFeedSupervisor } from '@/lib/trading/market-feed-supervisor';
 import { tickBus } from '@/lib/trading/tick-bus';
 import { mtmEngineService } from '@/services/mtm-engine.service';
 import { expirySettlementJob } from '@/jobs/expiry-settlement';
@@ -96,7 +95,7 @@ try {
     const listeners = tickBus.listenerCount('tick');
     pass('phase1_runtime_health', {
       instrumentStoreReady: instrumentStore.isReady(),
-      marketFeedState: marketFeedSupervisor.getSessionState ? marketFeedSupervisor.getSessionState() : (marketFeedSupervisor.getHealthMetrics ? marketFeedSupervisor.getHealthMetrics().sessionState : 'unknown'),
+      marketFeedState: 'delegated-to-market-engine',
       tickListeners: listeners,
       expiryJobStatusBefore: before,
       expiryJobStatusAfterStart: mid,
