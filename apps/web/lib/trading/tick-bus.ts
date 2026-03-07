@@ -1,4 +1,3 @@
-import { EventEmitter } from 'events';
 
 // ═══════════════════════════════════════════════════════════
 // 🎯 NORMALIZED TICK: Broker-agnostic tick format
