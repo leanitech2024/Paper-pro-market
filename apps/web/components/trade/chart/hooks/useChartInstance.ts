@@ -10,6 +10,8 @@ import {
   createChart,
   ColorType,
   CrosshairMode,
+  BarSeries,
+  BaselineSeries,
   CandlestickSeries,
   LineSeries,
   AreaSeries,
@@ -32,8 +34,11 @@ type UseChartInstanceArgs = {
   chartContainerRef: MutableRefObject<HTMLDivElement | null>;
   chartRef: MutableRefObject<IChartApi | null>;
   candleSeriesRef: MutableRefObject<ISeriesApi<'Candlestick'> | null>;
+  barSeriesRef: MutableRefObject<ISeriesApi<'Bar'> | null>;
   lineSeriesRef: MutableRefObject<ISeriesApi<'Line'> | null>;
   areaSeriesRef: MutableRefObject<ISeriesApi<'Area'> | null>;
+  baselineSeriesRef: MutableRefObject<ISeriesApi<'Baseline'> | null>;
+  columnSeriesRef: MutableRefObject<ISeriesApi<'Histogram'> | null>;
   volumeSeriesRef: MutableRefObject<ISeriesApi<'Histogram'> | null>;
   height?: number;
   onChartReady?: (api: IChartApi) => void;
@@ -46,8 +51,11 @@ export const useChartInstance = ({
   chartContainerRef,
   chartRef,
   candleSeriesRef,
+  barSeriesRef,
   lineSeriesRef,
   areaSeriesRef,
+  baselineSeriesRef,
+  columnSeriesRef,
   volumeSeriesRef,
   height,
   onChartReady,
@@ -152,6 +160,14 @@ export const useChartInstance = ({
       wickDownColor: '#F23645',
     });
 
+    const barSeriesInstance = chart.addSeries(BarSeries, {
+      upColor: '#089981',
+      downColor: '#F23645',
+      openVisible: true,
+      thinBars: false,
+      visible: false,
+    });
+
     const lineSeriesInstance = chart.addSeries(LineSeries, {
       color: '#60A5FA',
       lineWidth: 2,
@@ -169,6 +185,27 @@ export const useChartInstance = ({
       visible: false,
       priceScaleId: 'right',
       lastValueVisible: true,
+      priceLineVisible: false,
+    });
+
+    const baselineSeriesInstance = chart.addSeries(BaselineSeries, {
+      baseValue: { type: 'price', price: 0 },
+      topLineColor: '#22C55E',
+      topFillColor1: 'rgba(34, 197, 94, 0.25)',
+      topFillColor2: 'rgba(34, 197, 94, 0.02)',
+      bottomLineColor: '#F43F5E',
+      bottomFillColor1: 'rgba(244, 63, 94, 0.22)',
+      bottomFillColor2: 'rgba(244, 63, 94, 0.02)',
+      lineWidth: 2,
+      visible: false,
+      priceScaleId: 'right',
+    });
+
+    const columnSeriesInstance = chart.addSeries(HistogramSeries, {
+      color: '#60A5FA',
+      base: 0,
+      visible: false,
+      priceScaleId: 'right',
       priceLineVisible: false,
     });
 
@@ -257,8 +294,11 @@ export const useChartInstance = ({
 
     chartRef.current = chart;
     candleSeriesRef.current = candlestickSeriesInstance;
+    barSeriesRef.current = barSeriesInstance;
     lineSeriesRef.current = lineSeriesInstance;
     areaSeriesRef.current = areaSeriesInstance;
+    baselineSeriesRef.current = baselineSeriesInstance;
+    columnSeriesRef.current = columnSeriesInstance;
     volumeSeriesRef.current = volumeSeriesInstance;
     setChartInstance(chart);
 

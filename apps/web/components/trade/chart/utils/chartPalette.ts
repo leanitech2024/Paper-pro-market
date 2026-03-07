@@ -30,9 +30,9 @@ export const getChartPalette = (): ChartPalette => {
   }
 
   return {
-    textColor: '#9CA3AF',
-    gridColor: 'rgba(31, 41, 55, 0.5)',
-    borderColor: '#1F2937',
-    volumeColor: '#334155',
+    textColor: '#CBD5E1',
+    gridColor: 'rgba(71, 85, 105, 0.32)',
+    borderColor: '#334155',
+    volumeColor: '#475569',
   };
 };

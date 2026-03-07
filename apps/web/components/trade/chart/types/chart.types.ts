@@ -59,7 +59,10 @@ export type LastAppliedDataRef = MutableRefObject<LastAppliedData | null>;
 
 export type SeriesRefs = {
   candleSeriesRef: MutableRefObject<ISeriesApi<'Candlestick'> | null>;
+  barSeriesRef: MutableRefObject<ISeriesApi<'Bar'> | null>;
   lineSeriesRef: MutableRefObject<ISeriesApi<'Line'> | null>;
   areaSeriesRef: MutableRefObject<ISeriesApi<'Area'> | null>;
+  baselineSeriesRef: MutableRefObject<ISeriesApi<'Baseline'> | null>;
+  columnSeriesRef: MutableRefObject<ISeriesApi<'Histogram'> | null>;
   volumeSeriesRef: MutableRefObject<ISeriesApi<'Histogram'> | null>;
 };

@@ -6,8 +6,8 @@ import { instrumentStore } from "@/stores/instrument.store";
 import {
     calculateLongOptionMargin,
     calculateShortOptionMargin,
-} from "@/lib/trading/option-margin";
-import { calculateFuturesRequiredMargin } from "@/lib/trading/futures-margin";
+    calculateFuturesRequiredMargin,
+} from "@paper-market/core";
 
 /**
  * MarginService - Calculates required margin for different instrument types.

@@ -6,7 +6,7 @@ import {
   recordFeedPrice,
 } from "@/services/feed-health.service";
 import { tickBus } from "@/lib/trading/tick-bus";
-import type { NormalizedTick } from "@/lib/trading/tick-bus";
+import type { NormalizedTick } from "@paper-market/core";
 
 // ═══════════════════════════════════════════════════════════
 // 🛠️ SINGLETON PATTERN: Global declaration for Next.js hot reload

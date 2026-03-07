@@ -1,5 +1,5 @@
 import { CandlestickData, Time } from 'lightweight-charts';
-import { NormalizedTick } from './tick-bus';
+import type { NormalizedTick } from "@paper-market/core";
 import { EventEmitter } from 'events';
 
 // ═══════════════════════════════════════════════════════════

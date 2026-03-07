@@ -16,8 +16,8 @@ import {
     trades,
     users,
     wallets,
-    type LedgerAccountType,
-} from "@paper-market/core";
+} from "@paper-market/core/db";
+import type { LedgerAccountType } from "@paper-market/core";
 import { ApiError } from "@/lib/errors";
 import { logger } from "@/lib/logger";
 import { haltTrading } from "@/lib/system-control";

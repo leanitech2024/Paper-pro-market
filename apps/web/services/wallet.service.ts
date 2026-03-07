@@ -1,14 +1,8 @@
 import { asc, eq, inArray, or } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { db } from "@/lib/db";
-import {
-    ledgerAccounts,
-    ledgerEntries,
-    wallets,
-    type LedgerAccountType,
-    type LedgerReferenceType,
-    type Wallet,
-} from "@paper-market/core";
+import { ledgerAccounts, ledgerEntries, wallets } from "@paper-market/core/db";
+import { type LedgerAccountType, type LedgerReferenceType, type Wallet } from "@paper-market/core";
 import { ApiError } from "@/lib/errors";
 import { logger } from "@/lib/logger";
 import { LedgerService } from "@/services/ledger.service";

@@ -593,7 +593,7 @@ export default function OptionsPage() {
         open={searchOpen}
         onOpenChange={setSearchOpen}
         searchMode="OPTION"
-        placeholder="Search option contracts…"
+        placeholder="Search option contractsï¿½"
         onSelectStock={handleSearchSelect}
       />
 
@@ -610,6 +610,7 @@ export default function OptionsPage() {
           tabletLeft={<div className="h-full min-h-0 overflow-y-auto">{renderPanel()}</div>}
           tabletRight={chainNode}
           mobileContent={mobileContentNode}
+          mobileOrderTitle={selectedContract ? `${selectedContract.symbol} options order ticket` : "Options order ticket"}
           mobileOrderOpen={mobileOrderOpen}
           onMobileOrderOpenChange={setMobileOrderOpen}
           mobileOrderDrawer={<div className="h-[82vh] min-h-0 overflow-y-auto">{renderPanel(true)}</div>}

@@ -31,7 +31,6 @@ export function generateCallPayoff({
   rangeConfig
 }: PayoffParams): PayoffPoint[] {
   const totalQuantity = lotSize * numberOfLots;
-  const breakeven = strikePrice + premium;
 
   // Default range: ±20% of strike if not provided
   const minPrice = rangeConfig?.min ?? Math.floor(strikePrice * 0.8);

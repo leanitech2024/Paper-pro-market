@@ -2,18 +2,25 @@
   "name": "@paper-market/core",
   "version": "0.0.1",
   "private": true,
+  "type": "module",
   "main": "./src/index.ts",
   "types": "./src/index.ts",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./db": "./src/db/index.ts",
+    "./market": "./src/market/symbol-normalization.ts",
+    "./trading": "./src/trading/order.types.ts",
+    "./validation": "./src/validation/oms.ts"
   },
   "scripts": {
+    "build": "tsc -p tsconfig.json",
     "type-check": "tsc --noEmit",
     "lint": "eslint src/"
   },
   "dependencies": {
     "drizzle-orm": "^0.45.1",
     "pg": "^8.17.2",
+    "server-only": "^0.0.1",
     "zod": "^3.25.76"
   },
   "devDependencies": {

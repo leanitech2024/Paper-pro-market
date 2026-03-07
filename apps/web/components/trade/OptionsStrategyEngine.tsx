@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -262,7 +262,7 @@ export function OptionsStrategyEngine({ underlying, instruments }: Props) {
     const lotsValue = Math.max(1, Number(lots) || 1);
     const isUnsupportedUnderlying = !underlying || underlying === "STOCK OPTIONS";
 
-    const buildPayload = (): StrategyPayload | null => {
+    const buildPayload = useCallback((): StrategyPayload | null => {
         if (!expiry || strikesForExpiry.length === 0) return null;
         const base = {
             strategy,
@@ -322,7 +322,7 @@ export function OptionsStrategyEngine({ underlying, instruments }: Props) {
             default:
                 return null;
         }
-    };
+    }, [expiry, lotsValue, strategy, strikes, strikesForExpiry.length, underlying]);
 
     const canPreview = !isUnsupportedUnderlying && Boolean(buildPayload());
 
@@ -401,7 +401,7 @@ export function OptionsStrategyEngine({ underlying, instruments }: Props) {
     const spotPrice = useMemo(() => {
         const value = selectPrice(underlying);
         return Number.isFinite(value) && value > 0 ? value : 0;
-    }, [selectPrice, underlying, quotesByInstrument]);
+    }, [selectPrice, underlying]);
 
     const payoffData = useMemo(
         () => generateMultiLegPayoffSeries(chartLegs, 160),

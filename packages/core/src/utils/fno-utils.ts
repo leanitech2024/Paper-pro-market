@@ -47,7 +47,7 @@ export interface OptionRiskMetrics {
 export function calculateOptionRiskMetrics(
   entryPrice: number, // Premium
   quantity: number,   // Number of lots (or raw qty if lotSize is handled outside)
-  lotSize: number,
+  _lotSize: number,
   optionDetails: OptionDetails | null,
   side: 'BUY' | 'SELL'
 ): OptionRiskMetrics | null {

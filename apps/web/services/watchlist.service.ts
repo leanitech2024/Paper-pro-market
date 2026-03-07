@@ -4,7 +4,8 @@
  */
 
 import { db } from '@/lib/db';
-import { watchlists, watchlistItems, instruments, type Watchlist, type NewWatchlist } from '@paper-market/core';
+import { watchlists, watchlistItems, instruments } from '@paper-market/core/db';
+import { type Watchlist, type NewWatchlist } from '@paper-market/core';
 import { eq, and, sql, inArray } from 'drizzle-orm';
 import { logger } from '@/lib/logger';
 import { cache } from '@/lib/cache';

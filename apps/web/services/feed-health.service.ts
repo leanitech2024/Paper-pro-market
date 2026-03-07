@@ -1,5 +1,6 @@
 import { logger } from "@/lib/logger";
-import { tickBus, type NormalizedTick } from "@/lib/trading/tick-bus";
+import { tickBus } from "@/lib/trading/tick-bus";
+import type { NormalizedTick } from "@paper-market/core";
 import { toInstrumentKey } from "@paper-market/core";
 
 type FeedHealthSnapshot = {

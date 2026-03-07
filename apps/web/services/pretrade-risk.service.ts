@@ -6,8 +6,11 @@ import { mtmEngineService } from "@/services/mtm-engine.service";
 import { realTimeMarketService } from "@/services/realtime-market.service";
 import { WalletService } from "@/services/wallet.service";
 import { instrumentStore } from "@/stores/instrument.store";
-import { calculateShortOptionMargin } from "@/lib/trading/option-margin";
-import { calculateFuturesRequiredMargin, resolveEffectiveLeverage } from "@/lib/trading/futures-margin";
+import {
+    calculateShortOptionMargin,
+    calculateFuturesRequiredMargin,
+    resolveEffectiveLeverage,
+} from "@paper-market/core";
 
 type RiskPosition = {
     instrumentToken: string;

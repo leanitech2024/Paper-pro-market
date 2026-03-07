@@ -1,4 +1,4 @@
-import { createDb } from "@paper-market/core";
+import { createDb } from "@paper-market/core/db";
 import { config } from "../config";
 import { logger } from "../logger";
 

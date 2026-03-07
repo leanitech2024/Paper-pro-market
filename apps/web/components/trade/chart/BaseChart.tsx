@@ -23,7 +23,7 @@ export const BaseChart = forwardRef<BaseChartRef, BaseChartProps>(({
   instrumentKey,
   range,
   chartStyle = 'CANDLE',
-  showVolume = true,
+  showVolume = false,
   onHoverCandleChange,
   onChartReady,
   onLoadMore,
@@ -31,8 +31,11 @@ export const BaseChart = forwardRef<BaseChartRef, BaseChartProps>(({
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const candleSeriesRef = useRef<ISeriesApi<'Candlestick'> | null>(null);
+  const barSeriesRef = useRef<ISeriesApi<'Bar'> | null>(null);
   const lineSeriesRef = useRef<ISeriesApi<'Line'> | null>(null);
   const areaSeriesRef = useRef<ISeriesApi<'Area'> | null>(null);
+  const baselineSeriesRef = useRef<ISeriesApi<'Baseline'> | null>(null);
+  const columnSeriesRef = useRef<ISeriesApi<'Histogram'> | null>(null);
   const volumeSeriesRef = useRef<ISeriesApi<'Histogram'> | null>(null);
   const indicatorSeriesRefs = useRef<Map<string, ISeriesApi<any>[]>>(new Map());
   const isFetchingRef = useRef(false);
@@ -63,8 +66,11 @@ export const BaseChart = forwardRef<BaseChartRef, BaseChartProps>(({
     chartContainerRef,
     chartRef,
     candleSeriesRef,
+    barSeriesRef,
     lineSeriesRef,
     areaSeriesRef,
+    baselineSeriesRef,
+    columnSeriesRef,
     volumeSeriesRef,
     height,
     onChartReady,
@@ -96,6 +102,7 @@ export const BaseChart = forwardRef<BaseChartRef, BaseChartProps>(({
     controller,
     data,
     volumeData,
+    showVolume,
     chartStyle,
     symbol,
     instrumentKey,
@@ -104,8 +111,11 @@ export const BaseChart = forwardRef<BaseChartRef, BaseChartProps>(({
     renderToRawTimeRef,
     intervalHintSecRef,
     lastAppliedDataRef,
+    barSeriesRef,
     lineSeriesRef,
     areaSeriesRef,
+    baselineSeriesRef,
+    columnSeriesRef,
     volumeSeriesRef,
   });
 
@@ -123,8 +133,11 @@ export const BaseChart = forwardRef<BaseChartRef, BaseChartProps>(({
   useChartPresentation({
     chart: chartInstance,
     candleSeriesRef,
+    barSeriesRef,
     lineSeriesRef,
     areaSeriesRef,
+    baselineSeriesRef,
+    columnSeriesRef,
     volumeSeriesRef,
     hasMacd,
     showVolume,

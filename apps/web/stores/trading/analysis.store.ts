@@ -7,7 +7,20 @@ export interface Point {
 }
 
 export type DrawingType = "trendline" | "ray" | "horizontal-line" | "rectangle" | "text";
-export type ChartStyle = "CANDLE" | "LINE" | "AREA" | "HEIKIN_ASHI";
+export type ChartStyle =
+  | "BARS"
+  | "CANDLE"
+  | "HOLLOW_CANDLES"
+  | "VOLUME_CANDLES"
+  | "LINE"
+  | "LINE_WITH_MARKERS"
+  | "STEP_LINE"
+  | "AREA"
+  | "HLC_AREA"
+  | "BASELINE"
+  | "COLUMNS"
+  | "HIGH_LOW"
+  | "HEIKIN_ASHI";
 export type IndicatorType = "SMA" | "EMA" | "RSI" | "MACD" | "VOL" | "BB" | "VWAP" | "ATR" | "SUPERTREND";
 export type InteractionStatus = "idle" | "drawing" | "dragging" | "box-selecting";
 export type ToolType = "cursor" | "crosshair" | "select" | DrawingType;
@@ -115,6 +128,21 @@ const DEFAULT_MACD_COLORS = {
   signal: "#FF6D00",
   histogram: "#26a69a",
 };
+
+const isChartStyle = (value: unknown): value is ChartStyle =>
+  value === "BARS" ||
+  value === "CANDLE" ||
+  value === "HOLLOW_CANDLES" ||
+  value === "VOLUME_CANDLES" ||
+  value === "LINE" ||
+  value === "LINE_WITH_MARKERS" ||
+  value === "STEP_LINE" ||
+  value === "AREA" ||
+  value === "HLC_AREA" ||
+  value === "BASELINE" ||
+  value === "COLUMNS" ||
+  value === "HIGH_LOW" ||
+  value === "HEIKIN_ASHI";
 
 export const makeDefaultIndicator = (type: IndicatorType): Omit<IndicatorConfig, "id"> => ({
   type,
@@ -254,13 +282,7 @@ function normalizeSymbolStateRecord(raw: unknown): Record<string, SymbolAnalysis
       indicators,
       drawings,
       redoStack,
-      chartStyle:
-        value?.chartStyle === "CANDLE" ||
-        value?.chartStyle === "LINE" ||
-        value?.chartStyle === "AREA" ||
-        value?.chartStyle === "HEIKIN_ASHI"
-          ? value.chartStyle
-          : undefined,
+      chartStyle: isChartStyle(value?.chartStyle) ? value.chartStyle : undefined,
     };
   }
 
@@ -703,13 +725,7 @@ export const useAnalysisStore = create<AnalysisState>()(
           }
         }
 
-        const chartStyle =
-          persistedState.chartStyle === "CANDLE" ||
-          persistedState.chartStyle === "LINE" ||
-          persistedState.chartStyle === "AREA" ||
-          persistedState.chartStyle === "HEIKIN_ASHI"
-            ? persistedState.chartStyle
-            : "CANDLE";
+        const chartStyle = isChartStyle(persistedState.chartStyle) ? persistedState.chartStyle : "CANDLE";
 
         return {
           ...persistedState,

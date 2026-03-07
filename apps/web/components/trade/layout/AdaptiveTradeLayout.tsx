@@ -1,7 +1,7 @@
-﻿"use client";
+"use client";
 
 import { ReactNode, useEffect, useMemo, useState } from "react";
-import { Drawer, DrawerContent } from "@/components/ui/drawer";
+import { Drawer, DrawerContent, DrawerTitle } from "@/components/ui/drawer";
 import { cn } from "@/lib/utils";
 import { useTradeViewport } from "@/hooks/use-trade-viewport";
 import { MobileTradeTabs, type MobileTabItem } from "@/components/trade/mobile/MobileTradeTabs";
@@ -33,6 +33,7 @@ type AdaptiveTradeLayoutProps = {
   mobileDefaultTab?: string;
 
   mobileOrderDrawer?: ReactNode;
+  mobileOrderTitle?: string;
   mobileOrderOpen?: boolean;
   onMobileOrderOpenChange?: (open: boolean) => void;
 };
@@ -61,6 +62,7 @@ export function AdaptiveTradeLayout({
   mobileTabs = [],
   mobileDefaultTab,
   mobileOrderDrawer,
+  mobileOrderTitle = "Order Ticket",
   mobileOrderOpen,
   onMobileOrderOpenChange,
 }: AdaptiveTradeLayoutProps) {
@@ -121,7 +123,7 @@ export function AdaptiveTradeLayout({
   };
 
   const renderMobile = () => (
-    <div className="flex h-full min-h-0 flex-col overflow-hidden">
+    <div className="flex h-full min-h-0 flex-col overflow-hidden pb-[calc(5.25rem+env(safe-area-inset-bottom))]">
       {mobileTopBar ? <div className="shrink-0">{mobileTopBar}</div> : null}
 
       {mobileContent ? (
@@ -168,6 +170,7 @@ export function AdaptiveTradeLayout({
       {mobileOrderDrawer ? (
         <Drawer open={Boolean(mobileOrderOpen)} onOpenChange={onMobileOrderOpenChange}>
           <DrawerContent className="max-h-[88vh] min-h-0 border-border bg-card p-0">
+            <DrawerTitle className="sr-only">{mobileOrderTitle}</DrawerTitle>
             {mobileOrderDrawer}
           </DrawerContent>
         </Drawer>

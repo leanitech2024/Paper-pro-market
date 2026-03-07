@@ -4,7 +4,7 @@ import { ApiError } from "@/lib/errors";
 import { logger } from "@/lib/logger";
 import { priceOracle } from "@/services/price-oracle.service";
 import { db } from "@/lib/db";
-import { positions } from "@paper-market/core";
+import { positions } from "@paper-market/core/db";
 import { and, eq } from "drizzle-orm";
 
 type AcceptanceContext = {

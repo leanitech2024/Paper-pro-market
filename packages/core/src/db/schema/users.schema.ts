@@ -1,5 +1,5 @@
 
-import { pgTable, serial, text, timestamp, numeric, integer, index } from 'drizzle-orm/pg-core';
+import { pgTable, text, timestamp, numeric, integer, index } from 'drizzle-orm/pg-core';
 import { type InferSelectModel, type InferInsertModel } from 'drizzle-orm';
 
 

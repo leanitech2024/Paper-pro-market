@@ -10,15 +10,7 @@ declare global {
     var __MEMORY_INTERVAL: NodeJS.Timeout | undefined;
 }
 
-export interface NormalizedTick {
-    instrumentKey: string;   // Canonical instrument identity (e.g., "NSE_EQ|INE002A01018")
-    symbol?: string;         // Display symbol only (e.g., "RELIANCE")
-    price: number;           // Last traded price
-    volume: number;          // Volume (if available)
-    timestamp: number;       // Unix timestamp in SECONDS (not milliseconds)
-    exchange: string;        // Exchange (e.g., "NSE", "BSE")
-    close?: number;          // Previous close for change calculation
-}
+import type { NormalizedTick } from "@paper-market/core";
 
 // ═══════════════════════════════════════════════════════════
 // 🚌 TICK BUS: Event-driven tick distribution

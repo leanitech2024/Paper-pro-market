@@ -1,5 +1,6 @@
 export * from "./market/symbol-normalization";
-export * from "./db";
+
+export * from "./types/db";
 
 // Shared Types
 export { 
@@ -41,7 +42,11 @@ export * from "./analysis/weekly-analytics";
 export * from "./utils/expiry-utils";
 export * from "./utils/fno-payoff-utils";
 export * from "./utils/fno-utils";
+export * from "./utils/futures-margin";
+export * from "./utils/option-margin";
 export * from "./utils/market-hours";
 export * from "./utils/dashboard-metrics";
 export * from "./utils/performance-utils";
-export * from "./market/symbol-normalization";
+
+// Trading Universe & Configuration
+export * from "./trading/universe";

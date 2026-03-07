@@ -1,5 +1,5 @@
 import { db } from '@/lib/db';
-import { instruments } from '@paper-market/core';
+import { instruments } from '@paper-market/core/db';
 import { UpstoxService } from './upstox.service';
 import { logger } from '@/lib/logger';
 import { eq } from 'drizzle-orm';

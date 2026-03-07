@@ -1,6 +1,7 @@
 import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { ledgerAccounts, wallets, type LedgerAccountType } from "@paper-market/core";
+import { ledgerAccounts, wallets } from "@paper-market/core/db";
+import type { LedgerAccountType } from "@paper-market/core";
 import { logger } from "@/lib/logger";
 import { LedgerService } from "@/services/ledger.service";
 import { ledgerCacheService } from "@/services/ledger-cache.service";

@@ -298,14 +298,15 @@ async function onConnection(ws: WebSocket, request: IncomingMessage): Promise<vo
                 return;
             }
 
-            const type = (data as any).type as string;
-            if ((type === 'subscribe' || type === 'unsubscribe') && !Array.isArray((data as any).symbols)) {
+            const parsed = data as Record<string, unknown>;
+            const type = parsed.type as string;
+            if ((type === 'subscribe' || type === 'unsubscribe') && !Array.isArray(parsed.symbols)) {
                 rejectedMessages++;
                 sendJson(ws, { type: 'error', error: 'symbols array required' });
                 return;
             }
 
-            const symbols = normalizeSymbols((data as any).symbols);
+            const symbols = normalizeSymbols(parsed.symbols as string[]);
             if (type === 'subscribe') {
                 handleSubscribe(client, symbols);
                 return;

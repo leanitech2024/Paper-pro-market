@@ -617,6 +617,48 @@ export \* from "./instruments";
 
 export \* from "./analysis";
 
+### Step 4.7 — Rewrite imports in apps/web
+
+After each group is moved, immediately point `apps/web` at `@paper-market/core` instead of deep paths:
+
+- **Pattern**: Any import that targets files you just moved (for example `@/lib/db/...`, `@/lib/validation/...`, `@/types/...`) should be replaced with imports from `@paper-market/core`.
+- **Prefer barrel imports**: Use the barrel where possible (for example `import { createDb, normalizeSymbol } from "@paper-market/core";`) instead of deep paths like `@paper-market/core/dist/...`.
+- **Search helpers** (run from repo root, adjust per group):
+  - DB group:
+    - `rg "@/lib/db" apps/web`
+  - Types group:
+    - `rg "@/types" apps/web`
+    - `rg "@/lib/types" apps/web`
+  - Validation group:
+    - `rg "@/lib/validation" apps/web`
+  - Market/trading group:
+    - `rg "@/lib/market" apps/web`
+    - `rg "@/lib/trading" apps/web`
+  - Instruments/analysis group:
+    - `rg "@/lib/instruments" apps/web`
+    - `rg "@/lib/analysis" apps/web`
+
+For each match, change the import to use `@paper-market/core` and the closest matching symbol from `packages/core/src/index.ts`. If a symbol is missing, add a re‑export to `index.ts` instead of importing from a deep file.
+
+### Step 4.8 — Phase 4 completion checklist
+
+When all groups (4.1–4.5) are moved and imports rewritten:
+
+- **Build everything**
+  - `pnpm turbo run build`
+- **Run app-level smoke tests**
+  - Start `apps/web` and verify:
+    - Login and basic navigation
+    - Placing/modifying/cancelling an order
+    - Positions, PnL, and watchlist views
+    - Any screens that rely heavily on indicators or instrument search
+- **Guardrails**
+  - Ensure there are no remaining imports in `apps/web` that reach into `packages/core/src` via relative paths; all should go through `@paper-market/core`.
+  - Ensure `packages/core/package.json` still has **no** React/Next/Fastify/ws dependencies.
+  - Optionally run `rg "from 'apps/web" packages/core` and verify there are zero matches.
+
+Once this checklist passes, Phase 4 is considered complete and you can safely proceed to Phase 5.
+
 | PHASE 5: MARKET-ENGINE ADOPTS COREDelete duplicates. ~3-4 hours |
 | --- |
 | DEPENDENCY | Complete Phase 4 fully and verify the build before starting Phase 5. Market-engine is a production service; treat changes carefully. |

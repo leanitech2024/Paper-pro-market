@@ -74,5 +74,34 @@ export const rebuildRenderTimeline = (
 export const resolveDisplayTime = (time: number, renderToRawTimeRef: TimeMapRef): number => {
   const t = Number(time);
   if (!Number.isFinite(t)) return t;
-  return renderToRawTimeRef.current.get(Math.floor(t)) ?? t;
+
+  const exact = renderToRawTimeRef.current.get(Math.floor(t));
+  if (exact !== undefined) return exact;
+
+  let lowerKey: number | null = null;
+  let upperKey: number | null = null;
+
+  for (const mappedTime of renderToRawTimeRef.current.keys()) {
+    if (!Number.isFinite(mappedTime)) continue;
+
+    if (mappedTime <= t && (lowerKey === null || mappedTime > lowerKey)) {
+      lowerKey = mappedTime;
+    }
+
+    if (mappedTime >= t && (upperKey === null || mappedTime < upperKey)) {
+      upperKey = mappedTime;
+    }
+  }
+
+  const nearestKey =
+    lowerKey === null
+      ? upperKey
+      : upperKey === null
+      ? lowerKey
+      : t - lowerKey <= upperKey - t
+      ? lowerKey
+      : upperKey;
+
+  if (nearestKey === null) return t;
+  return renderToRawTimeRef.current.get(nearestKey) ?? t;
 };

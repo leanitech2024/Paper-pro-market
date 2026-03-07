@@ -8,6 +8,7 @@ interface EquityTradeFormProps {
   onStockSelect: (stock: Stock) => void;
   instruments: Stock[];
   sheetMode?: boolean;
+  onOpenSearch?: () => void;
 }
 
 export function EquityTradeForm({
@@ -15,6 +16,7 @@ export function EquityTradeForm({
   onStockSelect,
   instruments,
   sheetMode = false,
+  onOpenSearch,
 }: EquityTradeFormProps) {
   return (
     <TradingForm
@@ -23,6 +25,7 @@ export function EquityTradeForm({
       instruments={instruments}
       instrumentMode="equity"
       sheetMode={sheetMode}
+      onOpenSearch={onOpenSearch}
     />
   );
 }

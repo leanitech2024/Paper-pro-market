@@ -2,7 +2,6 @@ import { z } from "zod";
 
 // Enums matching database schema
 const OrderSideEnum = z.enum(["BUY", "SELL"]);
-const OrderTypeEnum = z.enum(["MARKET", "LIMIT"]);
 const OrderStatusEnum = z.enum(["PENDING", "OPEN", "FILLED", "CANCELLED", "REJECTED"]);
 const ExitReasonEnum = z.enum(["MANUAL", "STOP_LOSS", "TARGET", "EXPIRY"]);
 

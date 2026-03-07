@@ -1,6 +1,5 @@
 import { db } from '../lib/db.js';
 import { upstoxTokens } from '../lib/schema.js';
-import { desc, sql } from 'drizzle-orm';
 import { logger } from '../lib/logger.js';
 
 // ═══════════════════════════════════════════════════════════
@@ -50,14 +49,15 @@ class TokenProvider {
 
         // Priority 1: Database lookup
         try {
-            const tokens = await db
-                .select()
-                .from(upstoxTokens)
-                .where((t) => sql`${t.expiresAt} > NOW()`)
-                .orderBy(desc(upstoxTokens.updatedAt))
-                .limit(10);
+            const tokens = await db.select().from(upstoxTokens).limit(25);
+            const candidates = tokens
+                .filter((token) => new Date(token.expiresAt).getTime() > nowMs)
+                .sort(
+                    (a, b) =>
+                        new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+                );
 
-            for (const candidate of tokens) {
+            for (const candidate of candidates) {
                 const normalized = this.normalizeToken(candidate.accessToken);
                 if (!normalized) continue;
                 if (this.rejectedTokens.has(normalized)) continue;

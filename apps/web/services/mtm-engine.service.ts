@@ -1,15 +1,18 @@
 import { and, eq, ne, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { instruments, positions, wallets } from "@paper-market/core";
+import { instruments, positions, wallets } from "@paper-market/core/db";
 import { logger } from "@/lib/logger";
 import { toInstrumentKey } from "@paper-market/core";
-import { tickBus, type NormalizedTick } from "@/lib/trading/tick-bus";
+import { tickBus } from "@/lib/trading/tick-bus";
+import type { NormalizedTick } from "@paper-market/core";
 import { eventBus } from "@/lib/event-bus";
 import { marginCurveService } from "@/services/margin-curve.service";
 import { liquidationEngineService } from "@/services/liquidation-engine.service";
 import { instrumentStore } from "@/stores/instrument.store";
-import { calculateShortOptionMargin } from "@/lib/trading/option-margin";
-import { calculateFuturesRequiredMargin } from "@/lib/trading/futures-margin";
+import {
+    calculateShortOptionMargin,
+    calculateFuturesRequiredMargin,
+} from "@paper-market/core";
 import { realTimeMarketService } from "@/services/realtime-market.service";
 
 type MarginStatus = "NORMAL" | "MARGIN_STRESSED";

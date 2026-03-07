@@ -1,6 +1,7 @@
 import { and, eq } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { orders, type Instrument } from "@paper-market/core";
+import { orders } from "@paper-market/core/db";
+import type { Instrument } from "@paper-market/core";
 import { ApiError } from "@/lib/errors";
 import { instrumentRepository } from "@/lib/instruments/repository";
 import type {

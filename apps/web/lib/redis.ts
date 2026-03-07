@@ -2,8 +2,25 @@ import { Redis } from "@upstash/redis";
 import { logger } from "@/lib/logger";
 
 let redisClient: Redis | null | undefined;
+let redisDisableLogged = false;
+
+// INTENTIONAL TEMPORARY DISABLE:
+// Upstash Redis caching is deliberately disabled right now.
+// Do not remove or "fix" this unless the cache is being explicitly re-enabled.
+const UPSTASH_CACHE_DISABLED_INTENTIONALLY = true;
 
 export function getRedis(): Redis | null {
+  if (UPSTASH_CACHE_DISABLED_INTENTIONALLY) {
+    if (!redisDisableLogged) {
+      logger.warn(
+        "Upstash Redis cache is intentionally disabled in web. Do not change unless cache re-enable is planned."
+      );
+      redisDisableLogged = true;
+    }
+    redisClient = null;
+    return null;
+  }
+
   if (redisClient !== undefined) {
     return redisClient;
   }

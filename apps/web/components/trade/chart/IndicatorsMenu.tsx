@@ -18,7 +18,7 @@ interface IndicatorsMenuProps {
   symbol: string;
 }
 
-const ORDER: IndicatorType[] = ["SMA", "EMA", "RSI", "MACD", "BB", "VWAP", "ATR", "SUPERTREND"];
+const ORDER: IndicatorType[] = ["VOL", "SMA", "EMA", "RSI", "MACD", "BB", "VWAP", "ATR", "SUPERTREND"];
 
 const LABELS: Record<IndicatorType, string> = {
   SMA: "SMA",
@@ -62,22 +62,25 @@ function IndicatorSettingsRow({
   const updateIndicator = useAnalysisStore((state) => state.updateIndicator);
   const removeIndicator = useAnalysisStore((state) => state.removeIndicator);
   const paramFields = PARAMS[indicator.type] || [];
+  const isVolumeIndicator = indicator.type === "VOL";
 
   return (
     <div className="rounded-md border border-border/70 bg-card/40 p-2.5 space-y-2">
       <div className="flex items-center justify-between gap-2">
         <div className="text-xs font-semibold text-foreground">{LABELS[indicator.type]}</div>
         <div className="flex items-center gap-1">
-          <input
-            type="color"
-            className="h-6 w-6 cursor-pointer rounded border border-border bg-transparent p-0"
-            value={indicator.display.color}
-            onChange={(event) =>
-              updateIndicator(symbol, indicator.id, {
-                display: { ...indicator.display, color: event.target.value },
-              })
-            }
-          />
+          {!isVolumeIndicator ? (
+            <input
+              type="color"
+              className="h-6 w-6 cursor-pointer rounded border border-border bg-transparent p-0"
+              value={indicator.display.color}
+              onChange={(event) =>
+                updateIndicator(symbol, indicator.id, {
+                  display: { ...indicator.display, color: event.target.value },
+                })
+              }
+            />
+          ) : null}
           <Button
             variant={indicator.display.visible ? "secondary" : "outline"}
             size="sm"
@@ -140,27 +143,33 @@ function IndicatorSettingsRow({
         </div>
       )}
 
-      <label className="space-y-1 inline-block">
-        <span className="text-[10px] uppercase tracking-wide text-muted-foreground">Line Width</span>
-        <Input
-          type="number"
-          min={1}
-          max={4}
-          step={1}
-          className="h-7 text-xs w-20"
-          value={Number(indicator.display.lineWidth ?? 2)}
-          onChange={(event) => {
-            const value = Number(event.target.value);
-            if (!Number.isFinite(value)) return;
-            updateIndicator(symbol, indicator.id, {
-              display: {
-                ...indicator.display,
-                lineWidth: Math.max(1, Math.min(4, value)),
-              },
-            });
-          }}
-        />
-      </label>
+      {isVolumeIndicator ? (
+        <p className="text-[11px] text-muted-foreground">
+          Volume uses candle-direction colors and toggles the chart histogram pane.
+        </p>
+      ) : (
+        <label className="space-y-1 inline-block">
+          <span className="text-[10px] uppercase tracking-wide text-muted-foreground">Line Width</span>
+          <Input
+            type="number"
+            min={1}
+            max={4}
+            step={1}
+            className="h-7 text-xs w-20"
+            value={Number(indicator.display.lineWidth ?? 2)}
+            onChange={(event) => {
+              const value = Number(event.target.value);
+              if (!Number.isFinite(value)) return;
+              updateIndicator(symbol, indicator.id, {
+                display: {
+                  ...indicator.display,
+                  lineWidth: Math.max(1, Math.min(4, value)),
+                },
+              });
+            }}
+          />
+        </label>
+      )}
     </div>
   );
 }

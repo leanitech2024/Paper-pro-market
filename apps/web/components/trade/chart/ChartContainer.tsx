@@ -38,12 +38,28 @@ const INITIAL_VISIBLE_BARS_BY_RANGE: Record<string, number> = {
   // windows that looked visually broken/disconnected.
   '1D': 220,  // 1m candles (thicker default candles for readability)
   '5D': 420,  // 5m candles (~375 for 5 sessions)
-  '1M': 620,  // 15m candles (~500-600 for a month)
+  '1M': 300,  // 15m candles; open with readable density instead of trying to fit the entire month at once
   '3M': 460,  // 1h candles (~350-450 for 3 months)
   '6M': 180,  // 1d candles
   '1Y': 300,  // 1d candles
   '3Y': 190,  // 1w candles
   '5Y': 280,  // 1w candles
+};
+
+const INITIAL_VISIBLE_BARS_BY_TIMEFRAME: Record<string, number> = {
+  '1m': 220,
+  '3m': 220,
+  '5m': 220,
+  '10m': 220,
+  '15m': 220,
+  '30m': 180,
+  '1h': 180,
+  '2h': 160,
+  '3h': 140,
+  '4h': 140,
+  '1d': 200,
+  '1w': 160,
+  '1mo': 120,
 };
 
 
@@ -135,6 +151,16 @@ export function ChartContainer({ symbol, headerSymbol, instrumentKey, onSearchCl
   const drawings = useAnalysisStore((state) => state.symbolState[symbol]?.drawings ?? EMPTY_DRAWINGS);
   const chartStyle = useAnalysisStore(
     (state) => state.chartStyleBySymbol[symbol] || state.symbolState[symbol]?.chartStyle || state.chartStyle
+  );
+  const activeRangeKey = useMemo(() => String(range || '').toUpperCase(), [range]);
+  const activeTimeframeKey = useMemo(() => String(timeframe || '1m').toLowerCase(), [timeframe]);
+  const showVolume = useMemo(
+    () => indicators.some((indicator) => indicator.type === "VOL" && indicator.display?.visible !== false),
+    [indicators],
+  );
+  const overlayIndicators = useMemo(
+    () => indicators.filter((indicator) => indicator.type !== "VOL"),
+    [indicators],
   );
 
   // Use state from store
@@ -231,7 +257,7 @@ export function ChartContainer({ symbol, headerSymbol, instrumentKey, onSearchCl
   }, [symbol, resolvedInstrumentKey, range]);
 
   useEffect(() => {
-    if (data.length === 0 || indicators.length === 0) {
+    if (data.length === 0 || overlayIndicators.length === 0) {
       setComputedIndicators((previous) => (previous.length === 0 ? previous : []));
       return;
     }
@@ -244,7 +270,7 @@ export function ChartContainer({ symbol, headerSymbol, instrumentKey, onSearchCl
           symbol,
           instrumentKey: resolvedInstrumentKey,
           candles: data as any,
-          indicators,
+          indicators: overlayIndicators,
         }),
       (result) => {
         const endedAt = typeof performance !== "undefined" ? performance.now() : Date.now();
@@ -256,7 +282,7 @@ export function ChartContainer({ symbol, headerSymbol, instrumentKey, onSearchCl
             payload: {
               symbol,
               instrumentKey: resolvedInstrumentKey,
-              indicatorCount: indicators.length,
+              indicatorCount: overlayIndicators.length,
               candleCount: data.length,
               elapsedMs: Math.round(elapsedMs),
             },
@@ -267,7 +293,7 @@ export function ChartContainer({ symbol, headerSymbol, instrumentKey, onSearchCl
     );
 
     return () => scheduler.cancel();
-  }, [data, indicators, symbol, resolvedInstrumentKey]);
+  }, [data, overlayIndicators, symbol, resolvedInstrumentKey]);
 
   const chartProps = {
     data,
@@ -276,7 +302,7 @@ export function ChartContainer({ symbol, headerSymbol, instrumentKey, onSearchCl
     drawings,
     activeTool,
     chartStyle,
-    showVolume: true,
+    showVolume,
   };
 
   const latestCandle = useMemo(() => {
@@ -288,9 +314,9 @@ export function ChartContainer({ symbol, headerSymbol, instrumentKey, onSearchCl
       high: Number(last.high),
       low: Number(last.low),
       close: Number(last.close),
-      volume: Number(volumeData?.[volumeData.length - 1]?.value),
+      volume: showVolume ? Number(volumeData?.[volumeData.length - 1]?.value) : undefined,
     };
-  }, [historicalData, volumeData]);
+  }, [historicalData, showVolume, volumeData]);
 
   const legendData = hoveredCandle
     ? {
@@ -317,30 +343,34 @@ export function ChartContainer({ symbol, headerSymbol, instrumentKey, onSearchCl
     if (!chartApi || historicalData.length === 0) return false;
     try {
       const timeScale = chartApi.timeScale();
-      const normalizedRange = (range || '1D').toUpperCase();
-      const targetVisibleBars = INITIAL_VISIBLE_BARS_BY_RANGE[normalizedRange] ?? ONE_DAY_VISIBLE_FALLBACK_BARS;
+      const targetVisibleBars =
+        INITIAL_VISIBLE_BARS_BY_RANGE[activeRangeKey] ??
+        INITIAL_VISIBLE_BARS_BY_TIMEFRAME[activeTimeframeKey] ??
+        ONE_DAY_VISIBLE_FALLBACK_BARS;
       const chartWidth = Number((chartApi.options() as any)?.width);
-      const minPixelsPerBar = normalizedRange === '1D' ? 4 : 3;
+      const minPixelsPerBar = activeRangeKey === '1D' ? 4 : activeRangeKey === '1M' ? 5 : 3;
       const widthCappedBars =
         Number.isFinite(chartWidth) && chartWidth > 0
           ? Math.floor(chartWidth / minPixelsPerBar)
           : targetVisibleBars;
       const desiredVisibleBars = Math.min(targetVisibleBars, Math.max(40, widthCappedBars));
       const visibleBars = Math.max(40, Math.min(desiredVisibleBars, historicalData.length));
-      const rightOffsetBars = normalizedRange === '1D' ? 12 : 8;
+      const rightOffsetBars = activeRangeKey === '1D' ? 12 : activeRangeKey === '1M' ? 4 : 8;
 
       // Use logical index range so initial candle width is consistent regardless of timestamp gaps.
       const to = Math.max(historicalData.length - 1 + rightOffsetBars, rightOffsetBars);
       const from = Math.max(0, to - visibleBars);
 
       timeScale.setVisibleLogicalRange({ from, to });
-      timeScale.scrollToRealTime();
+      if (activeRangeKey !== '1M') {
+        timeScale.scrollToRealTime();
+      }
       return true;
     } catch (error) {
       console.warn('Initial chart framing failed:', error);
       return false;
     }
-  }, [chartApi, historicalData.length, range]);
+  }, [activeRangeKey, activeTimeframeKey, chartApi, historicalData.length]);
 
   // Frame once per request cycle after first dataset is ready.
   useEffect(() => {
@@ -361,7 +391,7 @@ export function ChartContainer({ symbol, headerSymbol, instrumentKey, onSearchCl
   useEffect(() => {
     if (!chartApi || historicalData.length === 0 || currentRequestId <= 0) return;
 
-    const normalizedRange = (range || '1D').toUpperCase();
+    const normalizedRange = String(range || '').toUpperCase();
     if (normalizedRange !== '1D') return;
     if (!hasMoreHistory) return;
     if (isFetchingHistory && isInitialLoad) return;
@@ -386,7 +416,7 @@ export function ChartContainer({ symbol, headerSymbol, instrumentKey, onSearchCl
 
       while (!cancelled) {
         const marketState = useMarketStore.getState();
-        const analysisRange = (useAnalysisStore.getState().range || '1D').toUpperCase();
+        const analysisRange = String(useAnalysisStore.getState().range || '').toUpperCase();
         const activeSymbol = toCanonicalSymbol(marketState.simulatedSymbol || '');
 
         if (marketState.currentRequestId !== currentRequestId) {
@@ -535,7 +565,10 @@ export function ChartContainer({ symbol, headerSymbol, instrumentKey, onSearchCl
     }
     
     const firstCandle = historicalData[0];
-    const currentRange = (range || '1D').toUpperCase();
+    const currentRange = String(range || '').toUpperCase();
+    if (!currentRange) {
+      return;
+    }
 
     await fetchMoreHistory(symbol, currentRange, firstCandle.time as number, resolvedInstrumentKey);
   }, [historicalData, symbol, range, fetchMoreHistory, resolvedInstrumentKey]); // ✅ Stable dependencies only

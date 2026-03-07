@@ -1,11 +1,7 @@
 import { and, eq, inArray, or, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
-import {
-    ledgerAccounts,
-    ledgerEntries,
-    type LedgerAccountType,
-    type LedgerReferenceType,
-} from "@paper-market/core";
+import { ledgerAccounts, ledgerEntries } from "@paper-market/core/db";
+import { type LedgerAccountType, type LedgerReferenceType } from "@paper-market/core";
 import { ApiError } from "@/lib/errors";
 import { ledgerCacheService } from "@/services/ledger-cache.service";
 

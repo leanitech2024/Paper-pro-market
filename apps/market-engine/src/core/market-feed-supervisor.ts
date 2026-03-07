@@ -93,7 +93,7 @@ export class MarketFeedSupervisor extends EventEmitter {
     }
 
     console.log("Connecting to market feed...");
-    await this.ws.connect((data: any) => {
+    await this.ws.connect((data: unknown) => {
       this.handleTick(data);
     });
 
@@ -277,7 +277,7 @@ export class MarketFeedSupervisor extends EventEmitter {
     }
   }
 
-  private handleTick(data: any) {
+  private handleTick(data: unknown) {
     this.tickCount++;
     this.lastAnyTick = Date.now();
     this.emit("tick", data);

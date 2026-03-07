@@ -10,7 +10,6 @@ type UseIndicatorsArgs = {
 };
 
 /** Map indicator points from raw candle time to chart render time so they align with candlesticks. */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function mapToRenderTime(rows: any[], rawToRenderTimeRef: TimeMapRef): any[] {
   if (!rows?.length) return rows;
   const map = rawToRenderTimeRef.current;

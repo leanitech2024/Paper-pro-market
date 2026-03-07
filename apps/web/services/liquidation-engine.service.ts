@@ -1,13 +1,14 @@
 import { and, eq, inArray } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { instruments, orders, positions, wallets, type Instrument, type NewOrder } from "@paper-market/core";
+import { type Instrument, type NewOrder } from "@paper-market/core";
+import { instruments, orders, positions, wallets } from "@paper-market/core/db";
 import { logger } from "@/lib/logger";
 import { InstrumentRepository } from "@/lib/instruments/repository";
 import { marginCurveService } from "@/services/margin-curve.service";
 import { marketSimulation } from "@/services/market-simulation.service";
 import { realTimeMarketService } from "@/services/realtime-market.service";
 import { isTradingEnabled } from "@/lib/system-control";
-import { calculateFuturesRequiredMargin } from "@/lib/trading/futures-margin";
+import { calculateFuturesRequiredMargin } from "@paper-market/core";
 
 type AccountState = "NORMAL" | "MARGIN_STRESSED" | "LIQUIDATING";
 

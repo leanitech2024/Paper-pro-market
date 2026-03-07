@@ -278,6 +278,10 @@ export class CandleOrchestrator {
                     unit = 'minutes'; interval = '5';
                     fromDateObj = subDays(anchorDate, 5);
                     break;
+                case '10m':
+                    unit = 'minutes'; interval = '10';
+                    fromDateObj = subDays(anchorDate, 14);
+                    break;
                 case '15m':
                     unit = 'minutes'; interval = '15';
                     fromDateObj = subDays(anchorDate, 5);
@@ -290,6 +294,18 @@ export class CandleOrchestrator {
                     unit = 'hours'; interval = '1';
                     fromDateObj = subMonths(anchorDate, 3);
                     break;
+                case '2h':
+                    unit = 'hours'; interval = '2';
+                    fromDateObj = subMonths(anchorDate, 3);
+                    break;
+                case '3h':
+                    unit = 'hours'; interval = '3';
+                    fromDateObj = subMonths(anchorDate, 3);
+                    break;
+                case '4h':
+                    unit = 'hours'; interval = '4';
+                    fromDateObj = subMonths(anchorDate, 3);
+                    break;
                 case '1d':
                     unit = 'days'; interval = '1';
                     fromDateObj = subYears(anchorDate, 1);
@@ -299,6 +315,8 @@ export class CandleOrchestrator {
                     fromDateObj = subYears(anchorDate, 5);
                     break;
                 case '1M':
+                case '1mo':
+                case '1MO':
                     unit = 'months'; interval = '1';
                     fromDateObj = subYears(anchorDate, 10);
                     break;

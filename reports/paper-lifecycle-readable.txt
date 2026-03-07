@@ -1,8 +1,0 @@
-{
-  "equityPartialExitGuard": "PASS",
-  "equityLifecycle": "PASS",
-  "futuresPartialExitGuard": "PASS",
-  "futuresLifecycle": "PASS",
-  "ledgerIntegrity": "PASS",
-  "overallStatus": "PASS"
-}

@@ -1,6 +1,23 @@
 import { NormalizedTick } from '../core/types.js';
 
-function extractLtpc(feed: any): any | null {
+export interface UpstoxFeedData {
+    ltpc?: Record<string, unknown>;
+    ff?: {
+        ltpc?: Record<string, unknown>;
+        marketFF?: { ltpc?: Record<string, unknown> };
+        indexFF?: { ltpc?: Record<string, unknown> };
+        firstLevelWithGreeks?: { ltpc?: Record<string, unknown> };
+    };
+    fullFeed?: {
+        marketFF?: { ltpc?: Record<string, unknown> };
+        indexFF?: { ltpc?: Record<string, unknown> };
+    };
+    firstLevelWithGreeks?: {
+        ltpc?: Record<string, unknown>;
+    };
+}
+
+function extractLtpc(feed: UpstoxFeedData | null): Record<string, unknown> | null {
     return (
         feed?.ltpc ??
         feed?.ff?.ltpc ??
@@ -49,7 +66,7 @@ export class UpstoxAdapter {
     /**
      * Normalize Upstox feed data to NormalizedTick
      */
-    normalize(upstoxData: any): NormalizedTick[] {
+    normalize(upstoxData: { feeds?: Record<string, UpstoxFeedData> } | unknown): NormalizedTick[] {
         const ticks: NormalizedTick[] = [];
         
         // Guard against invalid data
@@ -57,7 +74,7 @@ export class UpstoxAdapter {
             return ticks;
         }
 
-        const feeds = upstoxData.feeds || {};
+        const feeds = (upstoxData as { feeds?: Record<string, UpstoxFeedData> }).feeds || {};
         
         for (const key of Object.keys(feeds)) {
             const feed = feeds[key];

@@ -1,10 +1,11 @@
 import { db } from "@/lib/db";
-import { instruments, type NewInstrument } from "@paper-market/core";
+import { instruments } from "@paper-market/core/db";
+import { type NewInstrument } from "@paper-market/core";
 import { logger } from "@/lib/logger";
 import { ApiError } from "@/lib/errors";
 import { eq, ilike, and, gte, lte, or, sql, inArray } from "drizzle-orm";
 import type { InstrumentFilter } from "@paper-market/core";
-import { TRADING_UNIVERSE } from "@/lib/trading-universe";
+import { TRADING_UNIVERSE } from "@paper-market/core";
 
 export class InstrumentService {
     /**

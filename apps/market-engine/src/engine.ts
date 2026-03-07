@@ -49,7 +49,7 @@ export async function initializeEngine() {
     // ═══════════════════════════════════════════════════════════
     // 🚌 STEP 3: Wire MarketFeedSupervisor → TickBus
     // ═══════════════════════════════════════════════════════════
-    marketFeedSupervisor.on('tick', (data: any) => {
+    marketFeedSupervisor.on('tick', (data: unknown) => {
         if (!adapter) return;
 
         const ticks = adapter.normalize(data);

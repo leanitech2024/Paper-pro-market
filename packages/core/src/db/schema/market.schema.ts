@@ -1,6 +1,6 @@
 
-import { pgTable, serial, text, timestamp, integer, numeric, boolean, uniqueIndex, index } from 'drizzle-orm/pg-core';
-import { type InferSelectModel, type InferInsertModel, sql } from 'drizzle-orm';
+import { pgTable, serial, text, timestamp, integer, numeric, boolean, index } from 'drizzle-orm/pg-core';
+import { type InferSelectModel, type InferInsertModel } from 'drizzle-orm';
 
 // Enums (handled as text with checks in logic or strict types, Drizzle native enum support is PG specific but text is safer for migration portability sometimes, using consts for reference)
 export const InstrumentType = {

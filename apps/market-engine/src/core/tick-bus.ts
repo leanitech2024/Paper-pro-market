@@ -1,5 +1,12 @@
 import { NormalizedTick } from './types.js';
 
+interface TickBusGlobal {
+    __TPS?: number;
+    __TPS_INTERVAL?: NodeJS.Timeout;
+    __MEMORY_INTERVAL?: NodeJS.Timeout;
+}
+const globalState = globalThis as unknown as TickBusGlobal;
+
 // ═══════════════════════════════════════════════════════════
 // 🚌 TICK BUS: Event-driven tick distribution
 // ═══════════════════════════════════════════════════════════
@@ -57,17 +64,17 @@ class TickBus {
         // 🚨 PHASE 0: Tick Throughput Logging (Baseline Visibility)
         // ═══════════════════════════════════════════════════════════
         if (process.env.DEBUG_MARKET === 'true') {
-            if (!(globalThis as any).__TPS) {
-                (globalThis as any).__TPS = 0;
+            if (!globalState.__TPS) {
+                globalState.__TPS = 0;
             }
-            if (!(globalThis as any).__TPS_INTERVAL) {
-                (globalThis as any).__TPS_INTERVAL = setInterval(() => {
-                    const tps = ((globalThis as any).__TPS || 0) / 5;
+            if (!globalState.__TPS_INTERVAL) {
+                globalState.__TPS_INTERVAL = setInterval(() => {
+                    const tps = (globalState.__TPS || 0) / 5;
                     console.log("TICKS/SEC:", tps.toFixed(1));
-                    (globalThis as any).__TPS = 0;
+                    globalState.__TPS = 0;
                 }, 5000);
             }
-            (globalThis as any).__TPS = ((globalThis as any).__TPS || 0) + 1;
+            globalState.__TPS = (globalState.__TPS || 0) + 1;
         }
         
         this.tickCount++;
@@ -155,8 +162,8 @@ if (process.env.NODE_ENV !== 'production') {
 // 🚨 PHASE 0: Memory Logging (Baseline Visibility)
 // ═══════════════════════════════════════════════════════════
 // Initialize memory monitoring on module load (runs once per Node process)
-if (process.env.DEBUG_MARKET === 'true' && typeof process !== 'undefined' && process.memoryUsage && !(globalThis as any).__MEMORY_INTERVAL) {
-    (globalThis as any).__MEMORY_INTERVAL = setInterval(() => {
+if (process.env.DEBUG_MARKET === 'true' && typeof process !== 'undefined' && process.memoryUsage && !globalState.__MEMORY_INTERVAL) {
+    globalState.__MEMORY_INTERVAL = setInterval(() => {
         const m = process.memoryUsage();
         console.log("HEAP MB:", (m.heapUsed / 1024 / 1024).toFixed(1));
     }, 15000);

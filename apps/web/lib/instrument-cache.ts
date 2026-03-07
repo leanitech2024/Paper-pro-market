@@ -6,7 +6,7 @@
  */
 
 import { db } from '@/lib/db';
-import { instruments } from '@paper-market/core';
+import { instruments } from "@paper-market/core/db";;
 import { eq } from 'drizzle-orm';
 import type { Instrument } from '@paper-market/core';
 

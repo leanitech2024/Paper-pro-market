@@ -1,12 +1,8 @@
 import { createHash, randomUUID } from "node:crypto";
 import { asc, eq, inArray } from "drizzle-orm";
 import { db } from "@/lib/db";
-import {
-    ledgerEntries,
-    trades,
-    writeAheadJournal,
-    type WriteAheadOperationType,
-} from "@paper-market/core";
+import { ledgerEntries, trades, writeAheadJournal } from "@paper-market/core/db";
+import { type WriteAheadOperationType } from "@paper-market/core";
 import { ApiError } from "@/lib/errors";
 import { logger } from "@/lib/logger";
 import { haltTrading } from "@/lib/system-control";

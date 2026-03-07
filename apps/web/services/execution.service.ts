@@ -1,12 +1,6 @@
 import { db } from "@/lib/db";
-import {
-    orders,
-    positions,
-    trades,
-    type NewTrade,
-    type LedgerReferenceType,
-    type WriteAheadOperationType,
-} from "@paper-market/core";
+import { orders, positions, trades } from "@paper-market/core/db";
+import { type NewTrade, type LedgerReferenceType, type WriteAheadOperationType } from "@paper-market/core";
 import { logger } from "@/lib/logger";
 import { ApiError } from "@/lib/errors";
 import { performance } from "node:perf_hooks";
@@ -23,7 +17,7 @@ import { instrumentStore } from "@/stores/instrument.store";
 import { eventBus } from "@/lib/event-bus";
 import { priceOracle } from "@/services/price-oracle.service";
 import { mtmEngineService } from "@/services/mtm-engine.service";
-import { resolveEffectiveLeverage } from "@/lib/trading/futures-margin";
+import { resolveEffectiveLeverage } from "@paper-market/core";
 
 const PAPER_TRADING_MODE =
     String(process.env.PAPER_TRADING_MODE ?? "true").trim().toLowerCase() !== "false";

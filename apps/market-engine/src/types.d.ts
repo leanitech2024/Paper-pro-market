@@ -1,5 +1,5 @@
 declare module "*.json" {
-    const value: any;
+    const value: unknown;
     export default value;
 }
 
@@ -15,7 +15,7 @@ declare module "upstox-js-sdk" {
 
     export class MarketDataStreamerV3 {
         constructor(instrumentKeys: string[], mode: string);
-        on(event: string, handler: (...args: any[]) => void): void;
+        on(event: string, handler: (...args: unknown[]) => void): void;
         connect(): void;
         disconnect(): void;
         subscribe(instrumentKeys: string[], mode: string): void;

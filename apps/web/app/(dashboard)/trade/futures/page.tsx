@@ -359,6 +359,7 @@ export default function FuturesPage() {
           tabletLeft={<div className="h-full min-h-0">{renderOrderNode(true)}</div>}
           tabletRight={<PositionsCards instrumentFilter="futures" />}
           mobileContent={mobileContentNode}
+          mobileOrderTitle={selectedStock ? `${selectedStock.symbol} futures order ticket` : "Futures order ticket"}
           mobileOrderOpen={mobileOrderOpen}
           onMobileOrderOpenChange={setMobileOrderOpen}
           mobileOrderDrawer={renderOrderNode(true)}

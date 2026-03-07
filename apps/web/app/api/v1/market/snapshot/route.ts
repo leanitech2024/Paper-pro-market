@@ -10,7 +10,7 @@ import {
   positions,
   watchlistItems,
   watchlists,
-} from "@paper-market/core";
+} from "@paper-market/core/db";
 import {
   getCacheTtlWithJitter,
   ltpKey,

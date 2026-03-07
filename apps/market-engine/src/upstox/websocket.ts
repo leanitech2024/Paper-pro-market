@@ -20,7 +20,7 @@ let protobufRoot: protobuf.Root | null = null;
 
 function getProtobufRoot(): protobuf.Root {
   if (protobufRoot) return protobufRoot;
-  protobufRoot = protobuf.Root.fromJSON(protoJson as any);
+  protobufRoot = protobuf.Root.fromJSON(protoJson as Record<string, unknown>);
   logger.info("Protobuf JSON loaded successfully");
   return protobufRoot;
 }
@@ -135,8 +135,8 @@ export class UpstoxWebSocket {
       this.ws.on("close", () => {
         this.handleClose();
       });
-    } catch (error: any) {
-      const message = String(error?.message || "");
+    } catch (error: unknown) {
+      const message = String((error as Error)?.message || "");
       logger.error({ err: message }, "Failed to start Upstox stream");
 
       if (this.isAuthFailure(error)) {
@@ -186,7 +186,7 @@ export class UpstoxWebSocket {
   }
 
   private isAuthFailure(errorLike: unknown): boolean {
-    const message = String((errorLike as any)?.message || errorLike || "").toLowerCase();
+    const message = String((errorLike as Record<string, unknown>)?.message || errorLike || "").toLowerCase();
     return (
       message.includes("401") ||
       message.includes("403") ||
@@ -205,7 +205,7 @@ export class UpstoxWebSocket {
     });
 
     const bodyText = await response.text();
-    let payload: any = null;
+    let payload: Record<string, unknown> | null = null;
     try {
       payload = JSON.parse(bodyText);
     } catch {
@@ -219,8 +219,8 @@ export class UpstoxWebSocket {
     }
 
     const url =
-      payload?.data?.authorizedRedirectUri ??
-      payload?.data?.authorized_redirect_uri ??
+      (payload?.data as Record<string, unknown>)?.authorizedRedirectUri ??
+      (payload?.data as Record<string, unknown>)?.authorized_redirect_uri ??
       null;
 
     if (!url || typeof url !== "string") {
@@ -238,7 +238,14 @@ export class UpstoxWebSocket {
     if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return;
     if (instrumentKeys.length === 0) return;
 
-    const payload: any = {
+    const payload: {
+      guid: string;
+      method: string;
+      data: {
+        instrumentKeys: string[];
+        mode?: string;
+      };
+    } = {
       guid: createGuid(),
       method,
       data: {

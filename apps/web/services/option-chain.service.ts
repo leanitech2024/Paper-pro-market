@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
-import { instruments, InstrumentType } from "@paper-market/core";
+import { InstrumentTypes } from "@paper-market/core";
+import { instruments } from "@paper-market/core/db";
 import { and, eq, asc } from "drizzle-orm";
 import { marketSimulation } from "@/services/market-simulation.service";
 import { OptionChainInput } from "@paper-market/core";
@@ -101,7 +102,7 @@ export class OptionChainService {
             .where(
                 and(
                     eq(instruments.underlying, normalizedUnderlying),
-                    eq(instruments.instrumentType, InstrumentType.OPTION),
+                    eq(instruments.instrumentType, InstrumentTypes.OPTION),
                     eq(instruments.isActive, true)
                 )
             )

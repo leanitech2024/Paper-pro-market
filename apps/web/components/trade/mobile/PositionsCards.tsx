@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useMemo } from "react";
 import { usePositionsStore } from "@/stores/trading/positions.store";

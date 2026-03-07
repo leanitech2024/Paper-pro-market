@@ -1,4 +1,5 @@
-import { orders, type Instrument } from "@paper-market/core";
+import { orders } from "@paper-market/core/db";
+import type { Instrument } from "@paper-market/core";
 import { marketSimulation } from "@/services/market-simulation.service";
 import { realTimeMarketService } from "@/services/realtime-market.service";
 
