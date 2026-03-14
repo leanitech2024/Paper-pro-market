@@ -51,3 +51,9 @@ skill-creator
 # Build artifacts
 *.tsbuildinfo
 .turbo
+
+# build outputs
+dist/
+temp-dist/
+packages/*/dist/
+packages/*/temp-dist/
