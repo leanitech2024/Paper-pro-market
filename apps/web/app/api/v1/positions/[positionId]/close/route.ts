@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { PositionService } from "@/services/position.service";
+import { PositionService } from "@/services/trading/positions/position.service";
 import { handleError } from "@/lib/errors";
 import { logger } from "@/lib/logger";
 import { z } from "zod";
@@ -11,10 +11,9 @@ import { z } from "zod";
  */
 export async function POST(
     req: NextRequest,
-    props: { params: Promise<{ positionId: string }> }
+    { params }: { params: Promise<{ positionId: string }> }
 ) {
-    const params = await props.params;
-    const { positionId } = params;
+    const { positionId } = await params;
     try {
         const session = await auth();
         if (!session?.user?.id) {
@@ -24,7 +23,6 @@ export async function POST(
             );
         }
 
-        const { positionId } = params;
         const body = await req.json();
         const { quantity } = z.object({ 
             quantity: z.number().int().positive().optional() 

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { EODPriceUpdateService } from '@/services/eod-price-update.service';
+import { EODPriceUpdateService } from '@/services/market/pricing/eod-price-update.service';
 
 export const dynamic = 'force-dynamic';
 
@@ -51,3 +51,4 @@ export async function POST(req: NextRequest) {
     );
   }
 }
+

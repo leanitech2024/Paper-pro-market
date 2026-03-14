@@ -1,4 +1,5 @@
 export * from "./market/symbol-normalization";
+export * from "./market/tick-validation";
 
 export * from "./types/db";
 

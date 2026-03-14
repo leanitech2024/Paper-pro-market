@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
-import { GlobalSearchModal } from "@/components/trade/search/GlobalSearchModal";
+import { useSearchParams } from "next/navigation";
 import { TerminalHeader } from "@/components/trade/options/TerminalHeader";
 import { OptionChainTable } from "@/components/trade/options/OptionChainTable";
 import { OrderPanel } from "@/components/trade/options/OrderPanel";
@@ -17,6 +17,7 @@ import { AdaptiveTradeLayout } from "@/components/trade/layout/AdaptiveTradeLayo
 import { PositionsCards } from "@/components/trade/mobile/PositionsCards";
 import { useWalletStore } from "@/stores/wallet.store";
 import { useTradeViewport } from "@/hooks/use-trade-viewport";
+import { useSearchStore } from "@/stores/ui/search.store";
 import { cn } from "@/lib/utils";
 
 type TradeMode = "single" | "strategy";
@@ -88,10 +89,11 @@ function formatPct(value: number): string {
 }
 
 export default function OptionsPage() {
+  const searchParams = useSearchParams();
   const { isMobile } = useTradeViewport();
   const walletBalance = useWalletStore((state) => state.balance);
+  const openSearch = useSearchStore((state) => state.openSearch);
 
-  const [searchOpen, setSearchOpen] = useState(false);
   const [underlying, setUnderlying] = useState("NIFTY");
   const [selectedExpiry, setSelectedExpiry] = useState("");
   const [contracts, setContracts] = useState<Stock[]>([]);
@@ -100,6 +102,12 @@ export default function OptionsPage() {
   const [mode, setMode] = useState<TradeMode>("single");
   const [mobileOrderOpen, setMobileOrderOpen] = useState(false);
   const [mobileView, setMobileView] = useState<MobileView>("chain");
+
+  useEffect(() => {
+    const requestedUnderlying = String(searchParams.get("underlying") || "").trim().toUpperCase();
+    if (!requestedUnderlying) return;
+    setUnderlying(requestedUnderlying);
+  }, [searchParams]);
 
   const fetchOptionChain = useMarketStore((s) => s.fetchOptionChain);
   const chainKey = useMemo(
@@ -246,9 +254,16 @@ export default function OptionsPage() {
     const exp = toDateKey(stock.expiryDate);
     if (exp) setSelectedExpiry(exp);
     setSelectedContract(stock);
-    setSearchOpen(false);
     setMode("single");
     if (isMobile) setMobileView("chain");
+  };
+
+  const handleOpenSearch = () => {
+    openSearch({
+      mode: "OPTION",
+      placeholder: "Search option contracts...",
+      onSelect: handleSearchSelect
+    });
   };
 
   const handleSelectChainSymbol = (symbol: string, side: "BUY" | "SELL" = "BUY") => {
@@ -319,7 +334,7 @@ export default function OptionsPage() {
         underlyingSymbol={underlying}
         atmStrike={atmStrike}
         daysToExpiry={daysToExpiry}
-        onSearchClick={() => setSearchOpen(true)}
+        onSearchClick={handleOpenSearch}
       />
     );
   };
@@ -336,7 +351,7 @@ export default function OptionsPage() {
       daysToExpiry={daysToExpiry}
       atmStrike={atmStrike}
       mode={mode}
-      onOpenSearch={() => setSearchOpen(true)}
+      onOpenSearch={handleOpenSearch}
       onModeChange={handleModeChange}
       onExpiryChange={setSelectedExpiry}
     />
@@ -362,7 +377,7 @@ export default function OptionsPage() {
         symbol={underlying}
         headerSymbol={underlying}
         instrumentKey={symbolToIndexInstrumentKey(underlying) || undefined}
-        onSearchClick={() => setSearchOpen(true)}
+        onSearchClick={handleOpenSearch}
       />
     </div>
   );
@@ -398,7 +413,7 @@ export default function OptionsPage() {
           <div className="flex items-center justify-between gap-2">
             <button
               type="button"
-              onClick={() => setSearchOpen(true)}
+              onClick={handleOpenSearch}
               className="inline-flex h-9 items-center rounded-lg border border-border bg-card px-3 text-sm font-semibold text-foreground"
             >
               {underlying || "OPTIONS"}
@@ -589,17 +604,9 @@ export default function OptionsPage() {
 
   return (
     <>
-      <GlobalSearchModal
-        open={searchOpen}
-        onOpenChange={setSearchOpen}
-        searchMode="OPTION"
-        placeholder="Search option contracts�"
-        onSelectStock={handleSearchSelect}
-      />
-
-      <div className="h-[calc(100dvh-6rem)] md:h-[calc(100vh-32px)] min-h-0 overflow-hidden bg-background">
+      <div className="h-full min-h-0 overflow-hidden bg-background">
         <AdaptiveTradeLayout
-          header={isMobile ? undefined : headerNode}
+          header={<div className="hidden md:block">{headerNode}</div>}
           footer={<BottomBar />}
           desktopCenter={chainNode}
           desktopRight={
@@ -619,3 +626,4 @@ export default function OptionsPage() {
     </>
   );
 }
+

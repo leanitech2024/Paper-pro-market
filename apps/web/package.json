@@ -13,10 +13,10 @@
     "db:migrate": "drizzle-kit migrate"
   },
   "dependencies": {
-    "@paper-market/core": "workspace:*",
     "@auth/drizzle-adapter": "^1.11.1",
     "@hookform/resolvers": "^3.10.0",
     "@neondatabase/serverless": "^1.0.2",
+    "@paper-market/core": "workspace:*",
     "@radix-ui/react-accordion": "^1.2.11",
     "@radix-ui/react-alert-dialog": "^1.1.14",
     "@radix-ui/react-aspect-ratio": "^1.1.7",
@@ -59,6 +59,7 @@
     "embla-carousel-react": "^8.6.0",
     "framer-motion": "^12.23.26",
     "input-otp": "^1.4.2",
+    "ioredis": "^5.10.0",
     "lightweight-charts": "^5.1.0",
     "lru-cache": "^11.2.5",
     "lucide-react": "^0.462.0",
@@ -77,6 +78,7 @@
     "tailwindcss-animate": "^1.0.7",
     "technicalindicators": "^3.1.0",
     "upstox-js-sdk": "^2.21.0",
+    "use-debounce": "^10.1.0",
     "uuid": "^13.0.0",
     "vaul": "^0.9.9",
     "ws": "^8.19.0",

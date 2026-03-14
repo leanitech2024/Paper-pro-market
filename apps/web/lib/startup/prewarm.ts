@@ -1,7 +1,7 @@
 import { logger } from "@/lib/logger";
 import { instrumentStore } from "@/stores/instrument.store";
-import { realTimeMarketService } from "@/services/realtime-market.service";
-import { mtmEngineService } from "@/services/mtm-engine.service";
+import { realTimeMarketService } from "@/services/market/feeds/realtime-market.service";
+import { mtmEngineService } from "@/services/trading/valuation/mtm-engine.service";
 
 const DEFAULT_PREWARM_INSTRUMENT_KEYS = [
     "NSE_INDEX|Nifty 50",
@@ -32,3 +32,6 @@ export async function prewarmCore(): Promise<void> {
 
     logger.info({ prewarmedSymbols: symbols.length }, "Core prewarm completed");
 }
+
+
+

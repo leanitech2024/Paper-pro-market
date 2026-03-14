@@ -1,4 +1,7 @@
 import { NormalizedTick } from './types.js';
+import { isValidTick } from '@paper-market/core';
+
+const MAX_TICK_LISTENERS = 50;
 
 interface TickBusGlobal {
     __TPS?: number;
@@ -37,6 +40,9 @@ class TickBus {
      */
     on(_event: 'tick', handler: (tick: NormalizedTick) => void): void {
         this.listeners.add(handler);
+        if (this.listeners.size > MAX_TICK_LISTENERS) {
+            console.warn(`⚠️ TickBus listener count exceeded safe limit (${this.listeners.size} > ${MAX_TICK_LISTENERS})`);
+        }
     }
 
     /**
@@ -79,8 +85,15 @@ class TickBus {
         
         this.tickCount++;
         
+        
         // Track per-symbol counts
         const identityKey = tick.instrumentKey || tick.symbol || "__unknown__";
+        // 🔥 VALIDATE TICK (drop malformed before backpressure queue)
+        const prevObj = this.latestTicks.get(identityKey);
+        if (!isValidTick(tick, prevObj ? prevObj.price : undefined)) {
+            return;
+        }
+
         const count = this.symbolCounts.get(identityKey) || 0;
         this.symbolCounts.set(identityKey, count + 1);
 

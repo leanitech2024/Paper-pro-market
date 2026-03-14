@@ -9,13 +9,13 @@ import { useWalletStore } from "@/stores/wallet.store";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { WatchlistPanel } from "@/components/trade/watchlist/WatchlistPanel";
-import { GlobalSearchModal } from "@/components/trade/search/GlobalSearchModal";
 import { PositionsTable } from "@/components/positions/PositionsTable";
 import { toCanonicalSymbol } from "@paper-market/core";
 import { AdaptiveTradeLayout } from "@/components/trade/layout/AdaptiveTradeLayout";
 import { MobileTradeTopBar } from "@/components/trade/mobile/MobileTradeTopBar";
 import { PositionsCards } from "@/components/trade/mobile/PositionsCards";
 import { useTradeViewport } from "@/hooks/use-trade-viewport";
+import { useSearchStore } from "@/stores/ui/search.store";
 
 const CandlestickChartComponent = dynamic(
   () => import("@/components/trade/CandlestickChart").then((mod) => ({ default: mod.CandlestickChart })),
@@ -34,7 +34,7 @@ export default function TradePage() {
 
   const [selectedSymbol, setSelectedSymbol] = useState<string | null>(null);
   const [selectedFallback, setSelectedFallback] = useState<Stock | null>(null);
-  const [searchModalOpen, setSearchModalOpen] = useState(false);
+  const openSearch = useSearchStore((state) => state.openSearch);
   const [showOrderForm, setShowOrderForm] = useState(false);
   const [mobileOrderOpen, setMobileOrderOpen] = useState(false);
 
@@ -56,17 +56,14 @@ export default function TradePage() {
     }
   }, [selectedSymbol]);
 
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === "k") {
-        e.preventDefault();
-        setSearchModalOpen(true);
+  const handleOpenSearch = () => {
+    openSearch({
+      onSelect: (stock) => {
+        handleSelectStock(stock);
+        useSearchStore.getState().closeSearch();
       }
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, []);
+    });
+  };
 
   useEffect(() => {
     window.triggerTrade = (_side: "BUY" | "SELL") => {
@@ -86,6 +83,11 @@ export default function TradePage() {
     setSelectedFallback(stock);
   };
 
+  const handleClearSelection = () => {
+    setSelectedSymbol(null);
+    setSelectedFallback(null);
+  };
+
   const chartNode = (
     <div className="h-full w-full bg-card/50">
       {selectedSymbol ? (
@@ -94,7 +96,7 @@ export default function TradePage() {
             <CandlestickChartComponent
               symbol={selectedSymbol}
               instrumentKey={selectedStock?.instrumentToken}
-              onSearchClick={() => setSearchModalOpen(true)}
+              onSearchClick={handleOpenSearch}
             />
           </div>
         </Suspense>
@@ -112,7 +114,8 @@ export default function TradePage() {
         instruments={stocks}
         selectedSymbol={selectedSymbol ?? undefined}
         onSelect={handleSelectStock}
-        onOpenSearch={() => setSearchModalOpen(true)}
+        onOpenSearch={handleOpenSearch}
+        onClearSelection={handleClearSelection}
       />
     </div>
   );
@@ -127,16 +130,7 @@ export default function TradePage() {
 
   return (
     <>
-      <GlobalSearchModal
-        open={searchModalOpen}
-        onOpenChange={setSearchModalOpen}
-        onSelectStock={(stock) => {
-          handleSelectStock(stock);
-          setSearchModalOpen(false);
-        }}
-      />
-
-      <div className="h-[calc(100dvh-6rem)] md:h-[calc(100vh-2rem)] min-h-0 overflow-hidden">
+      <div className="h-full min-h-0 overflow-hidden">
         <AdaptiveTradeLayout
           desktopLeft={watchlistNode}
           desktopLeftWidth="360px"
@@ -195,4 +189,3 @@ export default function TradePage() {
     </>
   );
 }
-

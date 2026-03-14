@@ -1,6 +1,7 @@
 "use client";
 
-import { MoreVertical, Plus, Trash2, Pin, Bell } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { BarChart3, MoreVertical, Plus, ShoppingCart, Trash2, WalletCards } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -17,12 +18,31 @@ import { toast } from 'sonner';
 interface WatchlistItemMenuProps {
   stock: Stock;
   isInWatchlist?: boolean;
+  onSelect?: (stock: Stock) => void;
+  onRemoved?: (stock: Stock) => void;
 }
 
-export function WatchlistItemMenu({ stock, isInWatchlist = true }: WatchlistItemMenuProps) {
+export function WatchlistItemMenu({ stock, isInWatchlist = true, onSelect, onRemoved }: WatchlistItemMenuProps) {
+  const router = useRouter();
   const { activeWatchlistId } = useMarketStore();
   const { mutateAsync: addInstrument } = useAddInstrument(activeWatchlistId || '');
   const { mutateAsync: removeInstrument } = useRemoveInstrument(activeWatchlistId || '');
+
+  const handleOpenChart = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onSelect?.(stock);
+  };
+
+  const handleTrade = (side: 'BUY' | 'SELL') => (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onSelect?.(stock);
+    window.triggerTrade?.(side);
+  };
+
+  const handleOpenOptionsChain = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    router.push(`/trade/options?underlying=${encodeURIComponent(stock.symbol)}`);
+  };
 
   const handleAddToWatchlist = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -37,7 +57,7 @@ export function WatchlistItemMenu({ stock, isInWatchlist = true }: WatchlistItem
     }
 
     try {
-      await addInstrument(stock.instrumentToken);
+      await addInstrument(stock);
       toast.success(`Added ${stock.symbol} to watchlist`);
     } catch (error) {
       toast.error('Failed to add to watchlist');
@@ -57,8 +77,9 @@ export function WatchlistItemMenu({ stock, isInWatchlist = true }: WatchlistItem
     }
 
     try {
-      await removeInstrument(stock.instrumentToken);
+      onRemoved?.(stock);
       toast.success(`Removed ${stock.symbol} from watchlist`);
+      await removeInstrument(stock.instrumentToken);
     } catch (error) {
       toast.error('Failed to remove from watchlist');
     }
@@ -76,6 +97,23 @@ export function WatchlistItemMenu({ stock, isInWatchlist = true }: WatchlistItem
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-52 p-1">
+        <DropdownMenuItem onClick={handleOpenChart} className="gap-2 cursor-pointer">
+          <BarChart3 className="h-4 w-4" />
+          <span>Open Chart</span>
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={handleTrade('BUY')} className="gap-2 cursor-pointer">
+          <ShoppingCart className="h-4 w-4" />
+          <span>Buy {stock.symbol}</span>
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={handleTrade('SELL')} className="gap-2 cursor-pointer">
+          <WalletCards className="h-4 w-4" />
+          <span>Sell {stock.symbol}</span>
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={handleOpenOptionsChain} className="gap-2 cursor-pointer">
+          <MoreVertical className="h-4 w-4" />
+          <span>Open Options Chain</span>
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
         {!isInWatchlist ? (
           <DropdownMenuItem onClick={handleAddToWatchlist} className="gap-2 cursor-pointer">
             <Plus className="h-4 w-4" />

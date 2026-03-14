@@ -248,6 +248,8 @@ export const createLiveUpdatesSlice: MarketSlice<any> = (set, get) => ({
       instrumentKey: chartKey,
       symbol: chartSymbol,
       price: tick.price,
+      bid: tick.price,
+      ask: tick.price,
       volume: tick.volume || 0,
       timestamp: tick.time,
       exchange: "NSE",

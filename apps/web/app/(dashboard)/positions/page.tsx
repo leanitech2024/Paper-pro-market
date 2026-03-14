@@ -5,7 +5,7 @@ import { PositionsTable } from '@/components/positions/PositionsTable';
 
 export default function PositionsPage() {
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-4 md:p-6 lg:p-8">
       {/* Page Header */}
       <div className="flex items-center justify-between">
         <div>

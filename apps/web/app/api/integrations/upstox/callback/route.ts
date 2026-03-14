@@ -1,7 +1,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { UpstoxService } from "@/services/upstox.service";
+import { UpstoxService } from "@/services/market/feeds/upstox-feed.service";
 import { cookies } from "next/headers";
 
 export async function GET(req: NextRequest) {
@@ -38,3 +38,4 @@ export async function GET(req: NextRequest) {
     return NextResponse.redirect(new URL("/admin/upstox?status=error&error=oauth_failed", req.url));
   }
 }
+

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, Suspense } from "react";
+import { useEffect, useMemo, useRef, useState, Suspense } from "react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
@@ -15,6 +15,7 @@ import { GlobalSearchModal } from "@/components/trade/search/GlobalSearchModal";
 import { WatchlistPanel } from "@/components/trade/watchlist/WatchlistPanel";
 import { AdaptiveTradeLayout } from "@/components/trade/layout/AdaptiveTradeLayout";
 import { useTradeViewport } from "@/hooks/use-trade-viewport";
+import { PositionsTable } from "@/components/positions/PositionsTable";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -57,6 +58,7 @@ export default function EquityPage() {
   const [showOrderForm, setShowOrderForm] = useState(false);
   const [mobileOrderOpen, setMobileOrderOpen] = useState(false);
   const [mobilePanel, setMobilePanel] = useState<"watchlist" | "chart">("watchlist");
+  const hasAutoSelectedInitialStockRef = useRef(false);
 
   const currentInstruments = getCurrentInstruments("equity");
   const [selectedSymbol, setSelectedSymbol] = useState<string | null>(null);
@@ -68,13 +70,18 @@ export default function EquityPage() {
   }, [selectedSymbol, selectedFallback, stocksBySymbol]);
 
   useEffect(() => {
-    if (selectedSymbol) return;
+    if (selectedSymbol) {
+      hasAutoSelectedInitialStockRef.current = true;
+      return;
+    }
+    if (hasAutoSelectedInitialStockRef.current) return;
     if (currentInstruments.length === 0) return;
     if (isMobile) return;
 
     const first = currentInstruments[0];
     setSelectedSymbol(first.symbol);
     setSelectedFallback(first);
+    hasAutoSelectedInitialStockRef.current = true;
   }, [currentInstruments, isMobile, selectedSymbol]);
 
   useEffect(() => {
@@ -107,6 +114,11 @@ export default function EquityPage() {
     if (isMobile) setMobilePanel("chart");
   };
 
+  const handleClearSelection = () => {
+    setSelectedSymbol(null);
+    setSelectedFallback(null);
+  };
+
   const navigateFromProfile = (path: string) => {
     router.push(path);
   };
@@ -123,6 +135,10 @@ export default function EquityPage() {
             />
           </div>
         </Suspense>
+      ) : !isMobile ? (
+        <div className="h-full overflow-auto p-4">
+          <PositionsTable />
+        </div>
       ) : (
         <div className="flex h-full items-center justify-center text-muted-foreground">Select a stock to view chart</div>
       )}
@@ -136,6 +152,7 @@ export default function EquityPage() {
         selectedSymbol={selectedSymbol ?? undefined}
         onSelect={handleSelectStock}
         onOpenSearch={() => setSearchModalOpen(true)}
+        onClearSelection={handleClearSelection}
       />
     </div>
   );

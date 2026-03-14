@@ -33,14 +33,14 @@ export function WeeklyReviewPanel() {
 
   return (
     <div className="space-y-4">
-      <h3 className="text-lg font-medium text-foreground flex items-center gap-2">
+      <h3 className="text-lg font-medium tracking-tight text-foreground flex items-center gap-2">
         <CalendarDays className="h-5 w-5" />
         Weekly Reviews
       </h3>
       
-      <div className="grid gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
         {summaries.map((week) => (
-          <Card key={week.id} className="bg-card border-border">
+          <Card key={week.id} className="bg-card border-border flex flex-col hover:border-border/80 transition-colors">
             <CardHeader className="py-3 px-4 border-b border-border/50">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">

@@ -39,30 +39,41 @@ export function isTradingEnabled(): boolean {
     return next;
 }
 
+/**
+ * Halt trading by setting a runtime halt reason.
+ *
+ * This ALWAYS works regardless of PAPER_TRADING_MODE.
+ * The paper-mode flag controls risk limits and fill logic — it must NEVER
+ * disable the emergency safety brake used by WAJ corruption detection and
+ * the event replay engine.
+ */
 export function haltTrading(reason: string): void {
     const normalized = String(reason || "UNKNOWN").trim().toUpperCase();
     if (!normalized) return;
 
-    if (PAPER_TRADING_MODE) {
-        logger.warn(
-            { event: "SYSTEM_TRADING_HALT_SKIPPED", reason: normalized },
-            "Paper trading mode: haltTrading ignored"
-        );
-        return;
-    }
-
     runtimeHaltReason = normalized;
+    logger.error(
+        { event: "SYSTEM_TRADING_HALTED", reason: normalized, paperMode: PAPER_TRADING_MODE },
+        "Trading halted"
+    );
     emitTransitionIfNeeded(computeTradingEnabled());
 }
 
-export function resumeTrading(reason: string): void {
+/**
+ * Resume trading programmatically (clears the runtime halt).
+ *
+ * In paper mode this is a no-op for accidental calls so tests cannot
+ * accidentally resume a real halt. Pass force:true from admin tooling
+ * to clear an intentional halt in any mode.
+ */
+export function resumeTrading(reason: string, options: { force?: boolean } = {}): void {
     const normalized = String(reason || "UNKNOWN").trim().toUpperCase();
     if (!normalized) return;
 
-    if (PAPER_TRADING_MODE) {
+    if (PAPER_TRADING_MODE && !options.force) {
         logger.warn(
             { event: "SYSTEM_TRADING_RESUME_SKIPPED", reason: normalized },
-            "Paper trading mode: resumeTrading no-op"
+            "Paper trading mode: resumeTrading no-op (pass force:true to override)"
         );
         return;
     }

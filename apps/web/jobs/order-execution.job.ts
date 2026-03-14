@@ -1,4 +1,4 @@
-import { ExecutionService } from "@/services/execution.service";
+import { OrderExecutorService } from "@/services/trading/execution/order-executor.service";
 import { logger } from "@/lib/logger";
 
 class OrderExecutionJob {
@@ -57,7 +57,7 @@ class OrderExecutionJob {
      */
     private async executeTick(): Promise<void> {
         try {
-            const executedCount = await ExecutionService.executeOpenOrders();
+            const executedCount = await OrderExecutorService.executeOpenOrders();
             this.tickCount++;
             this.lastRunAt = new Date();
 
@@ -92,3 +92,5 @@ export const orderExecutionJob =
     globalState.__orderExecutionJob || new OrderExecutionJob();
 
 globalState.__orderExecutionJob = orderExecutionJob;
+
+

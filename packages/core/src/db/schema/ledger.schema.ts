@@ -10,6 +10,7 @@ import {
     uuid,
     uniqueIndex,
     varchar,
+    bigint,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import { type InferInsertModel, type InferSelectModel } from "drizzle-orm";
@@ -78,9 +79,43 @@ export const ledgerEntries = pgTable(
         referenceIdx: index("ledger_entries_reference_idx").on(t.referenceType, t.referenceId),
         globalSequenceIdx: index("ledger_entries_globalSequence_idx").on(t.globalSequence),
         globalSequenceUnique: uniqueIndex("ledger_entries_globalSequence_unique").on(t.globalSequence),
-        idempotencyKeyUnique: uniqueIndex("ledger_entries_idempotencyKey_unique").on(t.idempotencyKey),
+        referenceIdempotencyUnique: uniqueIndex("ledger_entries_reference_idempotency_unique").on(
+            t.referenceType,
+            t.referenceId,
+            t.idempotencyKey
+        ),
+        debitSequenceIdx: index("ledger_entries_debit_sequence_idx").on(
+            t.debitAccountId,
+            t.globalSequence
+        ),
+        creditSequenceIdx: index("ledger_entries_credit_sequence_idx").on(
+            t.creditAccountId,
+            t.globalSequence
+        ),
+        referenceCreatedIdx: index("ledger_entries_reference_created_idx").on(
+            t.referenceType,
+            t.createdAt
+        ),
         amountPositive: check("ledger_entries_amount_positive", sql`${t.amount} > 0`),
-        noSelfTransfer: check("ledger_entries_no_self_transfer", sql`${t.debitAccountId} <> ${t.creditAccountId}`),
+        noSelfTransfer: check(
+            "ledger_entries_no_self_transfer",
+            sql`${t.debitAccountId} <> ${t.creditAccountId}`
+        ),
+    })
+);
+
+export const ledgerAccountBalances = pgTable(
+    "ledger_account_balances",
+    {
+        accountId: uuid("accountId")
+            .primaryKey()
+            .references(() => ledgerAccounts.id, { onDelete: "cascade" }),
+        balance: numeric("balance", { precision: 28, scale: 8 }).notNull().default("0"),
+        lastSequence: bigint("lastSequence", { mode: "number" }).notNull().default(0),
+        updatedAt: timestamp("updatedAt").notNull().defaultNow(),
+    },
+    (t) => ({
+        accountIdIdx: index("ledger_account_balances_accountId_idx").on(t.accountId),
     })
 );
 
@@ -88,5 +123,7 @@ export type LedgerAccount = InferSelectModel<typeof ledgerAccounts>;
 export type NewLedgerAccount = InferInsertModel<typeof ledgerAccounts>;
 export type LedgerEntry = InferSelectModel<typeof ledgerEntries>;
 export type NewLedgerEntry = InferInsertModel<typeof ledgerEntries>;
+export type LedgerAccountBalance = InferSelectModel<typeof ledgerAccountBalances>;
+export type NewLedgerAccountBalance = InferInsertModel<typeof ledgerAccountBalances>;
 export type LedgerAccountType = typeof ledgerAccountTypeEnum.enumValues[number];
 export type LedgerReferenceType = typeof ledgerReferenceTypeEnum.enumValues[number];

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { DashboardService } from "@/services/dashboard.service";
+import { DashboardService } from "@/services/reporting/dashboard.service";
 import { handleError, ApiError } from "@/lib/errors";
 
 export const dynamic = "force-dynamic";
@@ -23,3 +23,4 @@ export async function GET() {
     return handleError(error);
   }
 }
+

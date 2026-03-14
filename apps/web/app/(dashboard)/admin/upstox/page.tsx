@@ -2,7 +2,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { auth } from "@/lib/auth";
-import { UpstoxAuthService } from "@/services/upstox-auth.service";
+import { UpstoxAuthService } from "@/services/market/feeds/upstox-auth.service";
 import { AlertCircle, CheckCircle2, Clock } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { StreamControl } from "@/components/admin/StreamControl";
@@ -105,3 +105,4 @@ export default async function UpstoxAdminPage({
     </div>
   );
 }
+

@@ -14,6 +14,24 @@ const PORT = parseInt(rawPort || '4200', 10);
 // Track engine readiness for the health endpoint
 let engineReady = false;
 let engineError: string | null = null;
+let shutdownStarted = false;
+
+function formatError(error: unknown): string {
+    if (error instanceof Error) return error.message;
+    return String(error);
+}
+
+function registerProcessHandlers() {
+    process.on('unhandledRejection', (reason) => {
+        engineError = formatError(reason);
+        logger.fatal({ err: reason }, 'Unhandled promise rejection');
+    });
+
+    process.on('uncaughtException', (error) => {
+        engineError = formatError(error);
+        logger.fatal({ err: error }, 'Uncaught exception');
+    });
+}
 
 async function main() {
     logger.info('Starting Market Engine...');
@@ -61,6 +79,8 @@ async function main() {
     // 🛑 GRACEFUL SHUTDOWN
     // ═══════════════════════════════════════════════════════════
     const shutdown = async () => {
+        if (shutdownStarted) return;
+        shutdownStarted = true;
         logger.info('Shutting down...');
         wss.close();
         await fastify.close();
@@ -93,7 +113,10 @@ async function main() {
     });
 }
 
+registerProcessHandlers();
+
 main().catch((error) => {
-    logger.error({ err: error }, 'Fatal error');
+    engineError = formatError(error);
+    logger.fatal({ err: error }, 'Fatal error');
     process.exit(1);
 });

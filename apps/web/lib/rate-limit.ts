@@ -74,3 +74,34 @@ export class RateLimiter {
 // Global instance: 10 requests per second max
 // Upstox limit is often higher (e.g. 20-50), but 10 is super safe.
 export const upstoxRateLimiter = new RateLimiter(10);
+
+/**
+ * Per-key fixed-window rate limiter.
+ * H-1 FIX: Used to prevent rapid-fire order placement from a single user.
+ *
+ * @param key      Unique key to track (e.g. `order-place:{userId}`)
+ * @param options  maxRequests: max allowed in windowMs; windowMs: window in ms
+ * @returns `{ allowed: boolean }` — true if the call is within quota
+ */
+const windowCounters = new Map<string, { count: number; windowStart: number }>();
+
+export function rateLimit(
+    key: string,
+    options: { maxRequests: number; windowMs: number }
+): { allowed: boolean } {
+    const now = Date.now();
+    const entry = windowCounters.get(key);
+
+    if (!entry || now - entry.windowStart >= options.windowMs) {
+        // New window
+        windowCounters.set(key, { count: 1, windowStart: now });
+        return { allowed: true };
+    }
+
+    if (entry.count >= options.maxRequests) {
+        return { allowed: false };
+    }
+
+    entry.count++;
+    return { allowed: true };
+}

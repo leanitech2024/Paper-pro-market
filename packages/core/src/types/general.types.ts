@@ -8,4 +8,4 @@ export type InstrumentMode = 'equity' | 'futures' | 'options';
 
 export type ExpiryType = 'WEEKLY' | 'MONTHLY';
 
-export type ExitReason = 'MANUAL' | 'STOP_LOSS' | 'TARGET' | 'EXPIRY';
+export type ExitReason = 'MANUAL' | 'STOP_LOSS' | 'TARGET' | 'EXPIRY' | 'SQUARE_OFF';

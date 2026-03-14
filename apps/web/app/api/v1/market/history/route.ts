@@ -191,7 +191,7 @@ export async function GET(req: NextRequest) {
     if (instrumentKeyParam) {
       instrumentKey = toInstrumentKey(instrumentKeyParam);
     } else if (symbol) {
-      const { UpstoxService } = await import("@/services/upstox.service");
+      const { UpstoxService } = await import("@/services/market/feeds/upstox-feed.service");
       instrumentKey = await UpstoxService.resolveInstrumentKey(symbol);
     } else {
       return NextResponse.json(
@@ -258,3 +258,4 @@ export async function GET(req: NextRequest) {
     );
   }
 }
+

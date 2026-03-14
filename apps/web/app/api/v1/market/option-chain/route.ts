@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { OptionChainSchema } from "@paper-market/core";
-import { OptionChainService } from "@/services/option-chain.service";
+import { OptionChainService } from "@/services/market/instruments/option-chain.service";
 import { handleError, ApiError } from "@/lib/errors";
 import { auth } from "@/lib/auth";
 
@@ -29,3 +29,4 @@ export async function GET(req: NextRequest) {
         return handleError(error);
     }
 }
+

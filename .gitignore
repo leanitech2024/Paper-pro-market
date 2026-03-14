@@ -31,14 +31,16 @@ out/
 # Node
 node_modules/
 
-# Env
+# Env — block ALL .env variants to prevent credential leaks
+# S-5 FIX: Use wildcard pattern to catch .env1.production, .env.staging, etc.
 .env
-.env.local
-.env.production
-.env.development
+.env.*
+!.env.example
+!.env.*.example
+*.env
+*/.env
+*/.env.*
 .env1.production
-/.env.production
-/apps/market-engine/.env.production
 
 
 # Antigravity

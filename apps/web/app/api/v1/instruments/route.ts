@@ -5,7 +5,7 @@
 
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { InstrumentService } from '@/services/instrument.service';
+import { InstrumentService } from '@/services/market/catalog/instrument.service';
 import { logger } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
@@ -31,3 +31,4 @@ export async function GET() {
     );
   }
 }
+

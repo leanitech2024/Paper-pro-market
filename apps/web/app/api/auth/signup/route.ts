@@ -5,8 +5,9 @@ import { hash } from "bcryptjs";
 import { eq } from "drizzle-orm";
 import { SignupSchema } from "@paper-market/core";
 import { handleError, ApiError } from "@/lib/errors";
-import { WalletService } from "@/services/wallet.service";
-import { bootstrapUserLedgerState } from "@/services/ledger-bootstrap.service";
+import { WalletService } from "@/services/accounting/wallet/wallet.service";
+import { bootstrapUserLedgerState } from "@/services/accounting/ledger/ledger-bootstrap.service";
+import { WatchlistService } from "@/services/market/catalog/watchlist.service";
 
 export async function POST(req: NextRequest) {
     try {
@@ -40,6 +41,12 @@ export async function POST(req: NextRequest) {
             await bootstrapUserLedgerState(user.id, tx);
         });
 
+        try {
+            await WatchlistService.ensureDefaultWatchlist(user.id);
+        } catch (error) {
+            console.error("Failed to create default watchlist during signup:", error);
+        }
+
         return NextResponse.json(
             {
                 success: true,
@@ -56,3 +63,5 @@ export async function POST(req: NextRequest) {
         return handleError(error);
     }
 }
+
+

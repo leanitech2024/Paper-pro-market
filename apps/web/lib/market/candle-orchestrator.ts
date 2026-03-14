@@ -14,7 +14,7 @@
 // - NO Database calls (delegated to Service helpers)
 // ═══════════════════════════════════════════════════════════
 
-import { UpstoxService } from "@/services/upstox.service";
+import { UpstoxService } from "@/services/market/feeds/upstox-feed.service";
 import { subDays, subMonths, subWeeks, subYears } from "date-fns";
 import { toUnixSeconds } from "./time";
 
@@ -481,3 +481,4 @@ export class CandleOrchestrator {
         return cursor;
     }
 }
+

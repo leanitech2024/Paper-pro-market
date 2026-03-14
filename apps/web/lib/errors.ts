@@ -64,7 +64,10 @@ export function handleError(error: unknown): NextResponse<ErrorResponse> {
             success: false,
             error: {
                 code: "INTERNAL_SERVER_ERROR",
-                message: config.isDev && error instanceof Error ? error.message : "An unexpected error occurred.",
+                // C-7 FIX: Never expose raw error.message to the client.
+                // If NODE_ENV is misconfigured in production this would leak SQL errors
+                // and internal stack traces. Full details are logged server-side above.
+                message: "An unexpected error occurred.",
             },
         },
         { status: 500 }

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { WalletService } from "@/services/wallet.service";
+import { WalletService } from "@/services/accounting/wallet/wallet.service";
 import { handleError } from "@/lib/errors";
 import { auth } from "@/lib/auth";
 import { TransactionQuerySchema } from "@paper-market/core";
@@ -70,3 +70,4 @@ export async function GET(req: Request) {
         return handleError(error);
     }
 }
+

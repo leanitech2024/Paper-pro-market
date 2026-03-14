@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { tickBus } from '@/lib/trading/tick-bus';
-import { realTimeMarketService } from '@/services/realtime-market.service';
+import { realTimeMarketService } from '@/services/market/feeds/realtime-market.service';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -65,3 +65,4 @@ export async function GET(req: NextRequest) {
         return NextResponse.json({ error: 'Failed to load feed health' }, { status: 500 });
     }
 }
+

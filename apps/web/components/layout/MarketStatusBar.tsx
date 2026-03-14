@@ -2,7 +2,6 @@
 
 import { useGlobalStore } from "@/stores/global.store";
 import { useMarketStore } from "@/stores/trading/market.store";
-import { useWalletStore } from "@/stores/wallet.store";
 import { cn } from "@/lib/utils";
 import { symbolToIndexInstrumentKey, toCanonicalSymbol, toInstrumentKey } from "@paper-market/core";
 
@@ -26,7 +25,6 @@ const INDEX_CONFIG = [
 
 export function MarketStatusBar() {
   const { selectedSymbol } = useGlobalStore();
-  const balance = useWalletStore((state) => state.balance);
   const quotesByInstrument = useMarketStore((state) => state.quotesByInstrument);
   const selectQuote = useMarketStore((state) => state.selectQuote);
 
@@ -85,12 +83,6 @@ export function MarketStatusBar() {
         })}
       </div>
 
-      <div className="flex items-center gap-2 text-xs font-mono">
-        <span className="text-muted-foreground">Balance:</span>
-        <span className="text-foreground font-semibold">
-          INR {balance.toLocaleString("en-IN", { maximumFractionDigits: 0 })}
-        </span>
-      </div>
     </div>
   );
 }

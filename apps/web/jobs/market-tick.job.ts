@@ -1,5 +1,6 @@
-import { marketSimulation } from "@/services/market-simulation.service";
+import { marketSimulation } from "@/services/market/feeds/market-simulation.service";
 import { logger } from "@/lib/logger";
+import { SlTargetEngineService } from "@/services/trading/execution/sl-target-engine.service";
 
 class MarketTickJob {
     private intervalId: NodeJS.Timeout | null = null;
@@ -22,7 +23,7 @@ class MarketTickJob {
 
             // Start the tick interval
             this.intervalId = setInterval(() => {
-                this.executeTick();
+                void this.executeTick();
             }, 1000);
 
             this.isRunning = true;
@@ -62,7 +63,7 @@ class MarketTickJob {
      * Execute a single tick.
      * Logs every 10 ticks.
      */
-    private executeTick(): void {
+    private async executeTick(): Promise<void> {
         try {
             marketSimulation.tick();
             this.tickCount++;
@@ -77,6 +78,9 @@ class MarketTickJob {
                     "Market tick checkpoint"
                 );
             }
+
+            await SlTargetEngineService.checkAndExecute();
+            await SlTargetEngineService.misSquareOff();
         } catch (error) {
             logger.error({ err: error, tickCount: this.tickCount }, "Market tick failed");
         }
@@ -95,3 +99,6 @@ export const marketTickJob =
     globalState.__marketTickJob || new MarketTickJob();
 
 globalState.__marketTickJob = marketTickJob;
+
+
+

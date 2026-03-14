@@ -14,6 +14,9 @@ import { MarketStatusBar } from '@/components/layout/MarketStatusBar';
 import { MobileBottomNav } from '@/components/layout/MobileBottomNav';
 import { cn } from '@/lib/utils';
 import { toInstrumentKey } from '@paper-market/core';
+import { useSearchStore } from '@/stores/ui/search.store';
+import { GlobalSearchModal } from '@/components/trade/search/GlobalSearchModal';
+import { Search } from 'lucide-react';
 
 export default function DashboardLayoutClient({ children }: { children: ReactNode }) {
   
@@ -28,6 +31,27 @@ export default function DashboardLayoutClient({ children }: { children: ReactNod
     fetchPositions();
   }, [fetchWallet, fetchPositions]);
 
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Don't trigger if user is typing in an input
+      if (
+        e.target instanceof HTMLInputElement ||
+        e.target instanceof HTMLTextAreaElement ||
+        (e.target as HTMLElement).isContentEditable
+      ) {
+        return;
+      }
+
+      if ((e.ctrlKey || e.metaKey) && e.key === "k") {
+        e.preventDefault();
+        useSearchStore.getState().openSearch();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
   return (
     <DashboardContentWrapper>
       {children}
@@ -41,10 +65,18 @@ function DashboardContentWrapper({ children }: { children: ReactNode }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const pathname = usePathname();
   const isEquityTradeRoute = pathname?.startsWith('/trade/equity');
+  const { isOpen, searchMode, placeholder, onSelect, closeSearch } = useSearchStore();
 
   return (
 
     <div className="flex min-h-screen w-full bg-background text-foreground font-sans ">
+      <GlobalSearchModal
+        open={isOpen}
+        onOpenChange={(open) => !open && closeSearch()}
+        searchMode={searchMode}
+        placeholder={placeholder}
+        onSelectStock={onSelect}
+      />
       <Sidebar
         mobileOpen={mobileMenuOpen}
         setMobileOpen={setMobileMenuOpen}
@@ -145,6 +177,16 @@ function MobileFloatingHeader() {
             </div>
           </div>
         </div>
+
+        <span className="h-6 w-px shrink-0 bg-border/80 dark:bg-[#1a2e4f]" />
+
+        <button
+          onClick={() => useSearchStore.getState().openSearch()}
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-foreground transition-colors hover:bg-muted/70 dark:hover:bg-white/[0.06]"
+          aria-label="Search"
+        >
+          <Search className="h-4.5 w-4.5 text-muted-foreground dark:text-slate-300" />
+        </button>
 
         <span className="h-6 w-px shrink-0 bg-border/80 dark:bg-[#1a2e4f]" />
 

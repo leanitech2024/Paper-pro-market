@@ -100,30 +100,37 @@ export default function FuturesPage() {
   const [searchModalOpen, setSearchModalOpen] = useState(false);
   const [isBootstrappingDefault, setIsBootstrappingDefault] = useState(true);
   const [mobileOrderOpen, setMobileOrderOpen] = useState(false);
-  const liveTokenPrice = useMarketStore((state) => {
+  const quotesByInstrument = useMarketStore((state) => state.quotesByInstrument);
+  const selectQuote = useMarketStore((state) => state.selectQuote);
+  const selectPrice = useMarketStore((state) => state.selectPrice);
+
+  const liveTokenPrice = useMemo(() => {
     const token = selectedStock?.instrumentToken;
     if (!token) return 0;
-    const price = Number(state.quotesByInstrument[token]?.price);
+    const price = Number(quotesByInstrument[token]?.price);
     return Number.isFinite(price) && price > 0 ? price : 0;
-  });
-  const liveSymbolPrice = useMarketStore((state) => {
+  }, [quotesByInstrument, selectedStock?.instrumentToken]);
+
+  const liveSymbolPrice = useMemo(() => {
     const symbol = selectedStock?.symbol;
     if (!symbol) return 0;
-    const price = Number(state.selectPrice(symbol));
+    const price = Number(selectPrice(symbol));
     return Number.isFinite(price) && price > 0 ? price : 0;
-  });
-  const liveTokenChange = useMarketStore((state) => {
+  }, [quotesByInstrument, selectPrice, selectedStock?.symbol]);
+
+  const liveTokenChange = useMemo(() => {
     const token = selectedStock?.instrumentToken;
     if (!token) return Number.NaN;
-    const change = Number(state.quotesByInstrument[token]?.changePercent);
+    const change = Number(quotesByInstrument[token]?.changePercent);
     return Number.isFinite(change) ? change : Number.NaN;
-  });
-  const liveSymbolChange = useMarketStore((state) => {
+  }, [quotesByInstrument, selectedStock?.instrumentToken]);
+
+  const liveSymbolChange = useMemo(() => {
     const symbol = selectedStock?.symbol;
     if (!symbol) return Number.NaN;
-    const change = Number(state.selectQuote(symbol)?.changePercent);
+    const change = Number(selectQuote(symbol)?.changePercent);
     return Number.isFinite(change) ? change : Number.NaN;
-  });
+  }, [quotesByInstrument, selectQuote, selectedStock?.symbol]);
 
   useEffect(() => {
     if (selectedStock) {
@@ -233,18 +240,19 @@ export default function FuturesPage() {
     />
   );
 
-  const headerSymbolPrice = useMarketStore((state) => {
+  const headerSymbolPrice = useMemo(() => {
     const symbol = selectedStock?.symbol || chartBinding.symbol;
     if (!symbol) return 0;
-    const price = Number(state.selectPrice(symbol));
+    const price = Number(selectPrice(symbol));
     return Number.isFinite(price) && price > 0 ? price : 0;
-  });
-  const headerSymbolChange = useMarketStore((state) => {
+  }, [quotesByInstrument, selectPrice, selectedStock?.symbol, chartBinding.symbol]);
+
+  const headerSymbolChange = useMemo(() => {
     const symbol = selectedStock?.symbol || chartBinding.symbol;
     if (!symbol) return Number.NaN;
-    const change = Number(state.selectQuote(symbol)?.changePercent);
+    const change = Number(selectQuote(symbol)?.changePercent);
     return Number.isFinite(change) ? change : Number.NaN;
-  });
+  }, [quotesByInstrument, selectQuote, selectedStock?.symbol, chartBinding.symbol]);
 
   const displayLtp =
     liveTokenPrice || liveSymbolPrice || headerSymbolPrice || Number(selectedStock?.price || 0);

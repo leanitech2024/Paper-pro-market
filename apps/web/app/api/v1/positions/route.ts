@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { PositionService } from "@/services/position.service";
+import { PositionService } from "@/services/trading/positions/position.service";
 import { handleError, ApiError } from "@/lib/errors";
 
 /**
@@ -23,3 +23,5 @@ export async function GET(req: NextRequest) {
         return handleError(error);
     }
 }
+
+

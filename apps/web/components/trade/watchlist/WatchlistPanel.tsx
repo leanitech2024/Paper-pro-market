@@ -14,6 +14,13 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { toast } from 'sonner';
 import { WatchlistItemMenu } from './WatchlistItemMenu';
 import { WatchlistSkeleton } from './WatchlistSkeleton';
@@ -25,9 +32,10 @@ interface WatchlistPanelProps {
   onSelect: (stock: Stock) => void;
   selectedSymbol?: string;
   onOpenSearch: () => void;
+  onClearSelection?: () => void;
 }
 
-export function WatchlistPanel({ instruments, onSelect, selectedSymbol, onOpenSearch }: WatchlistPanelProps) {
+export function WatchlistPanel({ instruments, onSelect, selectedSymbol, onOpenSearch, onClearSelection }: WatchlistPanelProps) {
   const [isCreating, setIsCreating] = useState(false);
   const [newWatchlistName, setNewWatchlistName] = useState('');
   const [hoveredSymbol, setHoveredSymbol] = useState<string | null>(null);
@@ -111,6 +119,13 @@ export function WatchlistPanel({ instruments, onSelect, selectedSymbol, onOpenSe
     () => toSymbolKey(toCanonicalSymbol(selectedSymbol || "")),
     [selectedSymbol]
   );
+  const handleItemRemoved = (stock: Stock) => {
+    const removedSymbolKey = toSymbolKey(toCanonicalSymbol(stock.symbol || ""));
+    if (removedSymbolKey && removedSymbolKey === selectedSymbolKey) {
+      onClearSelection?.();
+    }
+  };
+
   const handleCreateWatchlist = async () => {
     if (!newWatchlistName.trim()) return;
     
@@ -131,7 +146,7 @@ export function WatchlistPanel({ instruments, onSelect, selectedSymbol, onOpenSe
   };
 
   // ═══════════════════════════════════════════════════════════
-  // 💀 SKELETON LOADER: Show placeholders while fetching
+  //  SKELETON LOADER: Show placeholders while fetching
   // ═══════════════════════════════════════════════════════════
   if (isFetchingWatchlistData && localMatches.length === 0) {
     return <WatchlistSkeleton />;
@@ -177,35 +192,38 @@ export function WatchlistPanel({ instruments, onSelect, selectedSymbol, onOpenSe
         </Button>
       </div>
 
-      {/* Create Watchlist Input */}
-      {isCreating && (
-        <div className="p-2 border-b border-border bg-accent/20">
-          <div className="flex gap-1">
-            <Input
-              className="h-7 text-xs"
-              placeholder="Watchlist name..."
-              value={newWatchlistName}
-              onChange={(e) => setNewWatchlistName(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') handleCreateWatchlist();
-                if (e.key === 'Escape') {
-                  setIsCreating(false);
-                  setNewWatchlistName('');
-                }
-              }}
-              autoFocus
-            />
+      {/* Create Watchlist Dialog */}
+      <Dialog open={isCreating} onOpenChange={(open) => {
+        setIsCreating(open);
+        if (!open) setNewWatchlistName('');
+      }}>
+        <DialogContent className="sm:max-w-[425px] bg-card border-border shadow-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-bold text-foreground">Create New Watchlist</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="flex flex-col gap-2">
+              <label htmlFor="name" className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                Watchlist Name
+              </label>
+              <Input
+                id="name"
+                className="h-10 text-sm focus-visible:ring-primary/50"
+                placeholder="e.g. My Favorites, Long Term..."
+                value={newWatchlistName}
+                onChange={(e) => setNewWatchlistName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleCreateWatchlist();
+                }}
+                autoFocus
+              />
+            </div>
+          </div>
+          <DialogFooter className="gap-2 sm:gap-0">
             <Button
-              size="sm"
-              className="h-7 px-2 text-xs"
-              onClick={handleCreateWatchlist}
-            >
-              Add
-            </Button>
-            <Button
-              size="sm"
               variant="ghost"
-              className="h-7 px-2 text-xs"
+              size="sm"
+              className="px-4"
               onClick={() => {
                 setIsCreating(false);
                 setNewWatchlistName('');
@@ -213,9 +231,17 @@ export function WatchlistPanel({ instruments, onSelect, selectedSymbol, onOpenSe
             >
               Cancel
             </Button>
-          </div>
-        </div>
-      )}
+            <Button
+              size="sm"
+              className="px-6 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold"
+              onClick={handleCreateWatchlist}
+              disabled={!newWatchlistName.trim() || createWatchlistMutation.isPending}
+            >
+              {createWatchlistMutation.isPending ? 'Creating...' : 'Create Watchlist'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* List Content */}
       <ScrollArea className="flex-1 min-h-0 h-full overscroll-y-contain">
@@ -310,7 +336,12 @@ export function WatchlistPanel({ instruments, onSelect, selectedSymbol, onOpenSe
                       S
                     </Button>
                     <div className="pointer-events-auto" onClick={(e) => e.stopPropagation()}>
-                      <WatchlistItemMenu stock={stock} isInWatchlist={true} />
+                      <WatchlistItemMenu
+                        stock={renderedStock}
+                        isInWatchlist={true}
+                        onSelect={onSelect}
+                        onRemoved={handleItemRemoved}
+                      />
                     </div>
                   </>
                 )}

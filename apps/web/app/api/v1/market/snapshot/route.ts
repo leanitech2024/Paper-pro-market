@@ -206,7 +206,7 @@ async function fetchSnapshotMissesSingleflight(
   }
 
   const fetchPromise = (async () => {
-    const { UpstoxService } = await import("@/services/upstox.service");
+    const { UpstoxService } = await import("@/services/market/feeds/upstox-feed.service");
     const upstreamInstrumentKeys = Array.from(
       new Set(missingInstrumentKeys.map((value) => toUpstoxRequestInstrumentKey(value)).filter(Boolean))
     );
@@ -441,4 +441,5 @@ export async function GET() {
     );
   }
 }
+
 

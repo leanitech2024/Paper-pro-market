@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { TradeService } from "@/services/trade.service";
+import { TradeService } from "@/services/trading/execution/trade.service";
 import { handleError, ApiError } from "@/lib/errors";
 
 /**
@@ -34,3 +34,5 @@ export async function GET(req: NextRequest) {
         return handleError(error);
     }
 }
+
+

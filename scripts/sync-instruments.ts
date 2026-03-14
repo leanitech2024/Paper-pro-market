@@ -2,13 +2,13 @@
  * Instrument Sync CLI Script
  * 
  * Usage:
- *   npx tsx scripts/sync-instruments.ts
+ *   pnpm exec tsx scripts/sync-instruments.ts
  */
 
 import 'dotenv/config';
-import { syncInstruments } from '../lib/instruments/instrument-sync.service';
-import { db } from '../lib/db';
-import { instruments } from '../lib/db/schema';
+import { syncInstruments } from '../apps/web/lib/instruments/instrument-sync.service';
+import { db } from '../apps/web/lib/db';
+import { instruments } from '@paper-market/core/db';
 import { sql } from 'drizzle-orm';
 
 async function main() {

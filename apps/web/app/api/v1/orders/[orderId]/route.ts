@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { OrderService } from "@/services/order.service";
+import { OrderService } from "@/services/trading/order/order.service";
 import { handleError, ApiError } from "@/lib/errors";
 import { CancelOrderSchema } from "@paper-market/core";
 

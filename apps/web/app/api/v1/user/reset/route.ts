@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { eq, inArray, or, and } from "drizzle-orm";
+import { eq, inArray, or } from "drizzle-orm";
 import { z } from "zod";
 import {
     ledgerAccounts,
@@ -11,17 +11,16 @@ import {
     trades,
     transactions,
     wallets,
-    watchlistItems,
     watchlists,
-    instruments,
 } from "@paper-market/core/db";
 import { handleError, ApiError } from "@/lib/errors";
 import { logger } from "@/lib/logger";
-import { WalletService } from "@/services/wallet.service";
-import { bootstrapLedgerAccounts } from "@/services/ledger-bootstrap.service";
-import { ledgerCacheService } from "@/services/ledger-cache.service";
-import { LedgerService } from "@/services/ledger.service";
-import { mtmEngineService } from "@/services/mtm-engine.service";
+import { WalletService } from "@/services/accounting/wallet/wallet.service";
+import { bootstrapLedgerAccounts } from "@/services/accounting/ledger/ledger-bootstrap.service";
+import { ledgerCacheService } from "@/services/accounting/ledger/ledger-cache.service";
+import { LedgerService } from "@/services/accounting/ledger/ledger.service";
+import { mtmEngineService } from "@/services/trading/valuation/mtm-engine.service";
+import { WatchlistService } from "@/services/market/catalog/watchlist.service";
 
 const RESET_BALANCE = "10000000.00";
 
@@ -113,74 +112,15 @@ export async function POST(req: NextRequest) {
                 {
                     referenceType: "ADJUSTMENT",
                     referenceId: resetReference,
-                    idempotencyKey: `ADJUSTMENT-${resetReference}-${userId}`,
+                    idempotencyKey: `DEPOSIT-${resetReference}-${userId}`,
                 },
                 tx
             );
             await WalletService.recalculateFromLedger(userId, tx);
 
-            const topStocks = [
-                "RELIANCE",
-                "TCS",
-                "HDFCBANK",
-                "ICICIBANK",
-                "INFY",
-                "BHARTIARTL",
-                "ITC",
-                "LT",
-                "AXISBANK",
-                "SBIN",
-            ];
-
-            const foundInstruments = await tx
-                .select({ instrumentToken: instruments.instrumentToken })
-                .from(instruments)
-                .where(
-                    and(
-                        inArray(instruments.tradingsymbol, topStocks),
-                        eq(instruments.segment, "NSE_EQ"),
-                        eq(instruments.exchange, "NSE")
-                    )
-                );
-
-            if (foundInstruments.length > 0) {
-                let defaultWatchlist = await tx.query.watchlists.findFirst({
-                    where: and(eq(watchlists.userId, userId), eq(watchlists.isDefault, true)),
-                });
-
-                if (!defaultWatchlist) {
-                    try {
-                        const [newWatchlist] = await tx
-                            .insert(watchlists)
-                            .values({
-                                userId,
-                                name: "Nifty 10",
-                                isDefault: true,
-                            })
-                            .returning();
-                        defaultWatchlist = newWatchlist ?? null;
-                    } catch {
-                        // Concurrent requests can recreate a default watchlist between delete and insert.
-                        // Re-read and continue instead of failing reset.
-                        defaultWatchlist = await tx.query.watchlists.findFirst({
-                            where: and(eq(watchlists.userId, userId), eq(watchlists.isDefault, true)),
-                        });
-                    }
-                }
-
-                if (defaultWatchlist?.id) {
-                    await tx
-                        .insert(watchlistItems)
-                        .values(
-                            foundInstruments.map((inst) => ({
-                                watchlistId: defaultWatchlist?.id,
-                                instrumentToken: inst.instrumentToken,
-                            }))
-                        )
-                        .onConflictDoNothing();
-                }
-            }
         });
+
+        await WatchlistService.ensureDefaultWatchlist(userId);
 
         mtmEngineService.requestRefresh(userId);
 
@@ -192,7 +132,10 @@ export async function POST(req: NextRequest) {
             },
         });
     } catch (error) {
-        console.error("[RESET] Failed:", error);
+        logger.error({ err: error }, "[RESET] Account reset failed");
         return handleError(error);
     }
 }
+
+
+

@@ -133,23 +133,30 @@ export function GlobalSearchModal({
 
     try {
       if (isAdded) {
-        await removeInstrumentMutation.mutateAsync(token);
-
         setAddedInstruments((prev) => {
           const next = new Set(prev);
           next.delete(token);
           return next;
         });
+        await removeInstrumentMutation.mutateAsync(token);
 
-        toast.success(`Removed ${stock.symbol}`);
+        toast.success(`Removed ${stock.symbol} from watchlist`);
       } else {
-        await addInstrumentMutation.mutateAsync(token);
-
         setAddedInstruments((prev) => new Set(prev).add(token));
+        await addInstrumentMutation.mutateAsync(stock);
 
-        toast.success(`Added ${stock.symbol}`);
+        toast.success(`Added ${stock.symbol} to watchlist`);
       }
     } catch {
+      setAddedInstruments((prev) => {
+        const next = new Set(prev);
+        if (isAdded) {
+          next.add(token);
+        } else {
+          next.delete(token);
+        }
+        return next;
+      });
       toast.error("Watchlist update failed");
     }
   };

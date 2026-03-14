@@ -73,47 +73,38 @@ class MarketWebSocket {
     }
 
     connect() {
-        if (this.ws?.readyState === WebSocket.OPEN) {
-            console.log('⚠️ WebSocket already connected');
-            return;
-        }
+        if (this.ws?.readyState === WebSocket.OPEN) return;
 
         try {
             this.ws = new WebSocket(this.url);
 
             this.ws.onopen = () => {
-                console.log('✅ WebSocket connected to market-engine');
                 this.reconnectAttempts = 0;
+                this.loggedPersistentReconnect = false;
                 this.handlers.connected?.();
             };
 
             this.ws.onmessage = (event) => {
                 try {
                     const message = JSON.parse(event.data);
-
                     switch (message.type) {
-                        case 'connected':
-                            console.log('📡 Market engine acknowledged connection');
-                            break;
                         case 'tick':
                             this.handlers.tick?.(message.data);
                             break;
                         case 'candle':
                             this.handlers.candle?.(message.data);
                             break;
+                        case 'connected':
                         case 'subscribed':
                         case 'unsubscribed':
                         case 'subscription_error':
-                            // Subscription acks/errors are handled by caller state; avoid noisy console warnings.
-                            break;
                         case 'heartbeat':
-                            // Silent heartbeat
+                            // Handled by caller state or silently acknowledged.
                             break;
-                        default:
-                            console.debug('Unhandled WebSocket message type:', message.type);
+                        // Unknown types are silently ignored — avoids noisy client console.
                     }
-                } catch (error) {
-                    console.error('Failed to parse WebSocket message:', error);
+                } catch {
+                    // JSON parse errors are non-fatal; the next valid tick will recover.
                 }
             };
 
@@ -124,39 +115,31 @@ class MarketWebSocket {
                     readyState: this.ws?.readyState ?? WebSocket.CLOSED,
                     reconnectAttempts: this.reconnectAttempts,
                 };
-
-                // Browser WS error events intentionally hide details and usually stringify to {}.
-                // Log normalized context once and let onclose drive reconnect handling.
-                if (!this.isIntentionalClose) {
-                    console.warn('⚠️ WebSocket transport error (details unavailable in browser)', context);
-                }
+                // Browser WS error events intentionally hide details.
+                // All error signalling flows through the onError callback.
                 this.handlers.error?.(context);
             };
 
-            this.ws.onclose = (event) => {
-                console.log(`🔴 WebSocket disconnected (code=${event.code}, reason=${event.reason || 'n/a'})`);
+            this.ws.onclose = () => {
                 this.handlers.disconnected?.();
-
                 if (!this.isIntentionalClose) {
                     this.attemptReconnect();
                 }
             };
-        } catch (error) {
-            console.error('Failed to create WebSocket:', error);
+        } catch {
             this.attemptReconnect();
         }
     }
 
     private attemptReconnect() {
-        if (this.reconnectAttempts >= this.MAX_RECONNECT_ATTEMPTS && !this.loggedPersistentReconnect) {
-            this.loggedPersistentReconnect = true;
-            console.error('❌ Max reconnect attempts reached, continuing retries every 30000ms');
-        }
-
-        const delay = this.RECONNECT_DELAYS[Math.min(this.reconnectAttempts, this.RECONNECT_DELAYS.length - 1)];
+        // H-8 FIX: Add ±20% jitter to reconnect delay to avoid thundering herd
+        // when the market-engine restarts and all clients reconnect simultaneously.
+        const baseDelay = this.RECONNECT_DELAYS[
+            Math.min(this.reconnectAttempts, this.RECONNECT_DELAYS.length - 1)
+        ];
+        const jitter = baseDelay * 0.2 * (Math.random() * 2 - 1); // ±20%
+        const delay = Math.round(baseDelay + jitter);
         this.reconnectAttempts++;
-
-        console.log(`🔄 Reconnecting in ${delay}ms (attempt ${this.reconnectAttempts})`);
 
         this.reconnectTimer = setTimeout(() => {
             this.connect();
@@ -165,23 +148,13 @@ class MarketWebSocket {
 
     subscribe(symbols: string[]) {
         if (this.ws?.readyState === WebSocket.OPEN) {
-            this.ws.send(JSON.stringify({
-                type: 'subscribe',
-                symbols
-            }));
-            console.log(`📡 Subscribed to ${symbols.length} symbols`);
-        } else {
-            console.warn('⚠️ Cannot subscribe: WebSocket not connected');
+            this.ws.send(JSON.stringify({ type: 'subscribe', symbols }));
         }
     }
 
     unsubscribe(symbols: string[]) {
         if (this.ws?.readyState === WebSocket.OPEN) {
-            this.ws.send(JSON.stringify({
-                type: 'unsubscribe',
-                symbols
-            }));
-            console.log(`📡 Unsubscribed from ${symbols.length} symbols`);
+            this.ws.send(JSON.stringify({ type: 'unsubscribe', symbols }));
         }
     }
 
@@ -198,8 +171,6 @@ class MarketWebSocket {
             this.ws.close();
             this.ws = null;
         }
-
-        console.log('🔴 WebSocket disconnected (intentional)');
     }
 
     isConnected(): boolean {

@@ -1,5 +1,5 @@
 import { logger } from "@/lib/logger";
-import { expirySettlementService } from "@/services/expiry-settlement.service";
+import { expirySettlementService } from "@/services/trading/execution/expiry-settlement.service";
 
 const JOB_INTERVAL_MS = 60_000;
 
@@ -77,3 +77,4 @@ export const expirySettlementJob =
     globalState.__expirySettlementJob || new ExpirySettlementJob();
 
 globalState.__expirySettlementJob = expirySettlementJob;
+

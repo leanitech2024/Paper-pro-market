@@ -208,16 +208,17 @@ export async function POST(req: NextRequest) {
             )
         );
 
-        const { UpstoxService } = await import("@/services/upstox.service");
+        const { UpstoxService } = await import("@/services/market/feeds/upstox-feed.service");
         const token = await UpstoxService.getSystemToken();
 
         if (!token) {
             throw new ApiError("No system token available", 503, "UPSTOX_TOKEN_MISSING");
         }
 
-        const params = new URLSearchParams();
-        params.set("instrument_key", upstreamInstrumentKeys.join(","));
-        const url = `${UPSTOX_API_URL}/market-quote/quotes?${params.toString()}`;
+        const encodedKeys = upstreamInstrumentKeys
+            .map((k) => encodeURIComponent(k))
+            .join(",");
+        const url = `${UPSTOX_API_URL}/market-quote/quotes?instrument_key=${encodedKeys}`;
 
         const response = await fetch(url, {
             headers: {
@@ -302,3 +303,4 @@ export async function POST(req: NextRequest) {
         );
     }
 }
+

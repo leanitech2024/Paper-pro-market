@@ -68,6 +68,18 @@ const mergeSeriesByTimeStrict = <T extends { time: unknown }>(
         .map(([, row]) => row);
 };
 
+const ONE_DAY_SECONDS = 24 * 60 * 60;
+
+const toPaginationCursorDateStr = (endTime: number): string => {
+    const cursorTime = Math.max(0, Math.floor(endTime) - ONE_DAY_SECONDS);
+    return new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Asia/Kolkata',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+    }).format(new Date(cursorTime * 1000));
+};
+
 export const createChartDataSlice: MarketSlice<any> = (set, get) => ({
   // ─────────────────────────────────────────────────────────────────
   // 📊 Initial State
@@ -101,13 +113,9 @@ export const createChartDataSlice: MarketSlice<any> = (set, get) => ({
       set({ isFetchingHistory: true, isInitialLoad: false });
 
       try {
-          // Use strict Upstox V3 date format (YYYY-MM-DD) in IST for pagination cursor.
-          const toDateStr = new Intl.DateTimeFormat('en-CA', {
-              timeZone: 'Asia/Kolkata',
-              year: 'numeric',
-              month: '2-digit',
-              day: '2-digit'
-          }).format(new Date(endTime * 1000));
+          // Upstox historical to_date is inclusive, so paginate using the
+          // previous IST calendar day to avoid re-fetching the same oldest session.
+          const toDateStr = toPaginationCursorDateStr(endTime);
           
           let queryParams = `symbol=${encodeURIComponent(symbol)}`;
           const resolvedKey = toInstrumentKey(instrumentKey || get().simulatedInstrumentKey || "");

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { ExecutionService } from "@/services/execution.service";
+import { OrderExecutorService } from "@/services/trading/execution/order-executor.service";
 import { handleError } from "@/lib/errors";
 import { auth } from "@/lib/auth";
 import { z } from "zod";
@@ -28,7 +28,7 @@ export async function POST(req: NextRequest) {
         const body = await req.json().catch(() => ({}));
         BodySchema.parse(body);
 
-        const executedCount = await ExecutionService.executeOpenOrders();
+        const executedCount = await OrderExecutorService.executeOpenOrders();
         
         return NextResponse.json({
             success: true,
@@ -41,3 +41,5 @@ export async function POST(req: NextRequest) {
         return handleError(error);
     }
 }
+
+

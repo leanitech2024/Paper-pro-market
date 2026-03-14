@@ -124,7 +124,11 @@ export class UpstoxWebSocket {
       this.ws.on("message", (raw) => {
         const decoded = this.decodeMessage(raw);
         if (decoded && this.onUpdate) {
-          this.onUpdate(decoded);
+          try {
+            this.onUpdate(decoded);
+          } catch (error) {
+            logger.error({ err: error }, "Upstox message handler failed");
+          }
         }
       });
 

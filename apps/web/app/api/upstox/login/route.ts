@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { UpstoxService } from "@/services/upstox.service";
+import { UpstoxService } from "@/services/market/feeds/upstox-feed.service";
 import { auth } from "@/lib/auth";
 import { handleError, ApiError } from "@/lib/errors";
 
@@ -26,3 +26,4 @@ export async function GET(req: NextRequest) {
     return handleError(error);
   }
 }
+

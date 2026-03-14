@@ -1,15 +1,27 @@
-import { NormalizedTick } from '../core/types.js';
+import { NormalizedTick, ensureBidAsk } from '../core/types.js';
 
 export interface UpstoxFeedData {
     ltpc?: Record<string, unknown>;
     ff?: {
         ltpc?: Record<string, unknown>;
-        marketFF?: { ltpc?: Record<string, unknown> };
+        marketFF?: {
+            ltpc?: Record<string, unknown>;
+            bidAskQuote?: {
+                bid?: Array<{ quantity?: number; price?: number }>;
+                ask?: Array<{ quantity?: number; price?: number }>;
+            };
+        };
         indexFF?: { ltpc?: Record<string, unknown> };
         firstLevelWithGreeks?: { ltpc?: Record<string, unknown> };
     };
     fullFeed?: {
-        marketFF?: { ltpc?: Record<string, unknown> };
+        marketFF?: {
+            ltpc?: Record<string, unknown>;
+            bidAskQuote?: {
+                bid?: Array<{ quantity?: number; price?: number }>;
+                ask?: Array<{ quantity?: number; price?: number }>;
+            };
+        };
         indexFF?: { ltpc?: Record<string, unknown> };
     };
     firstLevelWithGreeks?: {
@@ -106,11 +118,29 @@ export class UpstoxAdapter {
                     ? Math.floor(ltt / 1000) 
                     : ltt;
             }
-            
+
+            /**
+             * Extract bid/ask from bidAskQuote if available in full-feed mode;
+             * fall back to spread simulation via ensureBidAsk.
+             */
+            const marketFF = feed?.ff?.marketFF || feed?.fullFeed?.marketFF;
+            const rawBid = marketFF?.bidAskQuote?.bid?.[0]?.price;
+            const rawAsk = marketFF?.bidAskQuote?.ask?.[0]?.price;
+            const rawBidQty = marketFF?.bidAskQuote?.bid?.[0]?.quantity;
+            const rawAskQty = marketFF?.bidAskQuote?.ask?.[0]?.quantity;
+
+            const bidRaw = Number.isFinite(Number(rawBid)) && Number(rawBid) > 0 ? Number(rawBid) : undefined;
+            const askRaw = Number.isFinite(Number(rawAsk)) && Number(rawAsk) > 0 ? Number(rawAsk) : undefined;
+            const { bid, ask } = ensureBidAsk(ltp, bidRaw, askRaw);
+
             const tick: NormalizedTick = {
                 instrumentKey,
                 symbol,
                 price: ltp,
+                bid,
+                ask,
+                bidQty: Number.isFinite(Number(rawBidQty)) && Number(rawBidQty) > 0 ? Number(rawBidQty) : undefined,
+                askQty: Number.isFinite(Number(rawAskQty)) && Number(rawAskQty) > 0 ? Number(rawAskQty) : undefined,
                 volume: Number(ltpc.vol ?? ltpc.ltq ?? 0) || 0,
                 timestamp,
                 exchange,
@@ -123,3 +153,4 @@ export class UpstoxAdapter {
         return ticks;
     }
 }
+

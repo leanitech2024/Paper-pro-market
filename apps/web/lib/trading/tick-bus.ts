@@ -1,4 +1,3 @@
-
 // ═══════════════════════════════════════════════════════════
 // 🎯 NORMALIZED TICK: Broker-agnostic tick format
 // ═══════════════════════════════════════════════════════════
@@ -10,40 +9,29 @@ declare global {
 }
 
 import type { NormalizedTick } from "@paper-market/core";
+import { isValidTick } from "@paper-market/core";
+import { logger } from "@/lib/logger";
+import { systemMetricsService } from "@/services/metrics/system-metrics.service";
+
+const MAX_TICK_LISTENERS = 50;
 
 // ═══════════════════════════════════════════════════════════
 // 🚌 TICK BUS: Event-driven tick distribution
 // ═══════════════════════════════════════════════════════════
 /**
  * TickBus is the central event hub for market data distribution.
- * 
+ *
  * Architecture:
  * ```
  * WebSocket → Adapter → TickBus.emit('tick')
  *                          ↓
- *                          ├─→ CandleEngine
- *                          ├─→ Watchlist
- *                          ├─→ IndicatorEngine
- *                          └─→ Recorder
+ *                          ├─→ MTMEngine
+ *                          ├─→ FillEngine
+ *                          └─→ LiquidationEngine
  * ```
- * 
+ *
  * Why: Decouples tick sources from consumers, enabling modular growth.
- */
-/**
- * TickBus is the central event hub for market data distribution.
- * 
- * Architecture:
- * ```
- * WebSocket → Adapter → TickBus.emit('tick')
- *                          ↓
- *                          ├─→ CandleEngine
- *                          ├─→ Watchlist
- *                          ├─→ IndicatorEngine
- *                          └─→ Recorder
- * ```
- * 
- * Why: Decouples tick sources from consumers, enabling modular growth.
- * 
+ *
  * 🔄 UPDATE: Replaced EventEmitter with micro-event bus for fault isolation.
  * If one listener fails, others continue unaffected.
  */
@@ -58,6 +46,7 @@ class TickBus {
 
     constructor() {
         this.startSymbolCleanupLoop();
+        this.startDebugMonitors();
     }
 
     /**
@@ -65,6 +54,12 @@ class TickBus {
      */
     on(event: 'tick', handler: (tick: NormalizedTick) => void): void {
         this.listeners.add(handler);
+        if (this.listeners.size > MAX_TICK_LISTENERS) {
+            logger.warn(
+                { activeListeners: this.listeners.size, limit: MAX_TICK_LISTENERS },
+                "TickBus listener count exceeded safe limit"
+            );
+        }
     }
 
     /**
@@ -74,78 +69,61 @@ class TickBus {
         this.listeners.delete(handler);
     }
 
-    /**
-     * Emit a normalized tick to all subscribers
-     * 🔥 CRITICAL: Batched dispatch with backpressure
-     * Keeps only latest tick per symbol to prevent memory spikes
-     */
+    // 🔥 BACKPRESSURE: Keep only latest tick per symbol
     private latestTicks = new Map<string, NormalizedTick>();
     private processing = false;
-    
-    // 🔥 CRITICAL: Cross-runtime defer (works in both Node.js AND browser)
+
+    // 🔥 CRITICAL FIX: Runtime-agnostic defer (Node.js or Browser)
     private defer = typeof setImmediate !== 'undefined'
         ? setImmediate
         : (fn: () => void) => setTimeout(fn, 0);
-    
-    emitTick(tick: NormalizedTick) {
-        // ═══════════════════════════════════════════════════════════
-        // 🚨 PHASE 0: Tick Throughput Logging (Baseline Visibility)
-        // ═══════════════════════════════════════════════════════════
-        if (process.env.DEBUG_MARKET === 'true') {
-            if (!globalThis.__TPS) {
-                globalThis.__TPS = 0;
-            }
-            if (!globalThis.__TPS_INTERVAL) {
-                globalThis.__TPS_INTERVAL = setInterval(() => {
-                    const tps = (globalThis.__TPS || 0) / 5;
-                    console.log("TICKS/SEC:", tps.toFixed(1));
-                    globalThis.__TPS = 0;
-                }, 5000);
-            }
-            globalThis.__TPS = (globalThis.__TPS || 0) + 1;
-        }
-        
+
+    emitTick(tick: NormalizedTick): void {
         this.tickCount++;
-        
+
+        if (process.env.DEBUG_MARKET === 'true') {
+            const tps = globalThis.__TPS ?? 0;
+            globalThis.__TPS = tps + 1;
+        }
+
         // Track per-symbol counts
         const identityKey = tick.instrumentKey || tick.symbol || "__unknown__";
+        // Validate tick before processing (drops bad ticks)
+        const prevPriceObj = this.latestTicks.get(identityKey);
+        const prevPrice = prevPriceObj ? prevPriceObj.price : undefined;
+        if (!isValidTick(tick, prevPrice)) {
+            // Drop malformed tick
+            return;
+        }
+
         const nowMs = Date.now();
-        const count = this.symbolCounts.get(identityKey) || 0;
+        const count = this.symbolCounts.get(identityKey) ?? 0;
         this.symbolCounts.set(identityKey, count + 1);
         this.symbolLastSeen.set(identityKey, nowMs);
 
         // 🔥 BACKPRESSURE: Keep only latest tick per symbol
-        // During volatility spikes (20x tick rate), this prevents memory explosion
         this.latestTicks.set(identityKey, tick);
 
-        if (this.processing) return; // Drop old ticks, only emit latest
-
+        if (this.processing) return;
         this.processing = true;
 
-        // 🔥 CRITICAL FIX: Runtime-agnostic defer (Node.js or Browser)
-        // setImmediate is NOT available in browsers!
         this.defer(() => {
             const ticks = Array.from(this.latestTicks.values());
             this.latestTicks.clear();
 
-            // Emit batched ticks synchronously
-            ticks.forEach(t => {
-                this.listeners.forEach(handler => {
+            for (const t of ticks) {
+                for (const handler of this.listeners) {
                     try {
                         handler(t);
                     } catch (error) {
-                        console.error('❌ TickBus listener error:', error);
+                        // L-3 FIX: Use structured logger, not console.error.
+                        logger.error({ err: error }, "TickBus listener error");
                     }
-                });
-            });
+                }
+            }
 
             this.processing = false;
         });
-
-        // Sample logging (1% of ticks to avoid spam)
-        if (process.env.DEBUG_MARKET === 'true' && this.tickCount % 100 === 0) {
-            console.log(`📊 TickBus: ${this.tickCount} total ticks processed`);
-        }
     }
 
     /**
@@ -156,15 +134,14 @@ class TickBus {
         return {
             totalTicks: this.tickCount,
             symbolCounts: Object.fromEntries(this.symbolCounts),
-            activeListeners: this.listeners.size
+            activeListeners: this.listeners.size,
         };
     }
 
     /**
-     * Get listener count for a specific event (Mocking EventEmitter API)
+     * Get listener count for a specific event (EventEmitter API compat)
      */
     listenerCount(event: string): number {
-        // We only support 'tick' event for now
         if (event === 'tick') return this.listeners.size;
         return 0;
     }
@@ -172,10 +149,49 @@ class TickBus {
     /**
      * Reset statistics
      */
-    resetStats() {
+    resetStats(): void {
         this.tickCount = 0;
         this.symbolCounts.clear();
         this.symbolLastSeen.clear();
+    }
+
+    /**
+     * Clear all debug intervals. Call during test teardown or hot-reload.
+     */
+    clearDebugMonitors(): void {
+        if (globalThis.__TPS_INTERVAL) {
+            clearInterval(globalThis.__TPS_INTERVAL);
+            globalThis.__TPS_INTERVAL = undefined;
+        }
+        if (globalThis.__MEMORY_INTERVAL) {
+            clearInterval(globalThis.__MEMORY_INTERVAL);
+            globalThis.__MEMORY_INTERVAL = undefined;
+        }
+        globalThis.__TPS = undefined;
+    }
+
+    private startDebugMonitors(): void {
+        if (process.env.DEBUG_MARKET !== 'true') return;
+        if (typeof process === 'undefined' || !process.memoryUsage) return;
+
+        // L-3 FIX: Guard both intervals so they are created at most once, and
+        // expose clearDebugMonitors() for cleanup during hot-reload / test teardown.
+        // The old code created new intervals on every module evaluate.
+        if (!globalThis.__TPS_INTERVAL) {
+            globalThis.__TPS = 0;
+            globalThis.__TPS_INTERVAL = setInterval(() => {
+                const tps = (globalThis.__TPS ?? 0) / 5;
+                logger.info({ tps: Number(tps.toFixed(1)) }, "TickBus ticks/sec");
+                globalThis.__TPS = 0;
+            }, 5000);
+        }
+
+        if (!globalThis.__MEMORY_INTERVAL) {
+            globalThis.__MEMORY_INTERVAL = setInterval(() => {
+                const m = process.memoryUsage();
+                logger.info({ heapMb: Number((m.heapUsed / 1024 / 1024).toFixed(1)) }, "TickBus heap");
+            }, 15000);
+        }
     }
 
     private startSymbolCleanupLoop(): void {
@@ -195,25 +211,9 @@ class TickBus {
 }
 
 // ═══════════════════════════════════════════════════════════
-// 🛠️ EXPORT SINGLETON INSTANCE
-// ═══════════════════════════════════════════════════════════
-// ═══════════════════════════════════════════════════════════
 // 🛠️ EXPORT SINGLETON INSTANCE (Global-Safe)
 // ═══════════════════════════════════════════════════════════
 const globalForTickBus = globalThis as unknown as { __tickBus: TickBus };
 
 export const tickBus = globalForTickBus.__tickBus || new TickBus();
-
-// Always cache globally to prevent duplicate instances in production
 globalForTickBus.__tickBus = tickBus;
-
-// ═══════════════════════════════════════════════════════════
-// 🚨 PHASE 0: Memory Logging (Baseline Visibility)
-// ═══════════════════════════════════════════════════════════
-// Initialize memory monitoring on module load (runs once per Node process)
-if (process.env.DEBUG_MARKET === 'true' && typeof process !== 'undefined' && process.memoryUsage && !globalThis.__MEMORY_INTERVAL) {
-    globalThis.__MEMORY_INTERVAL = setInterval(() => {
-        const m = process.memoryUsage();
-        console.log("HEAP MB:", (m.heapUsed / 1024 / 1024).toFixed(1));
-    }, 15000);
-}

@@ -1,4 +1,13 @@
-import { pgTable, uuid, decimal, varchar, timestamp, text, pgEnum, uniqueIndex } from 'drizzle-orm/pg-core';
+import {
+    pgTable,
+    uuid,
+    numeric,
+    varchar,
+    timestamp,
+    text,
+    pgEnum,
+    uniqueIndex,
+} from 'drizzle-orm/pg-core';
 import { users } from './users.schema';
 
 // Transaction Type Enum
@@ -15,11 +24,11 @@ export const transactionTypeEnum = pgEnum('transaction_type', [
 export const wallets = pgTable('wallets', {
     id: uuid('id').primaryKey().defaultRandom(),
     userId: text('userId').notNull().references(() => users.id, { onDelete: 'cascade' }).unique(),
-    balance: decimal('balance', { precision: 15, scale: 2 }).notNull().default('1000000.00'),
-    equity: decimal('equity', { precision: 15, scale: 2 }).notNull().default('1000000.00'),
+    balance: numeric('balance', { precision: 28, scale: 8 }).notNull().default('1000000.00'),
+    equity: numeric('equity', { precision: 28, scale: 8 }).notNull().default('1000000.00'),
     marginStatus: varchar('marginStatus', { length: 32 }).notNull().default('NORMAL'),
     accountState: varchar('accountState', { length: 32 }).notNull().default('NORMAL'),
-    blockedBalance: decimal('blockedBalance', { precision: 15, scale: 2 }).notNull().default('0.00'),
+    blockedBalance: numeric('blockedBalance', { precision: 28, scale: 8 }).notNull().default('0.00'),
     currency: varchar('currency', { length: 3 }).notNull().default('INR'),
     lastReconciled: timestamp('lastReconciled').notNull().defaultNow(),
     createdAt: timestamp('createdAt').notNull().defaultNow(),
@@ -32,13 +41,13 @@ export const transactions = pgTable('transactions', {
     userId: text('userId').notNull().references(() => users.id),
     walletId: uuid('walletId').notNull().references(() => wallets.id),
     type: transactionTypeEnum('type').notNull(),
-    amount: decimal('amount', { precision: 15, scale: 2 }).notNull(),
+    amount: numeric('amount', { precision: 28, scale: 8 }).notNull(),
 
     // Audit Trail: Capture state before and after
-    balanceBefore: decimal('balanceBefore', { precision: 15, scale: 2 }).notNull(),
-    balanceAfter: decimal('balanceAfter', { precision: 15, scale: 2 }).notNull(),
-    blockedBefore: decimal('blockedBefore', { precision: 15, scale: 2 }).notNull(),
-    blockedAfter: decimal('blockedAfter', { precision: 15, scale: 2 }).notNull(),
+    balanceBefore: numeric('balanceBefore', { precision: 28, scale: 8 }).notNull(),
+    balanceAfter: numeric('balanceAfter', { precision: 28, scale: 8 }).notNull(),
+    blockedBefore: numeric('blockedBefore', { precision: 28, scale: 8 }).notNull(),
+    blockedAfter: numeric('blockedAfter', { precision: 28, scale: 8 }).notNull(),
 
     // Reference to related entity (Order, Trade, Position)
     referenceType: varchar('referenceType', { length: 50 }),

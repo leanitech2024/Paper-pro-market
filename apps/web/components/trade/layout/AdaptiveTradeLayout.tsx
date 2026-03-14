@@ -123,7 +123,7 @@ export function AdaptiveTradeLayout({
   };
 
   const renderMobile = () => (
-    <div className="flex h-full min-h-0 flex-col overflow-hidden pb-[calc(5.25rem+env(safe-area-inset-bottom))]">
+    <div className="flex h-full min-h-0 flex-col overflow-hidden">
       {mobileTopBar ? <div className="shrink-0">{mobileTopBar}</div> : null}
 
       {mobileContent ? (

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { InstrumentService } from "@/services/instrument.service";
+import { InstrumentService } from "@/services/market/catalog/instrument.service";
 import { handleError } from "@/lib/errors";
 import { InstrumentFilterSchema } from "@paper-market/core";
 
@@ -29,3 +29,4 @@ export async function POST(req: NextRequest) {
         return handleError(error);
     }
 }
+

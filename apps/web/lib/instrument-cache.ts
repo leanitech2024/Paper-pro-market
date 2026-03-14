@@ -1,6 +1,6 @@
 /**
  * Process-level singleton LRU cache for instrument lookups.
- * Avoids repeated DB hits across OrderService, ExecutionService, MarginService, PositionService.
+ * Avoids repeated DB hits across OrderService, OrderExecutorService, MarginCalculatorService, PositionService.
  * 
  * Instruments change at most daily (during sync), so a 60-second TTL is safe.
  */
@@ -105,3 +105,4 @@ class InstrumentCache {
 
 // Export singleton instance
 export const instrumentCache = InstrumentCache.getInstance();
+

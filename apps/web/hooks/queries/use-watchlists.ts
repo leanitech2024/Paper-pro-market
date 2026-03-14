@@ -25,6 +25,8 @@ type QuoteApiItem = {
   close_price?: number;
 };
 
+type AddInstrumentInput = string | Stock;
+
 function toQuoteLookup(payload: Record<string, QuoteApiItem>): Map<string, QuoteApiItem> {
   const out = new Map<string, QuoteApiItem>();
 
@@ -53,7 +55,7 @@ export function useWatchlists() {
       const { data } = await res.json();
       return data as Watchlist[];
     },
-    staleTime: 30_000,
+    staleTime: 5 * 60_000, // 5 minutes — watchlist names rarely change
     refetchOnWindowFocus: false,
     retry: 1,
   });
@@ -67,85 +69,16 @@ export function useWatchlistInstruments(watchlistId: string | null) {
     queryKey: ['watchlist', watchlistId],
     queryFn: async () => {
       if (!watchlistId) return [];
-      
-      const res = await fetch(`/api/v1/watchlists/${watchlistId}`);
-      if (!res.ok) throw new Error('Failed to fetch watchlist instruments');
-      
+      const res = await fetch(`/api/v1/watchlists/${watchlistId}/snapshot`);
+      if (!res.ok) throw new Error('Failed to fetch watchlist');
       const { data } = await res.json();
-
-      const baseStocks: Stock[] = data.instruments.map((inst: WatchlistInstrument) => {
-        return {
-          symbol: inst.tradingsymbol,
-          name: inst.name,
-          price: 0,
-          change: 0,
-          changePercent: 0,
-          volume: 0,
-          lotSize: inst.lotSize,
-          instrumentToken: inst.instrumentToken,
-        };
-      });
-
-      if (baseStocks.length === 0) return baseStocks;
-
-      try {
-        const instrumentKeys = Array.from(
-          new Set(
-            baseStocks
-              .map((stock) => stock.instrumentToken)
-              .filter((token): token is string => Boolean(token))
-              .map((token) => toInstrumentKey(token))
-              .filter(Boolean)
-          )
-        );
-
-        if (instrumentKeys.length === 0) return baseStocks;
-
-        const quotesRes = await fetch('/api/v1/market/quotes', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ instrumentKeys }),
-        });
-
-        if (!quotesRes.ok) return baseStocks;
-
-        const quotesJson = await quotesRes.json();
-        if (!quotesJson?.success || !quotesJson?.data || typeof quotesJson.data !== 'object') {
-          return baseStocks;
-        }
-
-        const quoteLookup = toQuoteLookup(quotesJson.data as Record<string, QuoteApiItem>);
-
-        return baseStocks.map((stock) => {
-          if (!stock.instrumentToken) return stock;
-          const key = toInstrumentKey(stock.instrumentToken);
-          const quote = quoteLookup.get(key);
-          if (!quote) return stock;
-
-          const price = Number(quote.last_price);
-          if (!Number.isFinite(price) || price <= 0) return stock;
-
-          const closeRaw = Number(quote.close_price);
-          const close = Number.isFinite(closeRaw) && closeRaw > 0 ? closeRaw : price;
-          const change = price - close;
-          const changePercent = close > 0 ? (change / close) * 100 : 0;
-
-          return {
-            ...stock,
-            price,
-            change,
-            changePercent,
-          };
-        });
-      } catch {
-        return baseStocks;
-      }
+      return (data ?? []) as Stock[];
     },
-    enabled: !!watchlistId, // Only run query if watchlistId exists
+    enabled: !!watchlistId,
     staleTime: 15_000,
     refetchOnWindowFocus: false,
     retry: 0,
-    placeholderData: (previousData) => previousData,
+    placeholderData: (prev) => prev,
   });
 }
 
@@ -166,9 +99,46 @@ export function useCreateWatchlist() {
       if (!res.ok) throw new Error('Failed to create watchlist');
       return res.json();
     },
-    onSuccess: () => {
-      // ✅ Invalidate watchlists query to trigger refetch
+    onSuccess: (result) => {
+      const createdWatchlist = result?.data;
+
+      if (createdWatchlist) {
+        queryClient.setQueryData<Watchlist[]>(['watchlists'], (current = []) => {
+          const withoutDuplicate = current.filter((item) => item.id !== createdWatchlist.id);
+          const defaultWatchlists = withoutDuplicate.filter((item) => item.isDefault);
+          const customWatchlists = withoutDuplicate.filter((item) => !item.isDefault);
+          return [...defaultWatchlists, createdWatchlist, ...customWatchlists];
+        });
+      }
+
       queryClient.invalidateQueries({ queryKey: ['watchlists'] });
+    },
+  });
+}
+
+// ─────────────────────────────────────────────────────────────────
+// ✏️ MUTATION: Delete a watchlist
+// ─────────────────────────────────────────────────────────────────
+export function useDeleteWatchlist() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (watchlistId: string) => {
+      const res = await fetch(`/api/v1/watchlists/${watchlistId}`, {
+        method: 'DELETE',
+      });
+      
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || 'Failed to delete watchlist');
+      }
+      return res.json();
+    },
+    onSuccess: (_, deletedId) => {
+      queryClient.setQueryData<Watchlist[]>(['watchlists'], (current = []) => 
+        current.filter(w => w.id !== deletedId)
+      );
+      queryClient.removeQueries({ queryKey: ['watchlist', deletedId] });
     },
   });
 }
@@ -180,7 +150,9 @@ export function useAddInstrument(watchlistId: string) {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: async (instrumentToken: string) => {
+    mutationFn: async (input: AddInstrumentInput) => {
+      const instrumentToken =
+        typeof input === 'string' ? input : String(input.instrumentToken || '').trim();
       const res = await fetch(`/api/v1/watchlists/${watchlistId}/instruments`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -190,8 +162,30 @@ export function useAddInstrument(watchlistId: string) {
       if (!res.ok) throw new Error('Failed to add instrument');
       return res.json();
     },
-    onSuccess: () => {
-      // ✅ Invalidate specific watchlist query to trigger refetch
+    onMutate: async (input: AddInstrumentInput) => {
+      await queryClient.cancelQueries({ queryKey: ['watchlist', watchlistId] });
+
+      const previousWatchlist = queryClient.getQueryData<Stock[]>(['watchlist', watchlistId]);
+      const optimisticStock = typeof input === 'string' ? null : input;
+      const optimisticToken = typeof input === 'string'
+        ? String(input || '').trim()
+        : String(input.instrumentToken || '').trim();
+
+      if (optimisticStock && optimisticToken) {
+        queryClient.setQueryData<Stock[]>(['watchlist', watchlistId], (current = []) => {
+          if (current.some((item) => item.instrumentToken === optimisticToken)) return current;
+          return [...current, optimisticStock];
+        });
+      }
+
+      return { previousWatchlist };
+    },
+    onError: (_error, _input, context) => {
+      if (context?.previousWatchlist) {
+        queryClient.setQueryData(['watchlist', watchlistId], context.previousWatchlist);
+      }
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['watchlist', watchlistId] });
     },
   });
@@ -212,8 +206,23 @@ export function useRemoveInstrument(watchlistId: string) {
       if (!res.ok) throw new Error('Failed to remove instrument');
       return res.json();
     },
-    onSuccess: () => {
-      // ✅ Invalidate specific watchlist query to trigger refetch
+    onMutate: async (instrumentToken: string) => {
+      await queryClient.cancelQueries({ queryKey: ['watchlist', watchlistId] });
+
+      const previousWatchlist = queryClient.getQueryData<Stock[]>(['watchlist', watchlistId]);
+
+      queryClient.setQueryData<Stock[]>(['watchlist', watchlistId], (current = []) =>
+        current.filter((item) => item.instrumentToken !== instrumentToken)
+      );
+
+      return { previousWatchlist };
+    },
+    onError: (_error, _instrumentToken, context) => {
+      if (context?.previousWatchlist) {
+        queryClient.setQueryData(['watchlist', watchlistId], context.previousWatchlist);
+      }
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['watchlist', watchlistId] });
     },
   });
