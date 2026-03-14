@@ -48,6 +48,8 @@ node_modules/
 backend-dev
 .agents
 skill-creator
+docs
+.claude
 
 # Build artifacts
 *.tsbuildinfo
@@ -58,3 +60,4 @@ dist/
 temp-dist/
 packages/*/dist/
 packages/*/temp-dist/
+
