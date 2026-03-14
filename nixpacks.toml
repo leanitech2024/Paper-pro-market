@@ -9,7 +9,7 @@ cmds = [
 ]
 
 [phases.build]
-cmds = ["pnpm --filter @paper-market/market-engine build"]
+cmds = ["pnpm turbo build --filter=@paper-market/market-engine"]
 cacheDirectories = ["node_modules/.cache"]
 
 [start]

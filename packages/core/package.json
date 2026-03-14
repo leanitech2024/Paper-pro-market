@@ -3,14 +3,14 @@
   "version": "0.0.1",
   "private": true,
   "type": "module",
-  "main": "./src/index.ts",
-  "types": "./src/index.ts",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "exports": {
-    ".": "./src/index.ts",
-    "./db": "./src/db/index.ts",
-    "./market": "./src/market/symbol-normalization.ts",
-    "./trading": "./src/trading/order.types.ts",
-    "./validation": "./src/validation/oms.ts"
+    ".": "./dist/index.js",
+    "./db": "./dist/db/index.js",
+    "./market": "./dist/market/symbol-normalization.js",
+    "./trading": "./dist/trading/order.types.js",
+    "./validation": "./dist/validation/oms.js"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
