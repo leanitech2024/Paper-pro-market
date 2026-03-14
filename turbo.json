@@ -1,5 +1,27 @@
 {
   "$schema": "https://turbo.build/schema.json",
+  "globalEnv": [
+    "DATABASE_URL",
+    "AUTH_SECRET",
+    "GOOGLE_CLIENT_ID",
+    "GOOGLE_CLIENT_SECRET",
+    "NODE_ENV",
+    "UPSTOX_API_KEY",
+    "UPSTOX_API_SECRET",
+    "UPSTOX_REDIRECT_URI",
+    "NEXTAUTH_URL",
+    "UPSTOX_ACCESS_TOKEN",
+    "UPSTASH_REDIS_REST_URL",
+    "UPSTASH_REDIS_REST_TOKEN",
+    "PAPER_TRADING_MODE",
+    "DISABLE_CONCENTRATION_CHECK",
+    "DISABLE_NOTIONAL_CAP",
+    "MAX_NOTIONAL_PER_ORDER",
+    "FEED_MAX_TICK_AGE_MS",
+    "FEED_MIN_TICK_RATE",
+    "FEED_MIN_ACTIVE_TOKENS",
+    "DIRECT_URL"
+  ],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
