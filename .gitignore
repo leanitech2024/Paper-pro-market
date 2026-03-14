@@ -47,3 +47,7 @@ node_modules/
 backend-dev
 .agents
 skill-creator
+
+# Build artifacts
+*.tsbuildinfo
+.turbo
