@@ -5,7 +5,7 @@
     "buildCommand": "pnpm turbo build --filter=@paper-market/market-engine"
   },
   "deploy": {
-    "startCommand": "node apps/market-engine/dist/index.js",
+    "startCommand": "pnpm turbo build --filter=@paper-market/market-engine && node apps/market-engine/dist/index.js",
     "healthcheckPath": "/health",
     "healthcheckTimeout": 300,
     "restartPolicyType": "ON_FAILURE",
