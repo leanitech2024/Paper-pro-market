@@ -1,4 +1,4 @@
-import { JournalEntry } from '@paper-market/core';
+import type { JournalEntry } from "../types/journal.types.js";
 
 export interface PerformanceMetrics {
   totalTrades: number;

@@ -1,0 +1,16 @@
+import { ExpiryType } from '../types/general.types';
+export interface Stock {
+    symbol: string;
+    name: string;
+    price: number;
+    change: number;
+    changePercent: number;
+    volume: number;
+    lotSize: number;
+    expiryDate?: Date;
+    expiryType?: ExpiryType;
+    strikePrice?: number;
+    optionType?: 'CE' | 'PE';
+    instrumentToken?: string;
+}
+//# sourceMappingURL=equity.types.d.ts.map
