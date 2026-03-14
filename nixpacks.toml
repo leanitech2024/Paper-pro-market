@@ -10,6 +10,7 @@ cmds = [
 
 [phases.build]
 cmds = ["pnpm --filter @paper-market/market-engine build"]
+cacheDirectories = ["node_modules/.cache"]
 
 [start]
 cmd = "node apps/market-engine/dist/index.js"

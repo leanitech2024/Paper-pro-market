@@ -1,9 +1,0 @@
-[build]
-builder = "nixpacks"
-
-[deploy]
-startCommand = "node apps/market-engine/dist/index.js"
-healthcheckPath = "/health"
-healthcheckTimeout = 120
-restartPolicyType = "on_failure"
-restartPolicyMaxRetries = 3
