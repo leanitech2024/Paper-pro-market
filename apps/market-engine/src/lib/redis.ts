@@ -23,7 +23,7 @@ function createDevRedis(url: string): RedisClient {
   let innerClient: RedisClient | null = null;
 
   import('ioredis').then((IORedisModule) => {
-    const IORedis = IORedisModule.default || IORedisModule;
+    const IORedis = (IORedisModule as any).default ?? (IORedisModule as any);
     const client = new IORedis(url, {
       maxRetriesPerRequest: 1,
       connectTimeout: 1000,

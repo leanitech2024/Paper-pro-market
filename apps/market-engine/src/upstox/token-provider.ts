@@ -51,9 +51,9 @@ class TokenProvider {
         try {
             const tokens = await db.select().from(upstoxTokens).limit(25);
             const candidates = tokens
-                .filter((token) => new Date(token.expiresAt).getTime() > nowMs)
+                .filter((token: any) => new Date(token.expiresAt).getTime() > nowMs)
                 .sort(
-                    (a, b) =>
+                    (a: any, b: any) =>
                         new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
                 );
 

@@ -7,11 +7,26 @@
   "types": "./dist/index.d.ts",
   "files": ["dist"],
   "exports": {
-    ".": "./dist/index.js",
-    "./db": "./dist/db/index.js",
-    "./market": "./dist/market/symbol-normalization.js",
-    "./trading": "./dist/trading/order.types.js",
-    "./validation": "./dist/validation/oms.js"
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./db": {
+      "types": "./dist/db/index.d.ts",
+      "default": "./dist/db/index.js"
+    },
+    "./market": {
+      "types": "./dist/market/symbol-normalization.d.ts",
+      "default": "./dist/market/symbol-normalization.js"
+    },
+    "./trading": {
+      "types": "./dist/trading/order.types.d.ts",
+      "default": "./dist/trading/order.types.js"
+    },
+    "./validation": {
+      "types": "./dist/validation/oms.d.ts",
+      "default": "./dist/validation/oms.js"
+    }
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
