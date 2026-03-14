@@ -331,7 +331,9 @@ export class EventReplayService {
         const startingBalance = snapshot ? parseDecimal(snapshot.balance) : ZERO;
         const lastSequence = snapshot ? snapshot.lastSequence : 0;
         
-        let cashBalance = startingBalance;
+        // Seed the CASH account with the snapshot balance
+        balancesByType.set("CASH", startingBalance);
+
         let cursor: LedgerReplayCursor | null = null;
         let ledgerEntryCount = 0;
         let earliestSequence: number | null = null;

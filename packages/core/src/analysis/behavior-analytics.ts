@@ -1,4 +1,4 @@
-import { JournalEntry } from '../types/journal.types';
+import { JournalEntry } from '../types/journal.types.js';
 
 // --- Types ---
 

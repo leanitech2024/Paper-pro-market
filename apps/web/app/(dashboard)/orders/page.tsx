@@ -1,5 +1,6 @@
 "use client";
 import { useState, useMemo, useEffect } from 'react';
+import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -212,7 +213,9 @@ const OrdersPage = () => {
               </div>
               <p className="text-lg font-semibold text-foreground">No Orders Found</p>
               <p className="text-sm max-w-xs mx-auto">You haven't placed any trades yet. Head over to the terminal to get started.</p>
-              <Button variant="outline" className="mt-6 rounded-xl" href="/trade">Go to Terminal</Button>
+              <Link href="/trade">
+                <Button variant="outline" className="mt-6 rounded-xl">Go to Terminal</Button>
+              </Link>
             </div>
           ) : (
             <>

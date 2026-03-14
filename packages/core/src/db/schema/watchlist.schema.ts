@@ -1,7 +1,7 @@
 import { pgTable, text, timestamp, boolean, integer, index, uniqueIndex } from 'drizzle-orm/pg-core';
 import { type InferSelectModel, type InferInsertModel, sql } from 'drizzle-orm';
-import { users } from './users.schema';
-import { instruments } from './market.schema';
+import { users } from './users.schema.js';
+import { instruments } from './market.schema.js';
 
 // ─────────────────────────────────────────────────────────────────
 // 📋 WATCHLISTS TABLE

@@ -14,7 +14,7 @@ import {
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import { type InferInsertModel, type InferSelectModel } from "drizzle-orm";
-import { users } from "./users.schema";
+import { users } from "./users.schema.js";
 
 export const ledgerAccountTypeEnum = pgEnum("ledger_account_type", [
     "CASH",

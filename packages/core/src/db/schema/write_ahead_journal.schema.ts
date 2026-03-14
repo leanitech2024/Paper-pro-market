@@ -10,7 +10,7 @@ import {
     uuid,
 } from "drizzle-orm/pg-core";
 import { type InferInsertModel, type InferSelectModel } from "drizzle-orm";
-import { users } from "./users.schema";
+import { users } from "./users.schema.js";
 
 export const writeAheadOperationTypeEnum = pgEnum("write_ahead_operation_type", [
     "TRADE_EXECUTION",

@@ -1,4 +1,4 @@
-import { ProductType, Side, InstrumentMode } from '../types/general.types';
+import { ProductType, Side, InstrumentMode } from '../types/general.types.js';
 
 export interface UserPosition {
   id: string;

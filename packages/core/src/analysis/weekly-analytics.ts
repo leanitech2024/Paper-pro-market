@@ -1,5 +1,5 @@
-import { JournalEntry } from '../types/journal.types';
-import { analyzeBehavior, BehaviorType } from './behavior-analytics';
+import { JournalEntry } from '../types/journal.types.js';
+import { analyzeBehavior, BehaviorType } from './behavior-analytics.js';
 
 // --- Types ---
 

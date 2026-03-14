@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, Suspense } from "react";
 import dynamic from "next/dynamic";
 import { useSearchParams } from "next/navigation";
 import { TerminalHeader } from "@/components/trade/options/TerminalHeader";
@@ -88,7 +88,7 @@ function formatPct(value: number): string {
   return `${value > 0 ? "+" : ""}${value.toFixed(2)}%`;
 }
 
-export default function OptionsPage() {
+function OptionsPageContent() {
   const searchParams = useSearchParams();
   const { isMobile } = useTradeViewport();
   const walletBalance = useWalletStore((state) => state.balance);
@@ -603,27 +603,32 @@ export default function OptionsPage() {
   );
 
   return (
-    <>
-      <div className="h-full min-h-0 overflow-hidden bg-background">
-        <AdaptiveTradeLayout
-          header={<div className="hidden md:block">{headerNode}</div>}
-          footer={<BottomBar />}
-          desktopCenter={chainNode}
-          desktopRight={
-            <div className="h-full min-h-0 overflow-y-auto border-l border-border">{renderPanel()}</div>
-          }
-          desktopRightWidth={hasPanelContent ? "340px" : "300px"}
-          tabletTop={chartNode}
-          tabletLeft={<div className="h-full min-h-0 overflow-y-auto">{renderPanel()}</div>}
-          tabletRight={chainNode}
-          mobileContent={mobileContentNode}
-          mobileOrderTitle={selectedContract ? `${selectedContract.symbol} options order ticket` : "Options order ticket"}
-          mobileOrderOpen={mobileOrderOpen}
-          onMobileOrderOpenChange={setMobileOrderOpen}
-          mobileOrderDrawer={<div className="h-[82vh] min-h-0 overflow-y-auto">{renderPanel(true)}</div>}
-        />
-      </div>
-    </>
+    <div className="h-[calc(100dvh-6rem)] md:h-[calc(100vh-32px)] min-h-0 overflow-hidden bg-background">
+      <AdaptiveTradeLayout
+        header={headerNode}
+        desktopLeft={chainNode}
+        desktopLeftWidth="420px"
+        desktopCenter={chartNode}
+        desktopRight={<div className="h-full min-h-0 overflow-y-auto">{renderPanel()}</div>}
+        desktopRightWidth="340px"
+        tabletTop={chartNode}
+        tabletLeft={chainNode}
+        tabletRight={<div className="h-full min-h-0 overflow-y-auto">{renderPanel()}</div>}
+        mobileContent={mobileContentNode}
+        mobileOrderTitle={`${underlying} options order ticket`}
+        mobileOrderOpen={mobileOrderOpen}
+        onMobileOrderOpenChange={setMobileOrderOpen}
+        mobileOrderDrawer={renderPanel(true)}
+        footer={<BottomBar />}
+      />
+    </div>
   );
 }
 
+export default function OptionsPage() {
+  return (
+    <Suspense fallback={null}>
+      <OptionsPageContent />
+    </Suspense>
+  );
+}

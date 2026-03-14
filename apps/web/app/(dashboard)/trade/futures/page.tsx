@@ -116,7 +116,7 @@ export default function FuturesPage() {
     if (!symbol) return 0;
     const price = Number(selectPrice(symbol));
     return Number.isFinite(price) && price > 0 ? price : 0;
-  }, [quotesByInstrument, selectPrice, selectedStock?.symbol]);
+  }, [selectPrice, selectedStock?.symbol]);
 
   const liveTokenChange = useMemo(() => {
     const token = selectedStock?.instrumentToken;
@@ -130,7 +130,7 @@ export default function FuturesPage() {
     if (!symbol) return Number.NaN;
     const change = Number(selectQuote(symbol)?.changePercent);
     return Number.isFinite(change) ? change : Number.NaN;
-  }, [quotesByInstrument, selectQuote, selectedStock?.symbol]);
+  }, [selectQuote, selectedStock?.symbol]);
 
   useEffect(() => {
     if (selectedStock) {
@@ -245,14 +245,14 @@ export default function FuturesPage() {
     if (!symbol) return 0;
     const price = Number(selectPrice(symbol));
     return Number.isFinite(price) && price > 0 ? price : 0;
-  }, [quotesByInstrument, selectPrice, selectedStock?.symbol, chartBinding.symbol]);
+  }, [selectPrice, selectedStock?.symbol, chartBinding.symbol]);
 
   const headerSymbolChange = useMemo(() => {
     const symbol = selectedStock?.symbol || chartBinding.symbol;
     if (!symbol) return Number.NaN;
     const change = Number(selectQuote(symbol)?.changePercent);
     return Number.isFinite(change) ? change : Number.NaN;
-  }, [quotesByInstrument, selectQuote, selectedStock?.symbol, chartBinding.symbol]);
+  }, [selectQuote, selectedStock?.symbol, chartBinding.symbol]);
 
   const displayLtp =
     liveTokenPrice || liveSymbolPrice || headerSymbolPrice || Number(selectedStock?.price || 0);

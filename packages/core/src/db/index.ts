@@ -1,6 +1,6 @@
 import { Pool } from "pg";
 import { drizzle } from "drizzle-orm/node-postgres";
-import * as schema from "./schema";
+import * as schema from "./schema/index.js";
 
 export function shouldEnableSsl(databaseUrl: string): boolean {
     return databaseUrl.toLowerCase().includes("neon.tech");
@@ -22,4 +22,4 @@ export function createDb(connectionString: string, options: { isDev?: boolean } 
     return { db, pool };
 }
 
-export * from "./schema";
+export * from "./schema/index.js";

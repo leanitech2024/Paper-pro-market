@@ -1,21 +1,17 @@
 import { z } from "zod";
 
-const argv = typeof process !== "undefined" && Array.isArray(process.argv) ? process.argv : [];
-const isScriptContext = argv.some((arg) => /[\\/]scripts[\\/]/i.test(arg));
-
-const requiredAuthString = (name: string) =>
-  isScriptContext ? z.string().default(`script-${name.toLowerCase()}`) : z.string().min(1);
+const requiredAuthString = () => z.string().min(1);
 
 const envSchema = z.object({
   // Database (Neon)
   DATABASE_URL: z.string().url(),
 
   // Authentication (NextAuth)
-  AUTH_SECRET: requiredAuthString("auth_secret"),
+  AUTH_SECRET: requiredAuthString(),
 
   // OAuth Providers (Google)
-  GOOGLE_CLIENT_ID: requiredAuthString("google_client_id"),
-  GOOGLE_CLIENT_SECRET: requiredAuthString("google_client_secret"),
+  GOOGLE_CLIENT_ID: requiredAuthString(),
+  GOOGLE_CLIENT_SECRET: requiredAuthString(),
   NEXTAUTH_URL: z.string().url().default("http://localhost:3000"),
 
   // Market Data (Upstox) - Optional for now, but good to have

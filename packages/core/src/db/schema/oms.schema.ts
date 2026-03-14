@@ -1,8 +1,8 @@
 import { pgTable, text, integer, numeric, timestamp, pgEnum, uuid, index, uniqueIndex, check } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 import { type InferSelectModel, type InferInsertModel } from 'drizzle-orm';
-import { users } from './users.schema';
-import { instruments } from './market.schema';
+import { users } from './users.schema.js';
+import { instruments } from './market.schema.js';
 
 export const OrderSide = pgEnum('order_side', ['BUY', 'SELL']);
 export const OrderType = pgEnum('order_type', ['MARKET', 'LIMIT']);

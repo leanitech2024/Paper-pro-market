@@ -1,4 +1,4 @@
-import type { NormalizedTick } from "@paper-market/core";
+import type { NormalizedTick } from "./market-data.types.js";
 
 /**
  * Validates a tick for correctness and safety.

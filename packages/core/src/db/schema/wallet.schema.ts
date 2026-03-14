@@ -8,7 +8,7 @@ import {
     pgEnum,
     uniqueIndex,
 } from 'drizzle-orm/pg-core';
-import { users } from './users.schema';
+import { users } from './users.schema.js';
 
 // Transaction Type Enum
 export const transactionTypeEnum = pgEnum('transaction_type', [

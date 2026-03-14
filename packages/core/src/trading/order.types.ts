@@ -1,4 +1,4 @@
-import { Side, InstrumentMode, ExitReason, TradeStatus } from '../types/general.types';
+import { Side, InstrumentMode, ExitReason, TradeStatus } from '../types/general.types.js';
 
 export type OrderExecutionType = 'MARKET' | 'LIMIT' | 'STOP';
 

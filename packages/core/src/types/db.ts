@@ -14,7 +14,7 @@ import type {
     LedgerAccountType, LedgerReferenceType,
     WriteAheadJournal, NewWriteAheadJournal,
     WriteAheadOperationType, WriteAheadStatus
-} from '../db/schema';
+} from '../db/schema/index.js';
 
 export type {
     Instrument, NewInstrument,
