@@ -12,6 +12,8 @@ import { PositionsCards } from "@/components/trade/mobile/PositionsCards";
 import { useWalletStore } from "@/stores/wallet.store";
 import { cn } from "@/lib/utils";
 import { useMarketStore } from "@/stores/trading/market.store";
+import { BottomBar } from "@/components/trade/options/BottomBar";
+import { Search } from "lucide-react";
 
 const CandlestickChartComponent = dynamic(
   () =>
@@ -103,6 +105,7 @@ export default function FuturesPage() {
   const quotesByInstrument = useMarketStore((state) => state.quotesByInstrument);
   const selectQuote = useMarketStore((state) => state.selectQuote);
   const selectPrice = useMarketStore((state) => state.selectPrice);
+  const livePrice = useMarketStore((state) => state.livePrice);
 
   const liveTokenPrice = useMemo(() => {
     const token = selectedStock?.instrumentToken;
@@ -255,7 +258,11 @@ export default function FuturesPage() {
   }, [selectQuote, selectedStock?.symbol, chartBinding.symbol]);
 
   const displayLtp =
-    liveTokenPrice || liveSymbolPrice || headerSymbolPrice || Number(selectedStock?.price || 0);
+    liveTokenPrice ||
+    liveSymbolPrice ||
+    headerSymbolPrice ||
+    livePrice ||
+    Number(selectedStock?.price || 0);
   const fallbackChange = Number(selectedStock?.changePercent || 0);
   const displayChange = Number.isFinite(liveTokenChange)
     ? liveTokenChange
@@ -286,36 +293,32 @@ export default function FuturesPage() {
             <button
               type="button"
               onClick={() => setSearchModalOpen(true)}
-              className="inline-flex h-9 items-center rounded-lg border border-border bg-card px-3 text-sm font-semibold text-foreground"
+              className="inline-flex h-9 min-w-0 items-center gap-1.5 rounded-lg border border-border bg-card px-3 text-[11px] font-semibold text-foreground"
             >
-              {selectedStock?.symbol || "FUTURES"}
+              <Search className="h-3.5 w-3.5 text-muted-foreground" />
+              <span className="truncate uppercase">{selectedStock?.symbol || "FUTURES"}</span>
             </button>
-            <p className="truncate text-[11px] text-muted-foreground">
-              Balance: <span className="font-semibold text-foreground">{formatBalance(walletBalance)}</span>
-            </p>
+            <div className="flex flex-col items-end">
+              <span className="text-[11px] font-semibold tabular-nums text-foreground">
+                {formatLtp(displayLtp)}
+              </span>
+              <span
+                className={cn(
+                  "text-[10px] font-semibold",
+                  Number.isFinite(displayChange) && displayChange >= 0
+                    ? "text-emerald-600 dark:text-emerald-300"
+                    : "text-rose-600 dark:text-rose-300",
+                )}
+              >
+                {formatPct(displayChange)}
+              </span>
+            </div>
           </div>
 
           <div className="flex items-end justify-between gap-3">
-            <div>
-              <p className="text-[34px] leading-none font-bold tabular-nums text-foreground">
-                {formatLtp(displayLtp)}
-              </p>
-              <div className="mt-1 flex items-center gap-1.5 text-[11px]">
-                <span
-                  className={cn(
-                    "font-semibold",
-                    Number.isFinite(displayChange) && displayChange >= 0
-                      ? "text-emerald-600 dark:text-emerald-300"
-                      : "text-rose-600 dark:text-rose-300",
-                  )}
-                >
-                  {formatPct(displayChange)}
-                </span>
-                <span className="rounded bg-muted px-1.5 py-0.5 text-muted-foreground">
-                  {formatExpiryShort(selectedStock?.expiryDate)}
-                </span>
-              </div>
-            </div>
+            <span className="rounded bg-muted px-1.5 py-0.5 text-[11px] text-muted-foreground">
+              {formatExpiryShort(selectedStock?.expiryDate)}
+            </span>
 
             <div className="flex items-center gap-1.5 pb-1">
               <button
@@ -371,6 +374,7 @@ export default function FuturesPage() {
           mobileOrderOpen={mobileOrderOpen}
           onMobileOrderOpenChange={setMobileOrderOpen}
           mobileOrderDrawer={renderOrderNode(true)}
+          footer={<BottomBar />}
         />
       </div>
     </>

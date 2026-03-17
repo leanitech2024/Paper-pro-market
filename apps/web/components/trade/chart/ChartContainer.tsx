@@ -697,6 +697,7 @@ export function ChartContainer({ symbol, headerSymbol, instrumentKey, onSearchCl
               symbol={symbol}
               instrumentKey={resolvedInstrumentKey}
               range={range}
+              isMobile={isMobile}
               onChartReady={setChartApi}
               onLoadMore={handleLoadMore}
               onHoverCandleChange={(candle) => {

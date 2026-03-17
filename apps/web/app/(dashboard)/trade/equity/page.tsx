@@ -16,6 +16,7 @@ import { WatchlistPanel } from "@/components/trade/watchlist/WatchlistPanel";
 import { AdaptiveTradeLayout } from "@/components/trade/layout/AdaptiveTradeLayout";
 import { useTradeViewport } from "@/hooks/use-trade-viewport";
 import { PositionsTable } from "@/components/positions/PositionsTable";
+import { BottomBar } from "@/components/trade/options/BottomBar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -336,6 +337,7 @@ export default function EquityPage() {
           mobileOrderOpen={mobileOrderOpen}
           onMobileOrderOpenChange={setMobileOrderOpen}
           mobileOrderDrawer={mobileOrderDrawerNode}
+          footer={<BottomBar />}
         />
       </div>
     </>

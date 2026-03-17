@@ -23,6 +23,7 @@ export interface BaseChartProps {
   indicators?: ChartIndicatorInput[];
   height?: number;
   autoResize?: boolean;
+  isMobile?: boolean;
   symbol: string;
   instrumentKey?: string;
   range?: string;

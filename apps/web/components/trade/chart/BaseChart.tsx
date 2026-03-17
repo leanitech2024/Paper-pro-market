@@ -1,6 +1,6 @@
 "use client";
 
-import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react';
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
 import type { IChartApi, ISeriesApi } from 'lightweight-charts';
 import { DrawingManager } from './overlays/DrawingManager';
 import { resolveDisplayTime as resolveDisplayTimeUtil } from './utils/timeline';
@@ -19,6 +19,7 @@ export const BaseChart = forwardRef<BaseChartRef, BaseChartProps>(({
   indicators = [],
   height,
   autoResize = true,
+  isMobile,
   symbol,
   instrumentKey,
   range,
@@ -46,6 +47,33 @@ export const BaseChart = forwardRef<BaseChartRef, BaseChartProps>(({
   const lastAppliedDataRef = useRef<LastAppliedData | null>(null);
 
   const [dimensions, setDimensions] = useState({ width: 0, height: height ?? 400 });
+  const isCompact = useMemo(() => {
+    if (typeof isMobile === 'boolean') return isMobile;
+    return dimensions.width > 0 && dimensions.width <= 420;
+  }, [dimensions.width, isMobile]);
+  const priceFormat = useMemo(
+    () =>
+      isCompact
+        ? {
+            type: 'custom' as const,
+            formatter: (value: number) => {
+              if (!Number.isFinite(value)) return '--';
+              const abs = Math.abs(value);
+              if (abs >= 1000) {
+                const scaled = abs / 1000;
+                const formatted = scaled >= 100 ? scaled.toFixed(1) : scaled.toFixed(2);
+                return `${value < 0 ? '-' : ''}${formatted}K`;
+              }
+              return value.toFixed(2);
+            },
+          }
+        : {
+            type: 'price' as const,
+            precision: 2,
+            minMove: 0.01,
+          },
+    [isCompact],
+  );
 
   const onLoadMoreRef = useRef(onLoadMore);
   useEffect(() => {
@@ -143,6 +171,31 @@ export const BaseChart = forwardRef<BaseChartRef, BaseChartProps>(({
     showVolume,
     chartStyle,
   });
+
+  useEffect(() => {
+    if (!chartInstance) return;
+    chartInstance.applyOptions({
+      layout: {
+        fontSize: isCompact ? 10 : 12,
+      },
+      rightPriceScale: {
+        minimumWidth: isCompact ? 46 : 60,
+      },
+    });
+
+    const series = [
+      candleSeriesRef.current,
+      barSeriesRef.current,
+      lineSeriesRef.current,
+      areaSeriesRef.current,
+      baselineSeriesRef.current,
+      columnSeriesRef.current,
+    ].filter(Boolean);
+
+    series.forEach((target) => {
+      target?.applyOptions({ priceFormat });
+    });
+  }, [chartInstance, isCompact, priceFormat]);
 
   useIndicators({
     chart: chartInstance,

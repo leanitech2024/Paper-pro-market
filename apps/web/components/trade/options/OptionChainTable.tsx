@@ -74,7 +74,7 @@ type RowProps = {
   onSelectSymbol: (sym: string, side?: "BUY" | "SELL") => void;
   ceFlash?: FlashDir;
   peFlash?: FlashDir;
-  rowRef: (el: HTMLDivElement | null) => void;
+  rowRef: (el: HTMLElement | null) => void;
 };
 
 const ChainRow = memo(
@@ -264,7 +264,7 @@ export function OptionChainTable({
   mobileMode = false,
 }: OptionChainTableProps) {
   const quotes = useMarketStore((s) => s.quotesByInstrument);
-  const rowRefs = useRef<Record<number, HTMLDivElement | null>>({});
+  const rowRefs = useRef<Record<number, HTMLElement | null>>({});
   const prevLtp = useRef<Record<string, number>>({});
   const [flashMap, setFlashMap] = useState<Record<string, FlashDir>>({});
   const [visibleRadius, setVisibleRadius] = useState(10);
@@ -502,6 +502,9 @@ export function OptionChainTable({
                       isAtm && "bg-primary/10",
                       isSelected && "bg-primary/12 ring-1 ring-inset ring-primary/30",
                     )}
+                    ref={(el) => {
+                      rowRefs.current[row.strike] = el;
+                    }}
                     onClick={() => {
                       if (activeSymbol) onSelectSymbol(activeSymbol);
                     }}

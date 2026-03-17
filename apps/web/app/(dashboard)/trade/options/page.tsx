@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useState, Suspense } from "react";
-import dynamic from "next/dynamic";
 import { useSearchParams } from "next/navigation";
 import { TerminalHeader } from "@/components/trade/options/TerminalHeader";
 import { OptionChainTable } from "@/components/trade/options/OptionChainTable";
@@ -12,24 +11,15 @@ import { BottomBar } from "@/components/trade/options/BottomBar";
 import { OptionChainRow } from "@/components/trade/options/types";
 import { Stock } from "@paper-market/core";
 import { useMarketStore } from "@/stores/trading/market.store";
-import { symbolToIndexInstrumentKey } from "@paper-market/core";
 import { AdaptiveTradeLayout } from "@/components/trade/layout/AdaptiveTradeLayout";
 import { PositionsCards } from "@/components/trade/mobile/PositionsCards";
-import { useWalletStore } from "@/stores/wallet.store";
 import { useTradeViewport } from "@/hooks/use-trade-viewport";
 import { useSearchStore } from "@/stores/ui/search.store";
 import { cn } from "@/lib/utils";
+import { Search } from "lucide-react";
 
 type TradeMode = "single" | "strategy";
-type MobileView = "chain" | "chart" | "positions" | "strategy";
-
-const CandlestickChartComponent = dynamic(
-  () =>
-    import("@/components/trade/CandlestickChart").then((mod) => ({
-      default: mod.CandlestickChart,
-    })),
-  { ssr: false },
-);
+type MobileView = "chain" | "positions" | "strategy";
 
 function normalizeKey(v: string): string {
   return String(v || "").trim().toUpperCase().replace(/\s+/g, "");
@@ -66,11 +56,6 @@ function getDaysToExpiry(dateKey: string): number | null {
   return Math.ceil((exp.getTime() - now.getTime()) / 86_400_000);
 }
 
-function formatBalance(value: number): string {
-  if (!Number.isFinite(value)) return "--";
-  return `INR ${value.toLocaleString("en-IN", { maximumFractionDigits: 0 })}`;
-}
-
 function formatExpiryChip(dateKey: string): string {
   if (!dateKey) return "--";
   const date = new Date(`${dateKey}T00:00:00`);
@@ -91,7 +76,6 @@ function formatPct(value: number): string {
 function OptionsPageContent() {
   const searchParams = useSearchParams();
   const { isMobile } = useTradeViewport();
-  const walletBalance = useWalletStore((state) => state.balance);
   const openSearch = useSearchStore((state) => state.openSearch);
 
   const [underlying, setUnderlying] = useState("NIFTY");
@@ -371,17 +355,6 @@ function OptionsPageContent() {
     />
   );
 
-  const chartNode = (
-    <div className="h-full min-h-0 overflow-hidden bg-card">
-      <CandlestickChartComponent
-        symbol={underlying}
-        headerSymbol={underlying}
-        instrumentKey={symbolToIndexInstrumentKey(underlying) || undefined}
-        onSearchClick={handleOpenSearch}
-      />
-    </div>
-  );
-
   const mobileChainNode = (
     <OptionChainTable
       rows={chainRows}
@@ -398,9 +371,7 @@ function OptionsPageContent() {
   );
 
   const mobileViewNode =
-    mobileView === "chart"
-      ? chartNode
-      : mobileView === "positions"
+    mobileView === "positions"
       ? <PositionsCards instrumentFilter="options" />
       : mobileView === "strategy"
       ? <div className="h-full min-h-0 overflow-y-auto">{renderPanel(true)}</div>
@@ -414,59 +385,54 @@ function OptionsPageContent() {
             <button
               type="button"
               onClick={handleOpenSearch}
-              className="inline-flex h-9 items-center rounded-lg border border-border bg-card px-3 text-sm font-semibold text-foreground"
+              className="inline-flex h-9 min-w-0 items-center gap-1.5 rounded-lg border border-border bg-card px-3 text-[11px] font-semibold text-foreground"
             >
-              {underlying || "OPTIONS"}
+              <Search className="h-3.5 w-3.5 text-muted-foreground" />
+              <span className="truncate uppercase">{underlying || "OPTIONS"}</span>
             </button>
-            <p className="truncate text-[11px] text-muted-foreground">
-              Balance: <span className="font-semibold text-foreground">{formatBalance(walletBalance)}</span>
-            </p>
+            <div className="flex flex-col items-end">
+              <span className="text-[11px] font-semibold tabular-nums text-foreground">
+                {formatLtp(underlyingPrice)}
+              </span>
+              <span
+                className={cn(
+                  "text-[10px] font-semibold",
+                  changePercent >= 0 ? "text-emerald-600 dark:text-emerald-300" : "text-rose-600 dark:text-rose-300",
+                )}
+              >
+                {formatPct(changePercent)}
+              </span>
+              {atmStrike ? (
+                <span className="text-[10px] text-muted-foreground">
+                  ATM {atmStrike.toLocaleString("en-IN")}
+                </span>
+              ) : null}
+            </div>
           </div>
 
-          <div className="flex items-end justify-between gap-3">
-            <div>
-              <p className="text-[34px] leading-none font-bold tabular-nums text-foreground">{formatLtp(underlyingPrice)}</p>
-              <div className="mt-1 flex items-center gap-1.5 text-[11px]">
-                <span className={cn("font-semibold", changePercent >= 0 ? "text-emerald-600 dark:text-emerald-300" : "text-rose-600 dark:text-rose-300")}>
-                  {formatPct(changePercent)}
-                </span>
-                {atmStrike ? (
-                  <span className="rounded bg-muted px-1.5 py-0.5 text-muted-foreground">
-                    ATM {atmStrike.toLocaleString("en-IN")}
-                  </span>
-                ) : null}
-                {daysToExpiry !== null ? (
-                  <span className="rounded bg-muted px-1.5 py-0.5 text-muted-foreground">
-                    {Math.max(0, daysToExpiry)}D
-                  </span>
-                ) : null}
-              </div>
-            </div>
-
-            <div className="flex items-center gap-1.5 pb-1">
-              <button
-                type="button"
-                onClick={() => {
-                  setMode("single");
-                  setInitialSide("BUY");
-                  setMobileOrderOpen(true);
-                }}
-                className="h-9 rounded-md bg-emerald-600 px-3 text-xs font-bold text-white shadow-sm"
-              >
-                BUY
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setMode("single");
-                  setInitialSide("SELL");
-                  setMobileOrderOpen(true);
-                }}
-                className="h-9 rounded-md bg-rose-600 px-3 text-xs font-bold text-white shadow-sm"
-              >
-                SELL
-              </button>
-            </div>
+          <div className="flex items-center justify-end gap-1.5 pb-1">
+            <button
+              type="button"
+              onClick={() => {
+                setMode("single");
+                setInitialSide("BUY");
+                setMobileOrderOpen(true);
+              }}
+              className="h-9 rounded-md bg-emerald-600 px-3 text-xs font-bold text-white shadow-sm"
+            >
+              BUY
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setMode("single");
+                setInitialSide("SELL");
+                setMobileOrderOpen(true);
+              }}
+              className="h-9 rounded-md bg-rose-600 px-3 text-xs font-bold text-white shadow-sm"
+            >
+              SELL
+            </button>
           </div>
 
           <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
@@ -552,21 +518,6 @@ function OptionsPageContent() {
               type="button"
               onClick={() => {
                 handleModeChange("single");
-                setMobileView("chart");
-              }}
-              className={cn(
-                "h-8 min-w-[74px] rounded-full px-3 text-[11px] font-semibold transition-colors",
-                mobileView === "chart"
-                  ? "bg-background text-foreground shadow-sm"
-                  : "text-muted-foreground",
-              )}
-            >
-              Chart
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                handleModeChange("single");
                 setMobileView("positions");
               }}
               className={cn(
@@ -605,14 +556,13 @@ function OptionsPageContent() {
   return (
     <div className="h-[calc(100dvh-6rem)] md:h-[calc(100vh-32px)] min-h-0 overflow-hidden bg-background">
       <AdaptiveTradeLayout
-        header={headerNode}
-        desktopLeft={chainNode}
-        desktopLeftWidth="420px"
-        desktopCenter={chartNode}
+        header={!isMobile ? headerNode : undefined}
+        desktopLeft={undefined}
+        desktopCenter={chainNode}
         desktopRight={<div className="h-full min-h-0 overflow-y-auto">{renderPanel()}</div>}
         desktopRightWidth="340px"
-        tabletTop={chartNode}
-        tabletLeft={chainNode}
+        tabletTop={chainNode}
+        tabletLeft={undefined}
         tabletRight={<div className="h-full min-h-0 overflow-y-auto">{renderPanel()}</div>}
         mobileContent={mobileContentNode}
         mobileOrderTitle={`${underlying} options order ticket`}

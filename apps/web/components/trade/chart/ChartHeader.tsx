@@ -148,7 +148,7 @@ export function ChartHeader({
           ) : (
              <Search className="h-3.5 w-3.5 text-muted-foreground" />
           )}
-          <span className="uppercase text-[11px] md:text-sm">{headerText}</span>
+          <span className="uppercase text-[10px] md:text-sm">{headerText}</span>
           <span className="hidden md:inline-block text-[10px] text-muted-foreground bg-muted px-1 rounded-sm border border-border">NSE</span>
         </Button>
 
@@ -230,7 +230,7 @@ export function ChartHeader({
                 <span className="sm:hidden">{effectiveTimeframe.toUpperCase()}</span>
               </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="w-56 bg-card border-border">
+          <DropdownMenuContent align="start" className="w-56 bg-card border-border max-h-[60vh] overflow-y-auto overscroll-contain md:max-h-none">
             {timeframeGroups.map((group, groupIndex) => (
               <div key={group.label}>
                 {groupIndex > 0 ? <DropdownMenuSeparator className="bg-border/50" /> : null}
