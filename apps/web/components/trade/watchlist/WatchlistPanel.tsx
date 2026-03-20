@@ -153,12 +153,12 @@ export function WatchlistPanel({ instruments, onSelect, selectedSymbol, onOpenSe
   }
 
   return (
-    <div className="flex h-full min-h-0 w-full max-w-full flex-col overflow-hidden overscroll-y-contain bg-card border-r border-border">
+    <div className="flex h-full min-h-0 w-full max-w-full flex-col overflow-hidden overscroll-y-contain border-r border-slate-200/80 bg-white dark:border-white/[0.08] dark:bg-[#0c1322]">
       {/* Header with Selector */}
-      <div className="flex items-center justify-between px-3 h-9 border-b border-border bg-accent/30">
+      <div className="flex items-center justify-between px-3 h-9 border-b border-slate-200/80 bg-slate-50/80 dark:border-white/[0.08] dark:bg-[#10192b]">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <button className="flex items-center gap-1 text-xs font-bold uppercase tracking-wider text-foreground hover:text-primary transition-colors">
+            <button className="flex items-center gap-1 text-xs font-bold uppercase tracking-wider text-slate-900 hover:text-slate-950 dark:text-slate-100 dark:hover:text-white transition-colors">
               {activeWatchlist?.name || 'Watchlist'}
               <ChevronDown className="h-3 w-3" />
             </button>
@@ -170,7 +170,7 @@ export function WatchlistPanel({ instruments, onSelect, selectedSymbol, onOpenSe
                 onClick={() => setActiveWatchlistId(watchlist.id)}
                 className={cn(
                   "text-xs cursor-pointer",
-                  watchlist.id === resolvedWatchlistId && "bg-accent font-medium"
+                  watchlist.id === resolvedWatchlistId && "bg-slate-100 font-medium dark:bg-white/[0.06]"
                 )}
               >
                 {watchlist.name}
@@ -197,7 +197,7 @@ export function WatchlistPanel({ instruments, onSelect, selectedSymbol, onOpenSe
         setIsCreating(open);
         if (!open) setNewWatchlistName('');
       }}>
-        <DialogContent className="sm:max-w-[425px] bg-card border-border shadow-2xl">
+        <DialogContent className="sm:max-w-[425px] bg-white/90 dark:bg-[#0c1322]/95 backdrop-blur-xl border-slate-200/80 dark:border-white/[0.08] shadow-2xl">
           <DialogHeader>
             <DialogTitle className="text-lg font-bold text-foreground">Create New Watchlist</DialogTitle>
           </DialogHeader>
@@ -280,15 +280,15 @@ export function WatchlistPanel({ instruments, onSelect, selectedSymbol, onOpenSe
               }}
               onMouseLeave={() => setHoveredSymbol(null)}
               className={cn(
-                "group flex items-center justify-between px-3 py-2.5 border-b border-border/40 cursor-pointer transition-colors hover:bg-accent/50",
+                "group flex items-center justify-between px-3 py-2.5 border-b border-slate-200/60 dark:border-white/[0.05] cursor-pointer transition-colors hover:bg-slate-50 dark:hover:bg-white/[0.03]",
                 selectedSymbolKey === toSymbolKey(toCanonicalSymbol(stock.symbol)) &&
-                  "bg-accent border-l-2 border-l-primary"
+                  "bg-slate-100/80 border-l-2 border-l-primary dark:bg-white/[0.06]"
               )}
             >
               {/* Left: Symbol + Name */}
               <div className="flex flex-col gap-1 flex-1">
-                <span className="text-sm font-bold text-foreground">{stock.symbol}</span>
-                <span className="text-xs text-muted-foreground truncate max-w-[140px]">{stock.name}</span>
+                <span className="text-sm font-bold text-slate-900 dark:text-slate-100">{stock.symbol}</span>
+                <span className="text-xs text-slate-500 dark:text-slate-400 truncate max-w-[140px]">{stock.name}</span>
               </div>
               
               {/* Right: Price/Percentage OR B/S Buttons */}
@@ -302,7 +302,7 @@ export function WatchlistPanel({ instruments, onSelect, selectedSymbol, onOpenSe
                     >
                       {hasQuote ? livePrice.toLocaleString('en-IN') : '--'}
                     </span>
-                    <span className="text-xs font-mono text-gray-500">
+                    <span className="text-xs font-mono text-slate-500 dark:text-slate-400">
                       {hasQuote
                         ? `${liveChange >= 0 ? '+' : ''}${liveChange.toFixed(2)} (${liveChangePercent.toFixed(2)}%)`
                         : '--'}
@@ -351,7 +351,7 @@ export function WatchlistPanel({ instruments, onSelect, selectedSymbol, onOpenSe
           })}
           
           {!isFetchingWatchlistData && localMatches.length === 0 && (
-            <div className="p-4 text-center text-xs text-muted-foreground">
+            <div className="p-4 text-center text-xs text-slate-500 dark:text-slate-400">
               No symbols in watchlist
             </div>
           )}

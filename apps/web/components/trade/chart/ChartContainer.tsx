@@ -583,7 +583,7 @@ export function ChartContainer({ symbol, headerSymbol, instrumentKey, onSearchCl
  
   const leftToolbar = (
     <TooltipProvider delayDuration={0}>
-      <div className="hidden md:flex w-10 bg-card border-r border-border flex-col items-center py-4 gap-4 z-20 shrink-0">
+      <div className="hidden md:flex w-10 bg-white/95 border-r border-slate-200/80 flex-col items-center py-4 gap-4 z-20 shrink-0 dark:bg-[#0c1322]/95 dark:border-white/[0.08]">
         {[
           { id: 'crosshair', label: 'Crosshair', icon: <><path d="M12 3v18"/><path d="M3 12h18"/></> },
           { id: 'cursor', label: 'Cursor', icon: <path d="M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z"/> },
@@ -597,7 +597,7 @@ export function ChartContainer({ symbol, headerSymbol, instrumentKey, onSearchCl
             <TooltipTrigger asChild>
               <div
                 onClick={() => setActiveTool(tool.id as any)}
-                className={`p-1.5 rounded-sm cursor-pointer transition-colors ${activeTool === tool.id ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-accent hover:text-foreground'}`}
+                className={`p-1.5 rounded-sm cursor-pointer transition-colors ${activeTool === tool.id ? 'bg-primary text-primary-foreground' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-white/[0.06] dark:hover:text-slate-100'}`}
               >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   {tool.icon}
@@ -610,7 +610,7 @@ export function ChartContainer({ symbol, headerSymbol, instrumentKey, onSearchCl
           </Tooltip>
         ))}
 
-        <div className="w-6 h-px bg-border" />
+        <div className="w-6 h-px bg-slate-200/70 dark:bg-white/[0.08]" />
 
         <Tooltip>
           <TooltipTrigger asChild>
@@ -623,7 +623,9 @@ export function ChartContainer({ symbol, headerSymbol, instrumentKey, onSearchCl
                 });
               }}
               className={`p-1.5 rounded-sm transition-colors ${
-                hasSelection ? 'text-muted-foreground hover:bg-accent hover:text-foreground' : 'text-muted-foreground/40 cursor-not-allowed'
+                hasSelection
+                  ? 'text-slate-500 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-white/[0.06] dark:hover:text-slate-100'
+                  : 'text-slate-400/60 cursor-not-allowed dark:text-slate-500/40'
               }`}
             >
               {allVisible ? <EyeOff size={16} /> : <Eye size={16} />}
@@ -641,7 +643,9 @@ export function ChartContainer({ symbol, headerSymbol, instrumentKey, onSearchCl
               disabled={!hasSelection}
               onClick={() => setSelectedDrawingsLocked(symbol, !allLocked)}
               className={`p-1.5 rounded-sm transition-colors ${
-                hasSelection ? 'text-muted-foreground hover:bg-accent hover:text-foreground' : 'text-muted-foreground/40 cursor-not-allowed'
+                hasSelection
+                  ? 'text-slate-500 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-white/[0.06] dark:hover:text-slate-100'
+                  : 'text-slate-400/60 cursor-not-allowed dark:text-slate-500/40'
               }`}
             >
               {allLocked ? <Unlock size={16} /> : <Lock size={16} />}
@@ -659,7 +663,9 @@ export function ChartContainer({ symbol, headerSymbol, instrumentKey, onSearchCl
               disabled={!hasSelection}
               onClick={() => deleteSelectedDrawings(symbol)}
               className={`p-1.5 rounded-sm transition-colors ${
-                hasSelection ? 'text-muted-foreground hover:bg-accent hover:text-destructive' : 'text-muted-foreground/40 cursor-not-allowed'
+                hasSelection
+                  ? 'text-slate-500 hover:bg-slate-100 hover:text-destructive dark:text-slate-400 dark:hover:bg-white/[0.06]'
+                  : 'text-slate-400/60 cursor-not-allowed dark:text-slate-500/40'
               }`}
             >
               <Trash2 size={16} />

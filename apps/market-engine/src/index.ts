@@ -4,6 +4,7 @@ import { createWebSocketServer } from './server/ws-server.js';
 import { initializeEngine, getEngineStats } from './engine.js';
 import { checkDbConnection } from './lib/db.js';
 import { logger } from './lib/logger.js';
+import { warmHolidayCache } from '@paper-market/core';
 
 // ═══════════════════════════════════════════════════════════
 // 🚀 MARKET ENGINE: Entry Point
@@ -107,6 +108,11 @@ async function main() {
                 logger.error('Database connection failed — engine not initialized');
                 return;
             }
+
+            // Pre-warm the Upstox holiday cache — non-fatal if it fails
+            await warmHolidayCache().catch((err: unknown) =>
+                logger.warn({ err }, 'Holiday cache warm-up failed; falling back to env vars')
+            );
 
             await initializeEngine();
             engineReady = true;

@@ -38,6 +38,17 @@ export default auth((req) => {
           return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
       }
 
+      // Guard admin API routes — only admin role can access
+      if (path.startsWith("/api/v1/admin") || path.startsWith("/api/admin")) {
+          const userRole = req.auth?.user?.role;
+          if (userRole !== 'admin') {
+              return NextResponse.json(
+                  { error: "Forbidden", code: "ADMIN_REQUIRED" },
+                  { status: 403 }
+              );
+          }
+      }
+
       const requestHeaders = new Headers(req.headers);
       if (req.auth?.user?.id) {
           requestHeaders.set("x-user-id", req.auth.user.id);
@@ -56,6 +67,14 @@ export default auth((req) => {
     const redirectUrl = new URL("/login", nextUrl);
     redirectUrl.searchParams.set("callbackUrl", path); // Remembers where to go back
     return NextResponse.redirect(redirectUrl);
+  }
+
+  // 3. Admin Page Guard — redirect non-admins to dashboard
+  if (path.startsWith("/admin") && isLoggedIn) {
+    const userRole = req.auth?.user?.role;
+    if (userRole !== 'admin') {
+      return NextResponse.redirect(new URL("/dashboard", nextUrl));
+    }
   }
 
   // 3. Auth Routes (Redirect to trade/dashboard if already logged in)

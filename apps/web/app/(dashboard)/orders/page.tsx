@@ -20,6 +20,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { useOrdersStore } from '@/stores/trading/orders.store';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
@@ -93,8 +99,30 @@ const OrdersPage = () => {
 
   const totalPages = Math.ceil(filteredAndSortedTrades.length / itemsPerPage);
 
-  const handleExport = () => {
-    console.log("Export disabled for build debugging");
+  const handleExport = (format: 'csv' | 'json') => {
+    // Basic export implementation for demonstration
+    if (filteredAndSortedTrades.length === 0) return;
+
+    if (format === 'csv') {
+      const headers = ['id', 'symbol', 'name', 'side', 'quantity', 'orderType', 'status', 'entryPrice', 'exitPrice', 'pnl', 'entryTime'];
+      const csvData = filteredAndSortedTrades.map(trade => 
+        headers.map(header => JSON.stringify(trade[header as keyof typeof trade] || '')).join(',')
+      );
+      const csvString = [headers.join(','), ...csvData].join('\n');
+      
+      const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `orders_export_${new Date().toISOString().split('T')[0]}.csv`;
+      link.click();
+    } else if (format === 'json') {
+      const jsonString = JSON.stringify(filteredAndSortedTrades, null, 2);
+      const blob = new Blob([jsonString], { type: 'application/json' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `orders_export_${new Date().toISOString().split('T')[0]}.json`;
+      link.click();
+    }
   };
 
   const toggleSort = (field: 'date' | 'pnl') => {
@@ -122,27 +150,27 @@ const OrdersPage = () => {
       {/* Page Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text">Order History</h1>
-          <p className="text-muted-foreground text-sm">View and manage your trade executions</p>
+          <h1 className="text-2xl font-bold text-slate-950 dark:text-slate-100">Order History</h1>
+          <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mt-1">View and manage your trade executions</p>
         </div>
       </div>
 
       {/* Modern Filter Section */}
       <div className="grid gap-3 sm:flex sm:items-center sm:gap-3">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500 dark:text-slate-400" />
           <Input
             placeholder="Search symbols..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10 h-11 bg-card border-border rounded-xl focus-visible:ring-primary/20 transition-all shadow-sm"
+            className="pl-10 h-11 bg-white/60 backdrop-blur-lg dark:bg-[#0c1322]/60 border-slate-200 dark:border-white/[0.08] rounded-xl focus-visible:ring-primary/20 transition-all shadow-sm"
           />
         </div>
         
         <div className="flex items-center gap-2">
           <div className="flex-1 grid grid-cols-2 gap-2 sm:flex sm:w-auto">
             <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as 'all' | 'OPEN' | 'CLOSED')}>
-              <SelectTrigger className="h-11 bg-card border-border rounded-xl px-3 sm:w-[130px] shadow-sm">
+              <SelectTrigger className="h-11 bg-white/60 backdrop-blur-lg dark:bg-[#0c1322]/60 border-slate-200 dark:border-white/[0.08] rounded-xl px-3 sm:w-[130px] shadow-sm">
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
               <SelectContent>
@@ -153,7 +181,7 @@ const OrdersPage = () => {
             </Select>
 
             <Select value={sortBy} onValueChange={(v) => setSortBy(v as 'date' | 'pnl')}>
-              <SelectTrigger className="h-11 bg-card border-border rounded-xl px-3 sm:w-[130px] shadow-sm">
+              <SelectTrigger className="h-11 bg-white/60 backdrop-blur-lg dark:bg-[#0c1322]/60 border-slate-200 dark:border-white/[0.08] rounded-xl px-3 sm:w-[130px] shadow-sm">
                 <SelectValue placeholder="Sort by" />
               </SelectTrigger>
               <SelectContent>
@@ -163,32 +191,42 @@ const OrdersPage = () => {
             </Select>
           </div>
 
-          <Button 
-            onClick={handleExport} 
-            variant="outline" 
-            className="h-11 px-3 sm:px-4 border-border rounded-xl bg-card hover:bg-accent transition-all shrink-0 shadow-sm"
-            title="Export CSV"
-          >
-            <Download className="h-4 w-4 sm:mr-2" />
-            <span className="hidden sm:inline font-medium">Export</span>
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button 
+                variant="outline" 
+                className="h-11 px-3 sm:px-4 border-slate-200 dark:border-white/[0.08] rounded-xl bg-white/60 backdrop-blur-lg dark:bg-[#0c1322]/60 hover:bg-slate-100 dark:hover:bg-white/[0.1] transition-all shrink-0 shadow-sm"
+              >
+                <Download className="h-4 w-4 sm:mr-2" />
+                <span className="hidden sm:inline font-medium">Export</span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-40 rounded-xl bg-white/90 backdrop-blur-xl dark:bg-[#0c1322]/90 border-slate-200 dark:border-white/[0.08]">
+              <DropdownMenuItem onClick={() => handleExport('csv')} className="gap-2 cursor-pointer font-medium hover:bg-slate-100 dark:hover:bg-white/[0.05]">
+                Export as CSV
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleExport('json')} className="gap-2 cursor-pointer font-medium hover:bg-slate-100 dark:hover:bg-white/[0.05]">
+                Export as JSON
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 
       {/* Orders Table */}
-      <Card className="bg-card border-border shadow-md rounded-2xl overflow-hidden">
-        <CardHeader className="border-b border-border/50 bg-muted/5">
-          <CardTitle className="text-lg font-semibold flex items-center gap-2">
-            <History className="h-5 w-5 text-primary" />
+      <div className="rounded-[28px] border border-slate-200/80 bg-white dark:border-white/[0.08] dark:bg-[#0c1322] shadow-sm overflow-hidden flex flex-col">
+        <div className="flex items-center justify-between border-b border-slate-200 p-5 dark:border-white/[0.08] bg-slate-50/50 dark:bg-black/10">
+          <h2 className="text-lg font-semibold flex items-center gap-2 text-slate-950 dark:text-slate-100">
+            <History className="h-5 w-5 text-slate-600 dark:text-slate-300" />
             Executions
             {trades.length > 0 && (
-              <Badge variant="secondary" className="bg-secondary/20 text-secondary border-none px-2 py-0 h-5">
+              <Badge variant="secondary" className="bg-slate-200/50 text-slate-700 dark:bg-white/[0.08] dark:text-slate-300 border-none px-2 py-0.5 h-6">
                 {trades.length}
               </Badge>
             )}
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-0">
+          </h2>
+        </div>
+        <div className="p-0 flex-1 flex flex-col min-h-0">
           {/* Loading State */}
           {!hasFetched ? (
             <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
@@ -207,14 +245,14 @@ const OrdersPage = () => {
             </div>
           ) : trades.length === 0 ? (
             /* Empty State */
-            <div className="flex flex-col items-center justify-center py-20 text-muted-foreground text-center px-6">
-              <div className="h-20 w-20 bg-muted/20 rounded-full flex items-center justify-center mb-4">
+            <div className="flex flex-col items-center justify-center py-20 text-slate-500 dark:text-slate-400 text-center px-6">
+              <div className="h-20 w-20 bg-slate-100 dark:bg-white/[0.02] rounded-full flex items-center justify-center mb-4">
                 <History className="h-10 w-10 opacity-30" />
               </div>
-              <p className="text-lg font-semibold text-foreground">No Orders Found</p>
-              <p className="text-sm max-w-xs mx-auto">You haven't placed any trades yet. Head over to the terminal to get started.</p>
+              <p className="text-lg font-semibold text-slate-950 dark:text-slate-100">No Orders Found</p>
+              <p className="text-sm max-w-xs mx-auto mt-1">You haven't placed any trades yet. Head over to the terminal to get started.</p>
               <Link href="/trade">
-                <Button variant="outline" className="mt-6 rounded-xl">Go to Terminal</Button>
+                <Button variant="outline" className="mt-6 rounded-xl border-slate-200 dark:border-white/[0.08] hover:bg-slate-50 dark:hover:bg-white/[0.04]">Go to Terminal</Button>
               </Link>
             </div>
           ) : (
@@ -315,10 +353,10 @@ const OrdersPage = () => {
               </div>
 
               {/* Desktop Table View */}
-              <div className="hidden lg:block overflow-x-auto">
-                <Table>
-                  <TableHeader className="bg-muted/5">
-                    <TableRow className="border-border/50 hover:bg-transparent px-2">
+              <div className="hidden lg:block overflow-y-auto max-h-[600px]">
+                <Table className="relative min-w-[800px]">
+                  <TableHeader className="sticky top-0 z-10 border-b border-slate-200 bg-slate-50/95 backdrop-blur shadow-sm dark:border-white/[0.08] dark:bg-[#0c1322]/95">
+                    <TableRow className="border-none hover:bg-transparent">
                       <TableHead
                         className="text-xs font-bold text-muted-foreground uppercase tracking-wider pl-6 cursor-pointer hover:text-foreground transition-colors"
                         onClick={() => toggleSort('date')}
@@ -345,9 +383,9 @@ const OrdersPage = () => {
                       <TableHead className="text-xs font-bold text-muted-foreground uppercase tracking-wider pr-6">Status</TableHead>
                     </TableRow>
                   </TableHeader>
-                  <TableBody>
+                  <TableBody className="divide-y divide-slate-100 dark:divide-white/[0.05]">
                     {paginatedTrades.map((trade) => (
-                      <TableRow key={trade.id} className="border-border/50 hover:bg-muted/5 transition-colors group">
+                      <TableRow key={trade.id} className="border-none hover:bg-slate-50 dark:hover:bg-white/[0.02] transition-colors group">
                         <TableCell className="pl-6 py-4">
                           <div>
                             <p className="font-semibold text-foreground text-sm">
@@ -475,8 +513,8 @@ const OrdersPage = () => {
               )}
             </>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   );
 };

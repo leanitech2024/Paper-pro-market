@@ -5,6 +5,7 @@ import { PerformanceSummary } from '@/components/analytics/PerformanceSummary';
 import { EquityCurveChart } from '@/components/analytics/EquityCurveChart';
 import { WeeklyReviewPanel } from '@/components/analytics/WeeklyReviewPanel';
 import { WinLossChart } from '@/components/analytics/WinLossChart';
+import { UpgradeGate } from '@/components/subscription/UpgradeGate';
 
 export default function AnalyticsPage() {
   const fetchJournal = useJournalStore(state => state.fetchJournal);
@@ -14,7 +15,8 @@ export default function AnalyticsPage() {
   }, [fetchJournal]);
 
   return (
-    <div className="space-y-6 p-4 md:p-6 lg:p-8">
+    <UpgradeGate feature="analytics">
+      <div className="space-y-6 p-4 md:p-6 lg:p-8">
       <div>
         <h1 className="text-2xl font-bold tracking-tight text-foreground">Analytics</h1>
         <p className="text-muted-foreground mt-1">Comprehensive performance metrics based on your closed journal entries.</p>
@@ -41,6 +43,7 @@ export default function AnalyticsPage() {
           </div>
         </div>
       </div>
-    </div>
+      </div>
+    </UpgradeGate>
   );
 }

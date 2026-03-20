@@ -1,6 +1,6 @@
 import { performance } from "node:perf_hooks";
 import type { Instrument, PlaceOrder } from "@paper-market/core";
-import { isInstrumentAllowed } from "@paper-market/core";
+import { getIstDateKey, isInstrumentAllowed, isTradingHolidayIST } from "@paper-market/core";
 import { ApiError } from "@/lib/errors";
 import { assertTradingEnabled } from "@/lib/system-control";
 import { assertFeedHealthy } from "@/services/market/feeds/feed-health.service";
@@ -167,7 +167,8 @@ export class OrderValidatorService {
     }
 
     const isForcedRiskFlow = Boolean(options.force || payload.exitReason === "EXPIRY");
-    const marketClosed = isInstrumentSessionClosed(instrument, now);
+    const isHoliday = isTradingHolidayIST(now);
+    const marketClosed = isHoliday || isInstrumentSessionClosed(instrument, now);
     const stageAfterHours =
       !isForcedRiskFlow && marketClosed && ALLOW_AFTER_HOURS_ORDER_STAGING;
 
@@ -177,7 +178,12 @@ export class OrderValidatorService {
       !stageAfterHours &&
       !options.isClosingOrder
     ) {
-      throw new ApiError("Market is closed for now", 400, "MARKET_CLOSED");
+      const holidaySuffix = isHoliday ? ` (holiday ${getIstDateKey(now)})` : "";
+      throw new ApiError(
+        `Market is closed${holidaySuffix}. Trading hours are 9:15 AM - 3:30 PM IST (Mon-Fri).`,
+        400,
+        "MARKET_CLOSED"
+      );
     }
 
     if (!stageAfterHours && !isForcedRiskFlow && !options.isClosingOrder) {

@@ -79,15 +79,20 @@ export function EquityCurveChart() {
 
   if (chartData.length === 0) return null;
 
+  const panelClass = "rounded-[28px] border border-slate-200/80 bg-white dark:border-white/[0.08] dark:bg-[#0c1322]";
+  const badgeClass = "rounded-2xl border border-slate-200 bg-slate-50 p-2.5 dark:border-white/[0.08] dark:bg-black/20";
+
   return (
-    <Card className="bg-card border-border flex flex-col h-full">
-      <CardHeader className="py-4 border-b border-border/50">
-        <CardTitle className="text-base font-medium flex items-center gap-2">
-          <TrendingUp className="h-4 w-4" />
-          Equity & Drawdown
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="flex-1 min-h-[300px] w-full pl-0 pt-6 pb-2">
+    <div className={`${panelClass} p-4 md:p-5 flex flex-col h-full`}>
+      <div className="mb-4 flex items-center justify-between pb-2">
+        <div>
+          <h2 className="text-base font-semibold text-slate-950 dark:text-slate-100">Equity & Drawdown</h2>
+        </div>
+        <span className={badgeClass}>
+          <TrendingUp className="h-4 w-4 text-slate-600 dark:text-slate-300" />
+        </span>
+      </div>
+      <div className="flex-1 min-h-[300px] w-full pt-2">
         <ResponsiveContainer width="100%" height="100%">
           <ComposedChart data={chartData} margin={{ top: 5, right: 20, left: 10, bottom: 0 }}>
             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" opacity={0.4} />
@@ -155,7 +160,7 @@ export function EquityCurveChart() {
             />
           </ComposedChart>
         </ResponsiveContainer>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }

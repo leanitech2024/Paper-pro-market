@@ -38,17 +38,42 @@ export class LedgerCacheService {
 
         const executor = tx || db;
         const promise = (async () => {
-            const rows = await executor
-                .select({
-                    id: ledgerAccounts.id,
-                    accountType: ledgerAccounts.accountType,
-                })
-                .from(ledgerAccounts)
-                .where(eq(ledgerAccounts.userId, userId));
+            const fetchAccounts = async () => {
+                const rows = await executor
+                    .select({
+                        id: ledgerAccounts.id,
+                        accountType: ledgerAccounts.accountType,
+                    })
+                    .from(ledgerAccounts)
+                    .where(eq(ledgerAccounts.userId, userId));
 
-            const byType = new Map<LedgerAccountType, string>();
-            for (const row of rows) {
-                byType.set(row.accountType, row.id);
+                const byType = new Map<LedgerAccountType, string>();
+                for (const row of rows) {
+                    byType.set(row.accountType, row.id);
+                }
+                return byType;
+            };
+
+            let byType = await fetchAccounts();
+            const missing = REQUIRED_ACCOUNT_TYPES.filter((accountType) => !byType.has(accountType));
+
+            if (missing.length > 0) {
+                const insertMissing = async (exec: TxLike) => {
+                    await exec
+                        .insert(ledgerAccounts)
+                        .values(missing.map((accountType) => ({ userId, accountType })))
+                        .onConflictDoNothing({
+                            target: [ledgerAccounts.userId, ledgerAccounts.accountType],
+                        });
+                };
+
+                await insertMissing(executor);
+                byType = await fetchAccounts();
+
+                if (missing.some((accountType) => !byType.has(accountType)) && executor !== db) {
+                    await insertMissing(db);
+                    byType = await fetchAccounts();
+                }
             }
 
             for (const accountType of REQUIRED_ACCOUNT_TYPES) {

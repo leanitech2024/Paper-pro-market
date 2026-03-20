@@ -97,7 +97,7 @@ export function EquityTradingForm({
   const hasValidPrice = Number.isFinite(currentPrice) && currentPrice > 0;
   const hasSufficientMargin = finalRequiredMargin <= balance;
   
-  const canTrade = selectedStock && hasInstrumentToken && hasValidPrice && !isOrderProcessing && isQuantityValid && hasSufficientMargin && isSlValid && isTargetValid && !isMarginLoading;
+  const canTrade = selectedStock && hasInstrumentToken && hasValidPrice && !isOrderProcessing && isQuantityValid && hasSufficientMargin && isSlValid && isTargetValid;
 
   const handleSubmit = () => {
     if (isOrderProcessing || !canTrade || isMarginLoading || !selectedStock) return;
@@ -143,17 +143,17 @@ export function EquityTradingForm({
 
   return (
     <TooltipProvider>
-      <div className={cn("flex h-full min-h-0 flex-col bg-card", sheetMode && "rounded-none")}>
-        <div className="flex shrink-0 items-center justify-between border-b border-border px-4 py-3">
+      <div className={cn("flex h-full min-h-0 flex-col bg-transparent", sheetMode && "rounded-none")}>
+        <div className="flex shrink-0 items-center justify-between border-b border-slate-200/80 dark:border-white/[0.08] px-4 py-3">
           <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Equity Order</div>
-          <button type="button" onClick={() => onOpenSearch?.()} className="inline-flex items-center gap-1.5 rounded-md border border-border bg-background/70 px-2 py-1 text-[10px] font-semibold text-foreground hover:bg-muted disabled:cursor-not-allowed disabled:opacity-60" disabled={!onOpenSearch}>
+          <button type="button" onClick={() => onOpenSearch?.()} className="inline-flex items-center gap-1.5 rounded-md border border-slate-200/80 dark:border-white/[0.08] bg-white/40 dark:bg-white/5 px-2 py-1 text-[10px] font-semibold text-foreground hover:bg-slate-100 dark:hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-60" disabled={!onOpenSearch}>
             <Search className="h-3 w-3" />Search
           </button>
         </div>
 
         <div className={cn("flex-1 space-y-3 overflow-y-auto px-4 py-3 [scrollbar-width:thin]", sheetMode && "pb-20")}>
           {!selectedStock ? (
-            <div className="flex h-full min-h-[220px] items-center justify-center rounded-xl border border-border bg-background/70">
+            <div className="flex h-full min-h-[220px] items-center justify-center rounded-xl border border-slate-200/80 dark:border-white/[0.08] bg-white/40 dark:bg-white/[0.02]">
               <div className="text-center">
                 <p className="text-sm font-semibold text-foreground">No stock selected</p>
                 <p className="mt-1 text-xs text-muted-foreground">Search and select an equity instrument.</p>
@@ -161,7 +161,7 @@ export function EquityTradingForm({
             </div>
           ) : (
             <>
-              <div className="space-y-3 rounded-xl border border-border bg-background/70 p-3">
+              <div className="space-y-3 rounded-xl border border-slate-200/80 dark:border-white/[0.08] bg-white/40 dark:bg-white/[0.02] p-3">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Selected Stock</p>
@@ -173,7 +173,7 @@ export function EquityTradingForm({
 
               <TradePriceDisplay symbol={selectedStock.symbol} currentPrice={currentPrice} side={side} variant="equity" />
 
-              <div className="grid grid-cols-2 overflow-hidden rounded-lg border border-border bg-background/70">
+              <div className="grid grid-cols-2 overflow-hidden rounded-lg border border-slate-200/80 dark:border-white/[0.08] bg-white/40 dark:bg-white/[0.02]">
                 {(["BUY", "SELL"] as const).map((value) => (
                   <button key={value} type="button" onClick={() => setSide(value)}
                     className={cn("py-2 text-sm font-bold transition-colors",
@@ -223,7 +223,7 @@ export function EquityTradingForm({
         </div>
 
         {selectedStock && (
-          <div className={cn("shrink-0 border-t border-border p-4", sheetMode && "sticky bottom-0 bg-card")}>
+          <div className={cn("shrink-0 border-t border-slate-200/80 dark:border-white/[0.08] p-4", sheetMode && "sticky bottom-0 bg-white/80 dark:bg-[#0c1322]/90 backdrop-blur-xl")}>
             <button type="button" onClick={handleSubmit} disabled={!canTrade}
               className={cn("w-full min-h-11 rounded-xl py-3 text-sm font-bold tracking-wide transition-all",
                 !canTrade ? "cursor-not-allowed bg-muted text-muted-foreground"

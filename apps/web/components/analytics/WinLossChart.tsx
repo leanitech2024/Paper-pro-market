@@ -23,31 +23,38 @@ export function WinLossChart() {
     ];
   }, [metrics]);
 
+  const panelClass = "rounded-[28px] border border-slate-200/80 bg-white dark:border-white/[0.08] dark:bg-[#0c1322]";
+  const badgeClass = "rounded-2xl border border-slate-200 bg-slate-50 p-2.5 dark:border-white/[0.08] dark:bg-black/20";
+
   if (metrics.totalTrades === 0) {
     return (
-      <Card className="bg-card border-border flex flex-col h-full">
-        <CardHeader className="py-4 border-b border-border/50">
-          <CardTitle className="text-base font-medium flex items-center gap-2">
-            <PieChartIcon className="h-4 w-4" />
-            Win / Loss Ratio
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="flex flex-1 items-center justify-center min-h-[250px] text-muted-foreground text-sm">
+      <div className={`${panelClass} p-4 md:p-5 flex flex-col h-full`}>
+        <div className="mb-4 flex items-center justify-between pb-2">
+          <div>
+            <h2 className="text-base font-semibold text-slate-950 dark:text-slate-100">Win / Loss Ratio</h2>
+          </div>
+          <span className={badgeClass}>
+            <PieChartIcon className="h-4 w-4 text-slate-600 dark:text-slate-300" />
+          </span>
+        </div>
+        <div className="flex flex-1 items-center justify-center min-h-[250px] text-muted-foreground text-sm">
           No trading data available.
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     );
   }
 
   return (
-    <Card className="bg-card border-border flex flex-col h-full">
-      <CardHeader className="py-4 border-b border-border/50">
-        <CardTitle className="text-base font-medium flex items-center gap-2">
-          <PieChartIcon className="h-4 w-4" />
-          Win / Loss Ratio
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="flex-1 min-h-[250px] pt-6 pb-2">
+    <div className={`${panelClass} p-4 md:p-5 flex flex-col h-full`}>
+      <div className="mb-4 flex items-center justify-between pb-2">
+        <div>
+          <h2 className="text-base font-semibold text-slate-950 dark:text-slate-100">Win / Loss Ratio</h2>
+        </div>
+        <span className={badgeClass}>
+          <PieChartIcon className="h-4 w-4 text-slate-600 dark:text-slate-300" />
+        </span>
+      </div>
+      <div className="flex-1 min-h-[250px] pt-2">
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
             <Pie
@@ -75,14 +82,14 @@ export function WinLossChart() {
               height={36}
               iconType="circle"
               formatter={(value, entry: any) => (
-                <span className="text-sm font-medium ml-1 text-foreground">
-                  {value} <span className="text-muted-foreground font-normal">({Math.round((entry.payload.value / metrics.totalTrades) * 100)}%)</span>
+                <span className="text-sm font-medium ml-1 text-slate-950 dark:text-slate-100">
+                  {value} <span className="text-slate-500 font-normal">({Math.round((entry.payload.value / metrics.totalTrades) * 100)}%)</span>
                 </span>
               )}
             />
           </PieChart>
         </ResponsiveContainer>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }

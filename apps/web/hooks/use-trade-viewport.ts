@@ -14,8 +14,11 @@ function getViewport(width: number): Viewport {
 }
 
 export function useTradeViewport() {
-  // Keep first client render aligned with SSR output to avoid hydration mismatch.
-  const [viewport, setViewport] = useState<Viewport>("mobile");
+  // Resolve viewport immediately on the client to avoid flashing the mobile layout on desktop.
+  const [viewport, setViewport] = useState<Viewport>(() => {
+    if (typeof window === "undefined") return "desktop";
+    return getViewport(window.innerWidth);
+  });
 
   useEffect(() => {
     const onResize = () => setViewport(getViewport(window.innerWidth));

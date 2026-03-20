@@ -9,7 +9,7 @@ const testimonials = [
     image: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=800&h=800&fit=crop',
     rating: 4.8,
     text: "As a complete beginner, I was nervous about trading. This platform helped me understand how markets work without risking any real money.",
-    author: "James K.",
+    author: "Rahul M.",
     title: "Student Learner"
   },
   {
@@ -17,7 +17,7 @@ const testimonials = [
     image: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=800&h=800&fit=crop',
     rating: 5.0,
     text: "Paper Market Pro allowed me to test my strategies in real market conditions and analyze my mistakes before going live.",
-    author: "Michael T.",
+    author: "Priya S.",
     title: "Aspiring Trader"
   },
   {
@@ -25,7 +25,7 @@ const testimonials = [
     image: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=800&h=800&fit=crop',
     rating: 4.6,
     text: "The journal and performance stats helped me improve discipline and risk management. It feels like a real trading environment, minus the risk.",
-    author: "Sarah L.",
+    author: "Aditya D.",
     title: "Working Professional"
   }
 ];

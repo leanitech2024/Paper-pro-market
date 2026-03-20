@@ -7,6 +7,7 @@ import { OrderRepositoryService } from "@/services/trading/pipeline/order-reposi
 import { OrderValidatorService } from "@/services/trading/pipeline/order-validator.service";
 import { OrderRiskService } from "@/services/trading/risk/order-risk.service";
 import { MarginReservationService } from "@/services/trading/margin/margin-reservation.service";
+import { bootstrapUserLedgerState } from "@/services/accounting/ledger/ledger-bootstrap.service";
 import crypto from "crypto";
 
 export class OrderPipelineService {
@@ -20,6 +21,9 @@ export class OrderPipelineService {
     let executionMs = 0;
 
     payload.idempotencyKey = payload.idempotencyKey ?? crypto.randomUUID();
+
+    // Ensure ledger accounts + cash snapshots exist before any margin/ledger activity.
+    await bootstrapUserLedgerState(userId);
 
     const validation = await OrderValidatorService.validate(userId, payload, options);
 
@@ -95,5 +99,3 @@ export class OrderPipelineService {
     return order;
   }
 }
-
-

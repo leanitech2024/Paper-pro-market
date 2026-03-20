@@ -44,6 +44,10 @@ const DEFAULT_CONCENTRATION_LIMIT = Number(process.env.MAX_SINGLE_INSTRUMENT_CON
 const DEFAULT_MARGIN_BUFFER = Number(process.env.MIN_MARGIN_BUFFER_RATIO ?? "1.25");
 const DEFAULT_WALLET_EQUITY = Number(process.env.DEFAULT_WALLET_BALANCE ?? "1000000");
 const WALLET_FALLBACK_TTL_MS = Number(process.env.PRETRADE_WALLET_CACHE_TTL_MS ?? "3000");
+const TRUE_VALUES = new Set(["1", "true", "yes", "on"]);
+const DISABLE_CONCENTRATION_CHECK = TRUE_VALUES.has(
+    String(process.env.DISABLE_CONCENTRATION_CHECK ?? "false").trim().toLowerCase()
+);
 
 function toNumber(value: unknown, fallback = 0): number {
     const parsed = Number(value);
@@ -158,6 +162,9 @@ export class PreTradeRiskService {
         instrument: Instrument
     ): Promise<{ allowed: true }> {
         if (!instrumentStore.isReady()) {
+            await instrumentStore.initialize();
+        }
+        if (!instrumentStore.isReady()) {
             throw new ApiError("Instrument store not ready", 503, "INSTRUMENT_STORE_NOT_READY");
         }
 
@@ -209,7 +216,7 @@ export class PreTradeRiskService {
 
         const concentrationLimit = clampPositive(DEFAULT_CONCENTRATION_LIMIT, 0.40);
         const concentrationRatio = equity > EPSILON ? projectedCurrentNotional / equity : Number.POSITIVE_INFINITY;
-        if (concentrationRatio > concentrationLimit) {
+        if (!DISABLE_CONCENTRATION_CHECK && concentrationRatio > concentrationLimit) {
             this.reject(
                 "CONCENTRATION_RISK",
                 "Projected concentration exceeds account concentration threshold",

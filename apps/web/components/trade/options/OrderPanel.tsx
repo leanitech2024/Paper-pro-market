@@ -172,8 +172,8 @@ export function OrderPanel({
 
   return (
     <>
-      <div className={cn("flex h-full flex-col bg-card", sheetMode && "rounded-none")}>
-        <div className="flex shrink-0 items-start justify-between border-b border-border px-4 py-3">
+      <div className={cn("flex h-full flex-col bg-white dark:bg-[#0c1322]", sheetMode && "rounded-none")}>
+        <div className="flex shrink-0 items-start justify-between border-b border-slate-200/80 px-4 py-3 dark:border-white/[0.08]">
           <div className="min-w-0">
             <div className="flex items-center gap-2">
               <span
@@ -184,16 +184,16 @@ export function OrderPanel({
               >
                 {optionType}
               </span>
-              <p className="truncate text-sm font-semibold text-foreground">{contract.symbol}</p>
+              <p className="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">{contract.symbol}</p>
             </div>
-            <div className="mt-0.5 flex items-center gap-2 text-[11px] text-muted-foreground">
+            <div className="mt-0.5 flex items-center gap-2 text-[11px] text-slate-500 dark:text-slate-400">
               <span>Strike {strike > 0 ? strike.toLocaleString("en-IN") : "--"}</span>
               <span>-</span>
               <span>Lot {lotSize}</span>
               {daysToExpiry !== null && daysToExpiry !== undefined && (
                 <>
                   <span>-</span>
-                  <span className={daysToExpiry <= 3 ? "text-amber-400" : "text-muted-foreground"}>
+                  <span className={daysToExpiry <= 3 ? "text-amber-400" : "text-slate-500 dark:text-slate-400"}>
                     {daysToExpiry}D
                   </span>
                 </>
@@ -203,21 +203,21 @@ export function OrderPanel({
           <button
             type="button"
             onClick={onClose}
-            className="ml-2 shrink-0 rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            className="ml-2 shrink-0 rounded-lg p-1.5 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-white/[0.06] dark:hover:text-slate-100"
           >
             <X className="h-4 w-4" />
           </button>
         </div>
 
-        <div className="shrink-0 border-b border-border px-4 py-2">
+        <div className="shrink-0 border-b border-slate-200/80 px-4 py-2 dark:border-white/[0.08]">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-[11px] text-muted-foreground">LTP</p>
-              <p className="text-xl font-bold tabular-nums text-foreground">{fmtPrice(marketPremium)}</p>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400">LTP</p>
+              <p className="text-xl font-bold tabular-nums text-slate-900 dark:text-slate-100">{fmtPrice(marketPremium)}</p>
             </div>
             <div className="text-right">
-              <p className="text-[11px] text-muted-foreground">Breakeven</p>
-              <p className="text-sm font-semibold tabular-nums text-foreground">
+              <p className="text-[11px] text-slate-500 dark:text-slate-400">Breakeven</p>
+              <p className="text-sm font-semibold tabular-nums text-slate-900 dark:text-slate-100">
                 {Number.isFinite(breakeven) ? breakeven.toFixed(2) : "--"}
               </p>
             </div>
@@ -225,7 +225,7 @@ export function OrderPanel({
         </div>
 
         <div className={cn("flex-1 space-y-3 overflow-y-auto px-4 py-3 [scrollbar-width:thin]", sheetMode && "pb-20")}>
-          <div className="grid grid-cols-2 overflow-hidden rounded-lg border border-border bg-background/70">
+          <div className="grid grid-cols-2 overflow-hidden rounded-lg border border-slate-200/80 bg-slate-50/80 dark:border-white/[0.08] dark:bg-[#10192b]">
             {(["BUY", "SELL"] as const).map((value) => (
               <button
                 key={value}
@@ -237,7 +237,7 @@ export function OrderPanel({
                     ? value === "BUY"
                       ? "bg-emerald-600 text-white"
                       : "bg-rose-600 text-white"
-                    : "text-muted-foreground hover:text-foreground"
+                    : "text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100"
                 )}
               >
                 {value === "BUY" ? (
@@ -254,8 +254,8 @@ export function OrderPanel({
           </div>
 
           <div className="flex items-center gap-2">
-            <span className="text-[11px] text-muted-foreground">Type</span>
-            <div className="inline-flex rounded-lg border border-border bg-background/70 p-0.5">
+            <span className="text-[11px] text-slate-500 dark:text-slate-400">Type</span>
+            <div className="inline-flex rounded-lg border border-slate-200/80 bg-slate-50/80 p-0.5 dark:border-white/[0.08] dark:bg-[#10192b]">
               {(["MARKET", "LIMIT"] as OrderType[]).map((value) => (
                 <button
                   key={value}
@@ -269,8 +269,8 @@ export function OrderPanel({
                   className={cn(
                     "rounded-md px-3 py-1 text-[11px] font-semibold transition-colors",
                     orderType === value
-                      ? "bg-muted text-foreground"
-                      : "text-muted-foreground hover:text-foreground"
+                      ? "bg-slate-100 text-slate-900 dark:bg-white/[0.06] dark:text-slate-100"
+                      : "text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100"
                   )}
                 >
                   {value}
@@ -281,31 +281,31 @@ export function OrderPanel({
 
           {orderType === "LIMIT" && (
             <div>
-              <label className="mb-1 block text-[11px] text-muted-foreground">Limit Price (Rs)</label>
+              <label className="mb-1 block text-[11px] text-slate-500 dark:text-slate-400">Limit Price (Rs)</label>
               <input
                 type="text"
                 inputMode="decimal"
                 value={limitPrice}
                 onChange={(event) => setLimitPrice(event.target.value.replace(/[^\d.]/g, ""))}
                 placeholder={marketPremium.toFixed(2)}
-                className="w-full rounded-lg border border-border bg-background/80 px-3 py-2 text-sm font-semibold text-foreground placeholder:text-muted-foreground/70 outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/30"
+                className="w-full rounded-lg border border-slate-200/80 bg-white/80 px-3 py-2 text-sm font-semibold text-slate-900 placeholder:text-slate-400/80 outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/30 dark:border-white/[0.08] dark:bg-[#10192b] dark:text-slate-100 dark:placeholder:text-slate-500/70"
               />
             </div>
           )}
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="mb-1 block text-[11px] text-muted-foreground">Lots</label>
+              <label className="mb-1 block text-[11px] text-slate-500 dark:text-slate-400">Lots</label>
               {isExitFlow ? (
-                <div className="flex h-9 items-center rounded-lg border border-border bg-background/70 px-3 text-sm font-semibold text-foreground">
+                <div className="flex h-9 items-center rounded-lg border border-slate-200/80 bg-slate-50/80 px-3 text-sm font-semibold text-slate-900 dark:border-white/[0.08] dark:bg-[#10192b] dark:text-slate-100">
                   Exit ({existingQty})
                 </div>
               ) : (
-                <div className="flex items-center rounded-lg border border-border bg-background/70">
+                <div className="flex items-center rounded-lg border border-slate-200/80 bg-slate-50/80 dark:border-white/[0.08] dark:bg-[#10192b]">
                   <button
                     type="button"
                     onClick={() => setLots(String(Math.max(1, lotsValue - 1)))}
-                    className="px-3 py-2 text-muted-foreground hover:text-foreground"
+                    className="px-3 py-2 text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100"
                   >
                     -
                   </button>
@@ -314,12 +314,12 @@ export function OrderPanel({
                     inputMode="numeric"
                     value={lots}
                     onChange={(event) => setLots(event.target.value.replace(/[^\d]/g, ""))}
-                    className="w-full bg-transparent py-2 text-center text-sm font-bold text-foreground outline-none"
+                    className="w-full bg-transparent py-2 text-center text-sm font-bold text-slate-900 outline-none dark:text-slate-100"
                   />
                   <button
                     type="button"
                     onClick={() => setLots(String(lotsValue + 1))}
-                    className="px-3 py-2 text-muted-foreground hover:text-foreground"
+                    className="px-3 py-2 text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100"
                   >
                     +
                   </button>
@@ -327,26 +327,26 @@ export function OrderPanel({
               )}
             </div>
             <div>
-              <label className="mb-1 block text-[11px] text-muted-foreground">Qty</label>
-              <div className="flex h-9 items-center rounded-lg border border-border bg-background/70 px-3 text-sm font-bold tabular-nums text-foreground">
+              <label className="mb-1 block text-[11px] text-slate-500 dark:text-slate-400">Qty</label>
+              <div className="flex h-9 items-center rounded-lg border border-slate-200/80 bg-slate-50/80 px-3 text-sm font-bold tabular-nums text-slate-900 dark:border-white/[0.08] dark:bg-[#10192b] dark:text-slate-100">
                 {totalQty.toLocaleString("en-IN")}
               </div>
             </div>
           </div>
 
-          <div className="grid grid-cols-3 divide-x divide-border overflow-hidden rounded-lg border border-border bg-muted/30">
+          <div className="grid grid-cols-3 divide-x divide-slate-200/80 overflow-hidden rounded-lg border border-slate-200/80 bg-slate-50/70 dark:divide-white/[0.08] dark:border-white/[0.08] dark:bg-[#10192b]">
             <div className="px-3 py-2">
-              <p className="text-[10px] text-muted-foreground">{side === "BUY" ? "Capital" : "Margin"}</p>
+              <p className="text-[10px] text-slate-500 dark:text-slate-400">{side === "BUY" ? "Capital" : "Margin"}</p>
               <p className="mt-0.5 text-xs font-semibold tabular-nums text-foreground">{fmtMoney(capitalRequired)}</p>
             </div>
             <div className="px-3 py-2">
-              <p className="text-[10px] text-muted-foreground">Max Loss</p>
+              <p className="text-[10px] text-slate-500 dark:text-slate-400">Max Loss</p>
               <p className="mt-0.5 text-xs font-semibold tabular-nums text-rose-400">
                 {side === "BUY" ? fmtMoney(maxLoss) : "Unlimited"}
               </p>
             </div>
             <div className="px-3 py-2">
-              <p className="text-[10px] text-muted-foreground">Lot Size</p>
+              <p className="text-[10px] text-slate-500 dark:text-slate-400">Lot Size</p>
               <p className="mt-0.5 text-xs font-semibold tabular-nums text-foreground">{lotSize}</p>
             </div>
           </div>
@@ -379,7 +379,12 @@ export function OrderPanel({
           )}
         </div>
 
-        <div className={cn("shrink-0 border-t border-border p-4", sheetMode && "sticky bottom-0 bg-card")}>
+        <div
+          className={cn(
+            "shrink-0 border-t border-slate-200/80 p-4 dark:border-white/[0.08]",
+            sheetMode && "sticky bottom-0 bg-white dark:bg-[#0c1322]"
+          )}
+        >
           <button
             type="button"
             onClick={handleSubmit}
@@ -387,7 +392,7 @@ export function OrderPanel({
             className={cn(
               "w-full min-h-11 rounded-xl py-3 text-sm font-bold tracking-wide transition-all",
               isDisabled
-                ? "cursor-not-allowed bg-muted text-muted-foreground"
+                ? "cursor-not-allowed bg-slate-100 text-slate-500 dark:bg-white/[0.06] dark:text-slate-400"
                 : side === "BUY"
                 ? "bg-emerald-600 text-white shadow-[0_4px_20px_rgba(16,185,129,.35)] hover:bg-emerald-500"
                 : "bg-rose-600 text-white shadow-[0_4px_20px_rgba(239,68,68,.3)] hover:bg-rose-500"
@@ -397,7 +402,7 @@ export function OrderPanel({
               ? "Placing order..."
               : `${side} ${optionType} - ${totalQty.toLocaleString("en-IN")} qty`}
           </button>
-          <p className="mt-2 text-center text-[10px] text-muted-foreground">Paper trading - instant fill</p>
+          <p className="mt-2 text-center text-[10px] text-slate-500 dark:text-slate-400">Paper trading - instant fill</p>
         </div>
       </div>
 

@@ -71,7 +71,7 @@ export function JournalTable({ entries }: JournalTableProps) {
   };
 
   return (
-    <div className="rounded-md border border-border">
+    <div className="w-full">
       {entries.length === 0 ? (
         <div className="flex items-center justify-center py-12 text-muted-foreground text-sm">
           No journal entries recorded.

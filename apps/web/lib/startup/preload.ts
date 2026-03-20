@@ -1,3 +1,15 @@
+/**
+ * lib/startup/preload.ts — Next.js server startup entry point
+ *
+ * Called via `import "@/lib/startup/preload"` in `app/layout.tsx` (server component).
+ * Runs once per Next.js server process at first request.
+ *
+ * Responsibility: environment guard only.
+ * - Skips during Vercel/build phases and when an external market-engine is configured.
+ * - Delegates actual initialization work to `prewarm.ts`.
+ *
+ * @see prewarm.ts for the actual service initialization sequence.
+ */
 import { prewarmCore } from "@/lib/startup/prewarm";
 
 export async function preloadCore() {

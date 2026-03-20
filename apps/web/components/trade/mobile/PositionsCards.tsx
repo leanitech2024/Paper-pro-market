@@ -1,13 +1,23 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { usePositionsStore } from "@/stores/trading/positions.store";
+import { useMarketStore } from "@/stores/trading/market.store";
 import { cn } from "@/lib/utils";
+import { UserPosition as Position } from "@paper-market/core";
+import { PartialCloseDialog } from "@/components/positions/PartialCloseDialog";
 
 type PositionsCardsProps = {
   className?: string;
   instrumentFilter?: "equity" | "futures" | "options";
 };
+
+function normalizeInstrumentMode(value: string | null | undefined): "equity" | "futures" | "options" {
+  const normalized = String(value ?? "").trim().toLowerCase();
+  if (normalized === "future" || normalized === "futures") return "futures";
+  if (normalized === "option" || normalized === "options") return "options";
+  return "equity";
+}
 
 function formatMoney(value: number): string {
   if (!Number.isFinite(value)) return "--";
@@ -22,7 +32,9 @@ export function PositionsCards({ className, instrumentFilter }: PositionsCardsPr
   const positions = usePositionsStore((state) => state.positions);
   const isLoading = usePositionsStore((state) => state.isLoading);
   const fetchPositions = usePositionsStore((state) => state.fetchPositions);
-  const closePosition = usePositionsStore((state) => state.closePosition);
+  const quotesByInstrument = useMarketStore((s) => s.quotesByInstrument);
+
+  const [closingPosition, setClosingPosition] = useState<Position | null>(null);
 
   useEffect(() => {
     fetchPositions(true).catch(() => undefined);
@@ -32,7 +44,7 @@ export function PositionsCards({ className, instrumentFilter }: PositionsCardsPr
     return positions.filter((position) => {
       if (Number(position.quantity || 0) === 0) return false;
       if (!instrumentFilter) return true;
-      return position.instrument === instrumentFilter;
+      return normalizeInstrumentMode(position.instrument) === instrumentFilter;
     });
   }, [instrumentFilter, positions]);
 
@@ -54,6 +66,11 @@ export function PositionsCards({ className, instrumentFilter }: PositionsCardsPr
         {filtered.map((position) => {
           const pnl = Number(position.currentPnL || 0);
           const pnlUp = pnl >= 0;
+          const token = String(position.instrumentToken || "");
+          const livePrice =
+            Number(quotesByInstrument[token]?.price ?? 0) ||
+            Number(position.currentPrice ?? 0);
+
           return (
             <article key={position.id} className="rounded-lg border border-white/[0.08] bg-[#0f172a] p-3">
               <div className="flex items-start justify-between gap-3">
@@ -71,21 +88,32 @@ export function PositionsCards({ className, instrumentFilter }: PositionsCardsPr
 
               <div className="mt-2 grid grid-cols-2 gap-2 text-[11px] text-slate-400">
                 <span>Entry: {Number(position.entryPrice || 0).toFixed(2)}</span>
-                <span className="text-right">LTP: {Number(position.currentPrice || 0).toFixed(2)}</span>
+                <span className="text-right">LTP: {livePrice > 0 ? livePrice.toFixed(2) : "--"}</span>
               </div>
 
               <button
                 type="button"
-                onClick={() => closePosition(position.id)}
-                className="mt-3 min-h-11 w-full rounded-md border border-rose-500/40 bg-rose-500/10 text-xs font-semibold text-rose-300"
+                onClick={() => setClosingPosition(position)}
+                className="mt-3 min-h-11 w-full rounded-md border border-rose-500/40 bg-rose-500/10 text-xs font-semibold text-rose-300 transition-colors hover:bg-rose-500/20"
               >
-                Close Position
+                Exit Position
               </button>
             </article>
           );
         })}
       </div>
+
+      <PartialCloseDialog
+        position={closingPosition}
+        open={!!closingPosition}
+        onOpenChange={(v) => { if (!v) setClosingPosition(null); }}
+        livePrice={
+          closingPosition
+            ? Number(quotesByInstrument[String(closingPosition.instrumentToken || "")]?.price ?? 0) ||
+              Number(closingPosition.currentPrice ?? 0)
+            : 0
+        }
+      />
     </div>
   );
 }
-

@@ -59,21 +59,21 @@ export function TerminalHeader({
   const isUp = underlyingChangePercent >= 0;
 
   return (
-    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-border bg-card px-4 py-2">
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-slate-200/80 bg-white/95 px-4 py-2 dark:border-white/[0.08] dark:bg-[#0c1322]/95">
 
       {/* Symbol + Price */}
       <div className="flex shrink-0 items-center gap-3">
         <button
           type="button"
           onClick={onOpenSearch}
-          className="flex items-center gap-1.5 rounded-lg bg-muted/60 px-2.5 py-1.5 text-sm font-bold text-foreground transition-colors hover:bg-muted"
+          className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm font-bold text-slate-700 transition-colors hover:bg-slate-100 dark:border-white/[0.08] dark:bg-[#10192b] dark:text-slate-100 dark:hover:bg-white/[0.08]"
         >
-          <Search className="h-3.5 w-3.5 text-muted-foreground" />
+          <Search className="h-3.5 w-3.5 text-slate-500 dark:text-slate-300" />
           {underlyingLabel || "OPTIONS"}
         </button>
 
         <div className="flex items-baseline gap-2">
-          <span className="text-lg font-bold tabular-nums text-foreground">
+          <span className="text-lg font-bold tabular-nums text-slate-950 dark:text-slate-100">
             {fmtPrice(underlyingPrice)}
           </span>
           <span
@@ -87,19 +87,19 @@ export function TerminalHeader({
         </div>
 
         {atmStrike && (
-          <span className="hidden rounded bg-muted/60 px-2 py-0.5 text-[11px] text-muted-foreground sm:inline">
+          <span className="hidden rounded bg-slate-100/80 px-2 py-0.5 text-[11px] text-slate-500 dark:bg-white/[0.06] dark:text-slate-400 sm:inline">
             ATM {atmStrike.toLocaleString("en-IN")}
           </span>
         )}
       </div>
 
       {/* Divider */}
-      <ChevronRight className="hidden h-4 w-4 shrink-0 text-border sm:block" />
+      <ChevronRight className="hidden h-4 w-4 shrink-0 text-slate-300 dark:text-white/[0.12] sm:block" />
 
       {/* Expiry pills */}
       <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-x-auto pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {expiries.length === 0 ? (
-          <span className="text-xs text-muted-foreground">Loading expiries...</span>
+          <span className="text-xs text-slate-500 dark:text-slate-400">Loading expiries...</span>
         ) : (
           expiries.slice(0, 12).map((exp) => {
             const active = exp === selectedExpiry;
@@ -111,8 +111,8 @@ export function TerminalHeader({
                 className={cn(
                   "shrink-0 whitespace-nowrap rounded-md px-2.5 py-1 text-[11px] font-semibold transition-colors",
                   active
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground"
+                    ? "border border-slate-900 bg-slate-900 text-white dark:border-white/10 dark:bg-white/10 dark:text-slate-100"
+                    : "border border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100 dark:border-white/[0.08] dark:bg-[#10192b] dark:text-slate-300 dark:hover:bg-white/[0.08]"
                 )}
               >
                 {fmtExpiryLabel(exp)}
@@ -132,23 +132,23 @@ export function TerminalHeader({
             className={cn(
               "hidden rounded px-2 py-0.5 text-[11px] font-semibold sm:inline",
               daysToExpiry <= 3
-                ? "bg-amber-500/15 text-amber-400"
-                : "bg-muted/60 text-muted-foreground"
+                ? "bg-amber-500/15 text-amber-500"
+                : "bg-slate-100/80 text-slate-500 dark:bg-white/[0.06] dark:text-slate-400"
             )}
           >
             {Math.max(0, daysToExpiry)}D
           </span>
         )}
 
-        <div className="inline-flex overflow-hidden rounded-lg border border-border bg-background/70">
+        <div className="inline-flex overflow-hidden rounded-lg border border-slate-200 bg-slate-50 dark:border-white/[0.08] dark:bg-[#10192b]">
           <button
             type="button"
             onClick={() => onModeChange("single")}
             className={cn(
               "px-3 py-1.5 text-[11px] font-semibold transition-colors",
               mode === "single"
-                ? "bg-primary text-primary-foreground"
-                : "text-muted-foreground hover:text-foreground"
+                ? "bg-slate-900 text-white dark:bg-white/10 dark:text-slate-100"
+                : "text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100"
             )}
           >
             Single Trade
@@ -159,8 +159,8 @@ export function TerminalHeader({
             className={cn(
               "px-3 py-1.5 text-[11px] font-semibold transition-colors",
               mode === "strategy"
-                ? "bg-primary text-primary-foreground"
-                : "text-muted-foreground hover:text-foreground"
+                ? "bg-slate-900 text-white dark:bg-white/10 dark:text-slate-100"
+                : "text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100"
             )}
           >
             Strategy

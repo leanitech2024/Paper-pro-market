@@ -124,6 +124,30 @@ export class LedgerService {
             throw new ApiError("Invalid ledger account mapping", 400, "LEDGER_ACCOUNT_MAPPING_INVALID");
         }
 
+        const [existing] = await executor
+            .select({
+                id: ledgerEntries.id,
+                globalSequence: ledgerEntries.globalSequence,
+            })
+            .from(ledgerEntries)
+            .where(
+                and(
+                    eq(ledgerEntries.referenceType, reference.referenceType),
+                    eq(ledgerEntries.referenceId, reference.referenceId),
+                    eq(ledgerEntries.idempotencyKey, normalizedIdempotencyKey)
+                )
+            )
+            .limit(1);
+
+        if (existing?.id && Number.isFinite(Number(existing.globalSequence))) {
+            return {
+                entryId: existing.id,
+                amount: normalizedAmount,
+                globalSequence: Number(existing.globalSequence),
+                duplicate: true,
+            };
+        }
+
         const [entry] = await executor
             .insert(ledgerEntries)
             .values({
@@ -135,13 +159,7 @@ export class LedgerService {
                 referenceId: reference.referenceId,
                 idempotencyKey: normalizedIdempotencyKey,
             })
-            .onConflictDoNothing({
-                target: [
-                    ledgerEntries.referenceType,
-                    ledgerEntries.referenceId,
-                    ledgerEntries.idempotencyKey,
-                ],
-            })
+            .onConflictDoNothing()
             .returning({
                 id: ledgerEntries.id,
                 globalSequence: ledgerEntries.globalSequence,
@@ -169,6 +187,30 @@ export class LedgerService {
                 amount: normalizedAmount,
                 globalSequence: sequence,
                 duplicate: false,
+            };
+        }
+
+        const [race] = await executor
+            .select({
+                id: ledgerEntries.id,
+                globalSequence: ledgerEntries.globalSequence,
+            })
+            .from(ledgerEntries)
+            .where(
+                and(
+                    eq(ledgerEntries.referenceType, reference.referenceType),
+                    eq(ledgerEntries.referenceId, reference.referenceId),
+                    eq(ledgerEntries.idempotencyKey, normalizedIdempotencyKey)
+                )
+            )
+            .limit(1);
+
+        if (race?.id && Number.isFinite(Number(race.globalSequence))) {
+            return {
+                entryId: race.id,
+                amount: normalizedAmount,
+                globalSequence: Number(race.globalSequence),
+                duplicate: true,
             };
         }
 
@@ -293,7 +335,7 @@ export class LedgerService {
                         balance,
                         lastSequence: 0,
                     })
-                    .onConflictUpdate({
+                    .onConflictDoUpdate({
                         target: [ledgerAccountBalances.accountId],
                         set: {
                             balance,
@@ -366,7 +408,7 @@ export class LedgerService {
                 balance: delta,
                 lastSequence: sequence,
             })
-            .onConflictUpdate({
+            .onConflictDoUpdate({
                 target: [ledgerAccountBalances.accountId],
                 set: {
                     balance: sql`${ledgerAccountBalances.balance} + ${delta}`,

@@ -175,6 +175,13 @@ export class PositionService {
                 .leftJoin(instruments, eq(positions.instrumentToken, instruments.instrumentToken))
                 .where(eq(positions.userId, userId));
 
+            const toInstrumentMode = (rawType?: string | null): "equity" | "futures" | "options" => {
+                const normalized = String(rawType || "").trim().toUpperCase();
+                if (normalized === "FUTURE") return "futures";
+                if (normalized === "OPTION") return "options";
+                return "equity";
+            };
+
             return userPositions.map(({ position, instrument }) => {
                 const avgPrice = parseFloat(position.averagePrice);
                 const quote = realTimeMarketService.getQuote(position.instrumentToken);
@@ -197,7 +204,7 @@ export class PositionService {
                         currentPnL: unrealizedPnL, // Map to currentPnL for UI
                         unrealizedPnL: unrealizedPnL,
                         realizedPnL: parseFloat(position.realizedPnL || "0"),
-                        instrument: instrument?.instrumentType || "equity",
+                        instrument: toInstrumentMode(instrument?.instrumentType),
                         expiryDate: instrument?.expiry || null,
                         productType: position.productType ?? "CNC",
                         lotSize: instrument?.lotSize || 1,

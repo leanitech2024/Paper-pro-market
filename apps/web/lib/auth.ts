@@ -9,6 +9,7 @@ import { users } from "@paper-market/core/db";
 import { WalletService } from "@/services/accounting/wallet/wallet.service";
 import { bootstrapUserLedgerState } from "@/services/accounting/ledger/ledger-bootstrap.service";
 import { WatchlistService } from "@/services/market/catalog/watchlist.service";
+import { SubscriptionService } from "@/services/subscription/subscription.service";
 import { logger } from "@/lib/logger";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
@@ -33,7 +34,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const passwordsMatch = await compare(password, user.password);
         if (!passwordsMatch) return null;
 
-        return user;
+        return { ...user, role: user.role ?? 'user' };
       },
     }),
   ],
@@ -46,7 +47,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           const emailStr = String(profile.email);
 
           const [existingUser] = await db
-            .select({ id: users.id })
+            .select({ id: users.id, role: users.role })
             .from(users)
             .where(eq(users.email, emailStr))
             .limit(1);
@@ -69,6 +70,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
               await WalletService.createWallet(created.id, tx);
               await bootstrapUserLedgerState(created.id, tx);
+              await SubscriptionService.createTrialSubscription(created.id, tx);
 
               return created.id;
             });
@@ -85,8 +87,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             }
 
             user.id = createdId;
+            user.role = 'user'; // New users default to 'user' role
           } else {
             user.id = existingUser.id;
+            user.role = existingUser.role ?? 'user';
           }
         } catch (error) {
           logger.error({ err: error }, "Error in Google signIn callback");

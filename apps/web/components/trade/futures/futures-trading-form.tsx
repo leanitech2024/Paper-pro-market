@@ -195,7 +195,13 @@ export function FuturesTradingForm({
 
   return (
     <TooltipProvider>
-      <Card className={cn("bg-card border-border h-full rounded-sm shadow-none flex flex-col min-h-0", sheetMode && "rounded-none border-0 bg-transparent")}>
+      <Card
+        className={cn(
+          "h-full rounded-sm shadow-none flex flex-col min-h-0 bg-white dark:bg-[#0c1322]",
+          !sheetMode && "border-0",
+          sheetMode && "rounded-none border-0 bg-transparent"
+        )}
+      >
         <CardHeader className="pb-2 p-3">
           <InstrumentSelector value={instrumentType} onChange={setInstrumentType} hideStockOptions={true} allowedValues={allowedInstrumentTypes} />
         </CardHeader>
@@ -211,11 +217,13 @@ export function FuturesTradingForm({
           )}
 
           {!isSearchDrivenDerivative && (
-            <div className="space-y-4 rounded-sm bg-muted/30 p-3 border border-border">
+            <div className="space-y-4 rounded-sm bg-slate-50/40 p-3 dark:bg-white/[0.04]">
               <div className="space-y-2">
-                <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Expiry</Label>
+                <Label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider dark:text-slate-400">Expiry</Label>
                 <Select value={selectedExpiry} onValueChange={setSelectedExpiry}>
-                  <SelectTrigger className="bg-input border-border h-8 rounded-sm text-xs"><SelectValue placeholder="Select Expiry" /></SelectTrigger>
+                  <SelectTrigger className="bg-white border-slate-200/80 h-8 rounded-sm text-xs dark:bg-[#0f1728] dark:border-white/[0.08] dark:text-slate-100">
+                    <SelectValue placeholder="Select Expiry" />
+                  </SelectTrigger>
                   <SelectContent>{availableExpiries.map(exp => (<SelectItem key={exp.toISOString()} value={exp.toISOString()}>{formatExpiryLabel(exp)}</SelectItem>))}</SelectContent>
                 </Select>
               </div>
@@ -223,7 +231,7 @@ export function FuturesTradingForm({
           )}
 
           {selectedStock ? (
-            <div className="pt-2 border-t">
+            <div className="pt-2">
               <TradePriceDisplay symbol={selectedStock.symbol} currentPrice={currentPrice} side={side} />
               <OrderTypeToggle side={side} onSideChange={setSide} />
 
@@ -237,14 +245,18 @@ export function FuturesTradingForm({
                 stopLoss={stopLoss} setStopLoss={setStopLoss}
                 target={target} setTarget={setTarget}
                 hasSl={hasSl} isSlValid={isSlValid}
-                hasTarget={hasTarget} isTargetValid={isTargetValid} />
+                hasTarget={hasTarget} isTargetValid={isTargetValid}
+                appearance="minimal"
+              />
 
-              <div className={cn("mt-4 space-y-4", sheetMode && "sticky bottom-0 border-t border-white/[0.08] bg-[#0d1422] py-3")}>
+              <div className={cn("mt-4 space-y-4", sheetMode && "sticky bottom-0 bg-[#0d1422] py-3")}>
                 <TradeMarginSummary 
                   requiredMargin={finalRequiredMargin} 
                   balance={balance} 
                   blockedBalance={blockedBalance} 
-                  walletEquity={walletEquity} />
+                  walletEquity={walletEquity}
+                  appearance="minimal"
+                />
 
                 {(!isSlValid || !isTargetValid) && (
                   <div className="flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/8 px-3 py-2">

@@ -1,3 +1,17 @@
+/**
+ * lib/startup/prewarm.ts — Core service initialization sequence
+ *
+ * NOT called directly by Next.js. Invoked exclusively by `preload.ts`
+ * after environment guards have passed.
+ *
+ * Initialization order:
+ *  1. instrumentStore — hydrates in-memory instrument catalog from DB
+ *  2. realTimeMarketService — opens WebSocket connection to market engine
+ *  3. mtmEngineService — starts mark-to-market evaluation loop
+ *  4. Subscribes + warms snapshot for configured prewarm symbols
+ *
+ * @see preload.ts for the guard logic that decides whether to run this.
+ */
 import { logger } from "@/lib/logger";
 import { instrumentStore } from "@/stores/instrument.store";
 import { realTimeMarketService } from "@/services/market/feeds/realtime-market.service";

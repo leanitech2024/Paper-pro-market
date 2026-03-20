@@ -8,6 +8,7 @@ import { handleError, ApiError } from "@/lib/errors";
 import { WalletService } from "@/services/accounting/wallet/wallet.service";
 import { bootstrapUserLedgerState } from "@/services/accounting/ledger/ledger-bootstrap.service";
 import { WatchlistService } from "@/services/market/catalog/watchlist.service";
+import { SubscriptionService } from "@/services/subscription/subscription.service";
 
 export async function POST(req: NextRequest) {
     try {
@@ -39,6 +40,7 @@ export async function POST(req: NextRequest) {
         await db.transaction(async (tx) => {
             await WalletService.createWallet(user.id, tx);
             await bootstrapUserLedgerState(user.id, tx);
+            await SubscriptionService.createTrialSubscription(user.id, tx);
         });
 
         try {

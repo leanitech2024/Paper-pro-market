@@ -1,52 +1,65 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Check, X } from "lucide-react";
+import { Check, X, Sparkles, Crown } from "lucide-react";
+import Link from "next/link";
 
 const plans = [
   {
-    name: "Free Learner",
+    name: "Free Trial",
     price: "₹0",
-    period: "/forever",
-    description: "Perfect for beginners learning market basics",
-    buttonText: "Start Free",
+    period: "/3 days",
+    description: "Test drive the platform with no commitment",
+    buttonText: "Start Free Trial",
+    badge: "3-day free trial",
     features: [
       { text: "Virtual trading account", included: true },
-      { text: "Basic price charts", included: true },
-      { text: "Limited daily paper trades", included: true },
-      { text: "Basic performance stats", included: true },
-      { text: "Beginner learning guides", included: true },
+      { text: "Real-time price charts", included: true },
+      { text: "Unlimited paper trades", included: true },
+      { text: "Positions & orders tracking", included: true },
+      { text: "Watchlist management", included: true },
+      { text: "Analytics dashboard", included: false },
+      { text: "Trade journal", included: false },
+      { text: "Export data (CSV)", included: false },
     ],
     popular: false,
   },
   {
-    name: "Pro Learner",
-    price: "₹299",
+    name: "Basic",
+    price: "₹89",
     period: "/month",
-    description: "For serious learners practicing daily",
-    buttonText: "Upgrade to Pro",
+    description: "Essential features for learning paper trading",
+    buttonText: "Start with Basic",
+    badge: "Starter",
     features: [
+      { text: "Virtual trading account", included: true },
+      { text: "Real-time price charts", included: true },
       { text: "Unlimited paper trades", included: true },
-      { text: "Advanced charts & indicators", included: true },
-      { text: "Trade journal & notes", included: true },
-      { text: "Detailed P&L analytics", included: true },
-      { text: "Priority learning support", included: true },
+      { text: "Positions & orders tracking", included: true },
+      { text: "Watchlist management", included: true },
+      { text: "Analytics dashboard", included: false },
+      { text: "Trade journal", included: false },
+      { text: "Export data (CSV)", included: false },
+    ],
+    popular: false,
+  },
+  {
+    name: "Pro",
+    price: "₹149",
+    period: "/month",
+    description: "All features for serious traders & strategy testing",
+    buttonText: "Upgrade to Pro",
+    badge: "Pro",
+    features: [
+      { text: "Everything in Basic", included: true },
+      { text: "Advanced analytics dashboard", included: true },
+      { text: "Trade journal & performance log", included: true },
+      { text: "Financial ledger view", included: true },
+      { text: "Export data (CSV)", included: true },
+      { text: "Weekly performance review", included: true },
+      { text: "Equity curve & win/loss charts", included: true },
+      { text: "Priority support", included: true },
     ],
     popular: true,
-  },
-  {
-    name: "Elite Simulator",
-    price: "₹999",
-    period: "/month",
-    description: "For advanced strategy testing & analysis",
-    buttonText: "Get Elite Access",
-    features: [
-      { text: "All Pro Learner features", included: true },
-      { text: "Strategy performance analytics", included: true },
-      { text: "Advanced risk & drawdown stats", included: true },
-      { text: "Trade history export (CSV)", included: true },
-      { text: "Early access to new features", included: true },
-    ],
-    popular: false,
   },
 ];
 
@@ -66,36 +79,41 @@ const PricingSection = () => {
 
         {/* Heading */}
         <h2 className="text-3xl md:text-4xl font-bold text-center text-foreground mb-4">
-          Simple Plans for Learning & Practice
+          Simple, Affordable Plans
         </h2>
         <p className="text-muted-foreground text-center mb-12 max-w-xl mx-auto">
-          Choose a plan based on how deeply you want to practice and analyze your
-          paper trading performance.
+          Start with a 3-day free trial. Pick the plan that fits your learning
+          journey.
         </p>
 
         {/* Pricing Cards */}
-        <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
+        <div className="grid lg:grid-cols-3 md:grid-cols-2 gap-8 max-w-6xl mx-auto">
           {plans.map((plan, index) => (
             <Card
               key={index}
-              className={`rounded-[32px] transition-all ${
+              className={`rounded-[32px] transition-all relative overflow-hidden ${
                 plan.popular
-                  ? "bg-card border-primary/50 scale-105"
+                  ? "bg-card border-primary/50 scale-105 shadow-lg shadow-primary/10"
                   : "bg-card/50 backdrop-blur-sm border-border/30"
               }`}
             >
               <CardContent className="p-8">
-                {/* Plan Label */}
-                {plan.popular && (
-                  <span className="text-primary text-sm font-medium mb-2 block">
-                    Most Popular
-                  </span>
-                )}
-                {!plan.popular && (
-                  <span className="text-muted-foreground text-sm font-medium mb-2 block">
+                {/* Trial Badge */}
+                <span className="inline-block px-3 py-1 text-xs font-medium rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 mb-4">
+                  {plan.badge}
+                </span>
+
+                {/* Plan Name */}
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-lg font-semibold text-foreground">
                     {plan.name}
                   </span>
-                )}
+                  {plan.popular && (
+                    <span className="ml-auto px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded-full bg-primary/10 text-primary">
+                      Popular
+                    </span>
+                  )}
+                </div>
 
                 {/* Price */}
                 <div className="mb-4">
@@ -105,31 +123,39 @@ const PricingSection = () => {
                   <span className="text-muted-foreground">{plan.period}</span>
                 </div>
 
-                <p className="text-muted-foreground mb-6">
+                <p className="text-muted-foreground text-sm mb-6">
                   {plan.description}
                 </p>
 
                 {/* CTA Button */}
-                <Button
-                  className={`w-full rounded-full mb-6 ${
-                    plan.popular
-                      ? "bg-primary hover:bg-primary/90"
-                      : "bg-muted hover:bg-muted/80 text-foreground"
-                  }`}
-                >
-                  {plan.buttonText}
-                </Button>
+                <Link href="/signup">
+                  <Button
+                    className={`w-full rounded-full mb-6 ${
+                      plan.popular
+                        ? "bg-primary hover:bg-primary/90"
+                        : "bg-muted hover:bg-muted/80 text-foreground"
+                    }`}
+                  >
+                    {plan.buttonText}
+                  </Button>
+                </Link>
 
                 {/* Features */}
                 <ul className="space-y-3">
                   {plan.features.map((feature, i) => (
                     <li key={i} className="flex items-center gap-3">
                       {feature.included ? (
-                        <Check className="w-5 h-5 text-success" />
+                        <Check className="w-4 h-4 text-emerald-500 flex-shrink-0" />
                       ) : (
-                        <X className="w-5 h-5 text-muted-foreground" />
+                        <X className="w-4 h-4 text-muted-foreground/50 flex-shrink-0" />
                       )}
-                      <span className="text-muted-foreground">
+                      <span
+                        className={
+                          feature.included
+                            ? "text-muted-foreground text-sm"
+                            : "text-muted-foreground/50 text-sm line-through"
+                        }
+                      >
                         {feature.text}
                       </span>
                     </li>
@@ -140,11 +166,6 @@ const PricingSection = () => {
           ))}
         </div>
 
-        {/* Disclaimer */}
-        <p className="mt-16 text-center text-xs text-muted-foreground max-w-2xl mx-auto">
-          All plans are for educational paper trading only. No real money trading,
-          investment advice, or guaranteed outcomes are provided.
-        </p>
       </div>
     </section>
   );

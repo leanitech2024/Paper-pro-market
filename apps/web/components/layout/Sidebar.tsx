@@ -11,6 +11,7 @@ import {
   Eye,
   BarChart3,
   Shield,
+  Crown,
   LucideIcon
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -44,6 +45,7 @@ const navItems: NavItem[] = [
   { to: '/watchlist', icon: Eye, label: 'Watchlist' },
   { to: '/analytics', icon: BarChart3, label: 'Analytics' },
   { to: '/journal', icon: BookOpen, label: 'Journal' },
+  { to: '/subscription', icon: Crown, label: 'Plans' },
   { to: '/settings', icon: Settings, label: 'Settings' },
   { to: '/admin', icon: Shield, label: 'Admin', adminOnly: true },
 ];
@@ -57,7 +59,7 @@ interface SidebarProps {
 }
 
 export function Sidebar({
-  isAdmin = true,
+  isAdmin = false,
   mobileOpen,
   setMobileOpen,
   compactHidden = false,
@@ -193,15 +195,15 @@ export function Sidebar({
       <aside
         className={cn(
           compactHidden ? 'hidden xl:flex fixed left-0 top-0 z-50 h-screen' : 'hidden md:flex fixed left-0 top-0 z-50 h-screen',
-          'bg-sidebar border-r border-sidebar-border',
+          'bg-white/40 dark:bg-black/20 backdrop-blur-3xl border-r border-slate-200/50 dark:border-white/[0.05]',
           'w-16 hover:w-64',
           'transition-[width] duration-300 ease-in-out',
-          'flex-col group shadow-xl',
+          'flex-col group shadow-2xl',
           'will-change-[width]'
         )}
       >
         {/* Logo Section */}
-        <div className="flex h-16 items-center border-b border-sidebar-border px-4 flex-shrink-0 overflow-hidden">
+        <div className="flex h-16 items-center border-b border-slate-200/50 dark:border-white/[0.05] px-4 flex-shrink-0 overflow-hidden">
           <Logo hideText={false} className="flex-shrink-0" />
         </div>
 
@@ -217,10 +219,10 @@ export function Sidebar({
         <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
           <SheetContent
             side="left"
-            className="p-0 bg-sidebar w-64 text-sidebar-foreground border-r-sidebar-border"
+            className="p-0 bg-white/60 dark:bg-[#0c1322]/80 backdrop-blur-3xl w-64 text-slate-900 dark:text-slate-100 border-r-slate-200/50 dark:border-r-white/[0.05]"
             hideClose={true}
           >
-            <SheetHeader className="h-16 flex flex-row items-center justify-start border-b border-sidebar-border px-4">
+            <SheetHeader className="h-16 flex flex-row items-center justify-start border-b border-slate-200/50 dark:border-white/[0.05] px-4">
               <Logo hideText={false} />
               <SheetTitle className="sr-only">Menu</SheetTitle>
             </SheetHeader>

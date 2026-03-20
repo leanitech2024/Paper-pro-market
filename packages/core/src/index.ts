@@ -2,6 +2,7 @@ export * from "./market/symbol-normalization.js";
 export { isValidTick } from "./market/tick-validation.js";
 
 export * from "./types/db.js";
+export * from "./types/pagination.types.js";
 
 // Shared Types
 export { 
@@ -46,6 +47,7 @@ export * from "./utils/fno-utils.js";
 export * from "./utils/futures-margin.js";
 export * from "./utils/option-margin.js";
 export * from "./utils/market-hours.js";
+export * from "./utils/holiday-sync.js";
 export * from "./utils/dashboard-metrics.js";
 export * from "./utils/performance-utils.js";
 

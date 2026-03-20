@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import Logo from '@/components/general/Logo';
 import { CircleUserRound } from 'lucide-react';
+import { useSession } from 'next-auth/react';
 
 import { useWalletStore } from '@/stores/wallet.store';
 import { usePositionsStore } from '@/stores/trading/positions.store';
@@ -16,6 +17,7 @@ import { cn } from '@/lib/utils';
 import { toInstrumentKey } from '@paper-market/core';
 import { useSearchStore } from '@/stores/ui/search.store';
 import { GlobalSearchModal } from '@/components/trade/search/GlobalSearchModal';
+import { useSubscriptionStore } from '@/stores/subscription.store';
 
 export default function DashboardLayoutClient({ children }: { children: ReactNode }) {
   
@@ -24,11 +26,13 @@ export default function DashboardLayoutClient({ children }: { children: ReactNod
 
   const fetchWallet = useWalletStore((state) => state.fetchWallet);
   const fetchPositions = usePositionsStore((state) => state.fetchPositions);
+  const fetchSubscription = useSubscriptionStore((state) => state.fetchSubscription);
 
   useEffect(() => {
     fetchWallet();
     fetchPositions();
-  }, [fetchWallet, fetchPositions]);
+    fetchSubscription();
+  }, [fetchWallet, fetchPositions, fetchSubscription]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -65,10 +69,12 @@ function DashboardContentWrapper({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const isEquityTradeRoute = pathname?.startsWith('/trade/equity');
   const { isOpen, searchMode, placeholder, onSelect, closeSearch } = useSearchStore();
+  const { data: session } = useSession();
+  const isAdmin = session?.user?.role === 'admin';
 
   return (
 
-    <div className="flex min-h-screen w-full bg-background text-foreground font-sans ">
+    <div className="flex min-h-screen w-full font-sans bg-gradient-to-b from-slate-100 via-white to-slate-100/80 text-slate-950 dark:from-[#09111e] dark:via-[#0b1220] dark:to-[#0b1324] dark:text-slate-50">
       <GlobalSearchModal
         open={isOpen}
         onOpenChange={(open) => !open && closeSearch()}
@@ -77,6 +83,7 @@ function DashboardContentWrapper({ children }: { children: ReactNode }) {
         onSelectStock={onSelect}
       />
       <Sidebar
+        isAdmin={isAdmin}
         mobileOpen={mobileMenuOpen}
         setMobileOpen={setMobileMenuOpen}
         compactHidden={isEquityTradeRoute}

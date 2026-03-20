@@ -94,6 +94,10 @@ function formatExpiryShort(value: unknown): string {
   return parsed.toLocaleDateString("en-IN", { day: "2-digit", month: "short" });
 }
 
+const panelClass =
+  "rounded-none border border-slate-200/80 bg-white dark:border-white/[0.08] dark:bg-[#0c1322]";
+const headerBorderClass = "border-b border-slate-200/80 dark:border-white/[0.08]";
+
 export default function FuturesPage() {
   const walletBalance = useWalletStore((state) => state.balance);
 
@@ -287,19 +291,19 @@ export default function FuturesPage() {
 
   const mobileContentNode = (
     <div className="flex h-full min-h-0 flex-col bg-background">
-      <div className="shrink-0 border-b border-border/80 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/85">
+      <div className={`shrink-0 ${headerBorderClass} bg-white/95 backdrop-blur dark:bg-[#0c1322]/95`}>
         <div className="space-y-2 px-3 py-2">
           <div className="flex items-center justify-between gap-2">
             <button
               type="button"
               onClick={() => setSearchModalOpen(true)}
-              className="inline-flex h-9 min-w-0 items-center gap-1.5 rounded-lg border border-border bg-card px-3 text-[11px] font-semibold text-foreground"
+              className="inline-flex h-9 min-w-0 items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-3 text-[11px] font-semibold text-slate-700 dark:border-white/[0.08] dark:bg-[#10192b] dark:text-slate-100"
             >
-              <Search className="h-3.5 w-3.5 text-muted-foreground" />
+              <Search className="h-3.5 w-3.5 text-slate-500 dark:text-slate-300" />
               <span className="truncate uppercase">{selectedStock?.symbol || "FUTURES"}</span>
             </button>
             <div className="flex flex-col items-end">
-              <span className="text-[11px] font-semibold tabular-nums text-foreground">
+              <span className="text-[11px] font-semibold tabular-nums text-slate-950 dark:text-slate-100">
                 {formatLtp(displayLtp)}
               </span>
               <span
@@ -316,7 +320,7 @@ export default function FuturesPage() {
           </div>
 
           <div className="flex items-end justify-between gap-3">
-            <span className="rounded bg-muted px-1.5 py-0.5 text-[11px] text-muted-foreground">
+            <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[11px] text-slate-600 dark:bg-white/[0.06] dark:text-slate-300">
               {formatExpiryShort(selectedStock?.expiryDate)}
             </span>
 
@@ -341,8 +345,8 @@ export default function FuturesPage() {
       </div>
 
       <div className="min-h-0 flex-1 p-2 pb-3">
-        <div className="h-full min-h-0 overflow-hidden rounded-xl border border-border bg-card shadow-[0_10px_28px_rgba(15,23,42,0.08)] dark:shadow-[0_12px_35px_rgba(0,0,0,0.3)]">
-          <div className="h-full min-h-0 bg-card">{chartNode}</div>
+        <div className={`h-full min-h-0 overflow-hidden ${panelClass}`}>
+          <div className="h-full min-h-0">{chartNode}</div>
         </div>
       </div>
     </div>
@@ -365,8 +369,8 @@ export default function FuturesPage() {
         <AdaptiveTradeLayout
           desktopLeft={<div className="h-full min-h-0">{renderOrderNode(true)}</div>}
           desktopLeftWidth="320px"
-          desktopCenter={<div className="flex h-full min-h-0 flex-col bg-card">{chartNode}</div>}
-          tabletTop={<div className="flex h-full min-h-0 flex-col bg-card">{chartNode}</div>}
+          desktopCenter={<div className={`flex h-full min-h-0 flex-col overflow-hidden ${panelClass}`}>{chartNode}</div>}
+          tabletTop={<div className={`flex h-full min-h-0 flex-col overflow-hidden ${panelClass}`}>{chartNode}</div>}
           tabletLeft={<div className="h-full min-h-0">{renderOrderNode(true)}</div>}
           tabletRight={<PositionsCards instrumentFilter="futures" />}
           mobileContent={mobileContentNode}

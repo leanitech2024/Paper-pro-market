@@ -129,7 +129,7 @@ export function ChartHeader({
   return (
     <div
       className={cn(
-        "z-30 shrink-0 border-b border-border bg-card p-1.5 flex items-center justify-between gap-2",
+        "z-30 shrink-0 border-b border-slate-200/80 bg-white/95 p-1.5 flex items-center justify-between gap-2 dark:border-white/[0.08] dark:bg-[#0c1322]/95",
         compact ? "h-auto" : "h-11 md:h-11",
       )}
     >
@@ -140,19 +140,21 @@ export function ChartHeader({
           variant="ghost" 
           size="sm" 
           disabled={isLoading}
-          className="h-8 gap-1.5 px-2 text-foreground font-medium hover:bg-accent hover:text-foreground disabled:opacity-70 shrink-0"
+          className="h-8 gap-1.5 px-2 text-slate-700 font-medium border border-slate-200 bg-slate-50 hover:bg-slate-100 disabled:opacity-70 shrink-0 dark:border-white/[0.08] dark:bg-[#10192b] dark:text-slate-100 dark:hover:bg-white/[0.08]"
           onClick={onSearchClick}
         >
           {isLoading ? (
              <div className="h-3.5 w-3.5 rounded-full border-2 border-primary border-t-transparent animate-spin" />
           ) : (
-             <Search className="h-3.5 w-3.5 text-muted-foreground" />
+             <Search className="h-3.5 w-3.5 text-slate-500 dark:text-slate-300" />
           )}
           <span className="uppercase text-[10px] md:text-sm">{headerText}</span>
-          <span className="hidden md:inline-block text-[10px] text-muted-foreground bg-muted px-1 rounded-sm border border-border">NSE</span>
+          <span className="hidden md:inline-block text-[10px] text-slate-500 bg-slate-100 px-1 rounded-sm border border-slate-200 dark:text-slate-300 dark:bg-[#10192b] dark:border-white/[0.08]">
+            NSE
+          </span>
         </Button>
 
-        <Separator orientation="vertical" className="h-4 bg-border/50 mx-0.5 shrink-0" />
+        <Separator orientation="vertical" className="h-4 bg-slate-200/70 mx-0.5 shrink-0 dark:bg-white/[0.08]" />
 
         {/* Buy/Sell Buttons - Now using Tailwind hidden for mobile */}
         <div className="hidden md:flex items-center gap-1 shrink-0">
@@ -172,13 +174,13 @@ export function ChartHeader({
             </Button>
         </div>
 
-        <Separator orientation="vertical" className="hidden md:block h-4 bg-border/50 mx-0.5 shrink-0" />
+        <Separator orientation="vertical" className="hidden md:block h-4 bg-slate-200/70 mx-0.5 shrink-0 dark:bg-white/[0.08]" />
 
         {/* Range Selector (Mobile Dropdown) */}
         <div className="md:hidden flex items-center shrink-0">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm" className="h-7 gap-1.5 px-2 text-[10px] text-muted-foreground hover:text-foreground">
+              <Button variant="ghost" size="sm" className="h-7 gap-1.5 px-2 text-[10px] text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100">
                 <span>{range}</span>
               </Button>
             </DropdownMenuTrigger>
@@ -213,7 +215,7 @@ export function ChartHeader({
                     className={`px-2 h-7 text-xs font-semibold rounded-sm transition-colors uppercase ${
                         range === r
                         ? 'text-[#2d6cff] bg-[#2d6cff]/10'
-                        : 'text-muted-foreground hover:text-foreground hover:bg-accent'
+                        : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-slate-100 dark:hover:bg-white/[0.06]'
                     }`}
                 >
                     {r}
@@ -221,20 +223,20 @@ export function ChartHeader({
             ))}
         </div>
 
-        <Separator orientation="vertical" className="h-4 bg-border/50 mx-0.5 shrink-0" />
+        <Separator orientation="vertical" className="h-4 bg-slate-200/70 mx-0.5 shrink-0 dark:bg-white/[0.08]" />
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm" className="h-7 gap-1.5 px-2 text-[10px] md:text-xs text-muted-foreground hover:text-foreground transition-none">
+              <Button variant="ghost" size="sm" className="h-7 gap-1.5 px-2 text-[10px] md:text-xs text-slate-500 hover:text-slate-900 transition-none dark:text-slate-400 dark:hover:text-slate-100">
                 <span className="hidden sm:inline-block">{activeTimeframeLabel}</span>
                 <span className="sm:hidden">{effectiveTimeframe.toUpperCase()}</span>
               </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="w-56 bg-card border-border max-h-[60vh] overflow-y-auto overscroll-contain md:max-h-none">
+          <DropdownMenuContent align="start" className="w-56 bg-white border-slate-200/80 max-h-[60vh] overflow-y-auto overscroll-contain md:max-h-none dark:bg-[#0c1322] dark:border-white/[0.08]">
             {timeframeGroups.map((group, groupIndex) => (
               <div key={group.label}>
                 {groupIndex > 0 ? <DropdownMenuSeparator className="bg-border/50" /> : null}
-                <DropdownMenuLabel className="text-[10px] uppercase tracking-wider text-muted-foreground/70">
+            <DropdownMenuLabel className="text-[10px] uppercase tracking-wider text-slate-500/70 dark:text-slate-400/70">
                   {group.label}
                 </DropdownMenuLabel>
                 {group.items.map((item) => (
@@ -264,15 +266,15 @@ export function ChartHeader({
         <div className="flex items-center shrink-0">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm" className="h-7 gap-1.5 px-2 text-[10px] md:text-xs text-muted-foreground hover:text-foreground transition-none">
+              <Button variant="ghost" size="sm" className="h-7 gap-1.5 px-2 text-[10px] md:text-xs text-slate-500 hover:text-slate-900 transition-none dark:text-slate-400 dark:hover:text-slate-100">
                 <CandlestickChart className="h-3.5 w-3.5 md:h-4 md:w-4" />
                 <span className="hidden sm:inline-block">{styleLabels[chartStyle]}</span>
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-56 bg-card border-border">
+            <DropdownMenuContent align="start" className="w-56 bg-white border-slate-200/80 dark:bg-[#0c1322] dark:border-white/[0.08]">
               {styleGroups.map((group, groupIndex) => (
                 <div key={group.join("-")}>
-                  {groupIndex > 0 ? <DropdownMenuSeparator className="bg-border/50" /> : null}
+            {groupIndex > 0 ? <DropdownMenuSeparator className="bg-slate-200/70 dark:bg-white/[0.08]" /> : null}
                   {group.map((style) => (
                     <DropdownMenuItem
                       key={style}
@@ -290,14 +292,14 @@ export function ChartHeader({
               ))}
 
               <DropdownMenuSeparator className="bg-border/50" />
-              <DropdownMenuLabel className="text-[10px] uppercase tracking-wider text-muted-foreground/70">
+              <DropdownMenuLabel className="text-[10px] uppercase tracking-wider text-slate-500/70 dark:text-slate-400/70">
                 Advanced
               </DropdownMenuLabel>
               {["Renko", "Line break", "Kagi", "Point & figure"].map((label) => (
                 <DropdownMenuItem
                   key={label}
                   disabled
-                  className="text-xs text-muted-foreground/60 cursor-not-allowed"
+                  className="text-xs text-slate-400/60 cursor-not-allowed dark:text-slate-500/60"
                 >
                   {label}
                 </DropdownMenuItem>
@@ -312,19 +314,19 @@ export function ChartHeader({
 
       {/* Right Section - Desktop Only Settings */}
       <div className="hidden md:flex items-center gap-1 shrink-0 ml-auto">
-          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground" onClick={onUndo}>
+          <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100" onClick={onUndo}>
               <Undo2 className="h-4 w-4" />
           </Button>
-          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground" onClick={onRedo}>
+          <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100" onClick={onRedo}>
               <Redo2 className="h-4 w-4" />
           </Button>
           
           <Separator orientation="vertical" className="h-4 bg-border/50 mx-1" />
           
-           <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground" onClick={onScreenshot}>
+           <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100" onClick={onScreenshot}>
               <Camera className="h-4 w-4" />
           </Button>
-           <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground" onClick={onMaximize}>
+           <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100" onClick={onMaximize}>
               {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
           </Button>
       </div>

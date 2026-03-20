@@ -23,10 +23,10 @@ export function TradePriceDisplay({
 }) {
   if (variant === "equity") {
     return (
-      <div className="rounded-xl border border-border bg-background/70 px-3 py-2.5">
-        <p className="text-[10px] uppercase tracking-wider text-muted-foreground">LTP</p>
+      <div className="rounded-xl border border-slate-200/80 bg-slate-50/80 px-3 py-2.5 dark:border-white/[0.08] dark:bg-[#10192b]">
+        <p className="text-[10px] uppercase tracking-wider text-slate-500 dark:text-slate-400">LTP</p>
         <div className="mt-1 flex items-center justify-between">
-          <span className="text-lg font-bold tabular-nums text-foreground">{formatPrice(currentPrice)}</span>
+          <span className="text-lg font-bold tabular-nums text-slate-900 dark:text-slate-100">{formatPrice(currentPrice)}</span>
           <span className={cn("text-xs font-semibold", side === "BUY" ? "text-emerald-400" : "text-rose-400")}>{side}</span>
         </div>
       </div>
@@ -35,7 +35,7 @@ export function TradePriceDisplay({
 
   return (
     <div className="flex items-center justify-between mb-4 mt-2">
-      <span className="text-sm font-bold text-muted-foreground">{symbol}</span>
+      <span className="text-sm font-bold text-slate-500 dark:text-slate-400">{symbol}</span>
       <span className={cn("text-lg font-bold font-mono", change >= 0 ? "text-trade-buy" : "text-trade-sell")}>
         ₹{formatPrice(currentPrice)}
       </span>

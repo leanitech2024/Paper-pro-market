@@ -70,7 +70,7 @@ export function LedgerTable({ entries, isLoading }: LedgerTableProps) {
   }
 
   return (
-    <div className="rounded-md border border-border overflow-hidden">
+    <div className="w-full overflow-hidden">
       <div className="overflow-x-auto">
         <Table>
           <TableHeader>

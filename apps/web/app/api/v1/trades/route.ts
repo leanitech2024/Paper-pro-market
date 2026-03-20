@@ -4,7 +4,9 @@ import { TradeService } from "@/services/trading/execution/trade.service";
 import { handleError, ApiError } from "@/lib/errors";
 
 /**
- * Get trades for the authenticated user.
+ * GET /api/v1/trades
+ * Returns paginated trades for the authenticated user.
+ * Query params: limit (number), page (1-indexed)
  */
 export async function GET(req: NextRequest) {
     try {
@@ -14,25 +16,26 @@ export async function GET(req: NextRequest) {
         }
 
         const searchParams = req.nextUrl.searchParams;
-        const limit = searchParams.get("limit") ? parseInt(searchParams.get("limit")!) : undefined;
-        const page = searchParams.get("page") ? parseInt(searchParams.get("page")!) : undefined;
+        const limitParam = searchParams.get("limit");
+        const pageParam = searchParams.get("page");
 
-        // Fetch all trades (Service doesn't support db-level pagination yet)
-        const allTrades = await TradeService.getUserTrades(session.user.id);
+        const limit = limitParam ? Math.max(1, parseInt(limitParam, 10)) : undefined;
+        const page = pageParam ? Math.max(1, parseInt(pageParam, 10)) : 1;
+        const offset = limit !== undefined ? (page - 1) * limit : 0;
 
-        let trades = allTrades;
-        if (limit && page) {
-            const start = (page - 1) * limit;
-            trades = allTrades.slice(start, start + limit);
-        }
+        const result = await TradeService.getUserTrades(session.user.id, { limit, offset });
 
         return NextResponse.json({
             success: true,
-            data: trades,
+            data: result.data,
+            meta: {
+                total: result.total,
+                hasMore: result.hasMore,
+                page,
+                limit,
+            },
         });
     } catch (error) {
         return handleError(error);
     }
 }
-
-

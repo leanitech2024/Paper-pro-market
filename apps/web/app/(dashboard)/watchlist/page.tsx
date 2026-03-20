@@ -107,12 +107,14 @@ export default function WatchlistPage() {
 
   const currentWatchlist = watchlists.find((w) => w.id === selectedWatchlistId);
 
+  const panelClass = "rounded-[28px] border border-slate-200/80 bg-white dark:border-white/[0.08] dark:bg-[#0c1322]";
+
   return (
-    <div className="flex h-full flex-col lg:flex-row bg-background">
+    <div className="h-[calc(100vh-100px)] md:h-[calc(100vh-60px)] p-4 md:p-6 flex flex-col lg:flex-row gap-4 md:gap-6">
       {/* Sidebar - Watchlists List */}
-      <div className="flex w-full flex-col border-b border-border lg:w-80 lg:border-r lg:border-b-0">
-        <div className="flex items-center justify-between border-b border-border p-4 bg-card/40">
-          <h2 className="text-lg font-bold">My Watchlists</h2>
+      <div className={cn(panelClass, "flex w-full flex-col lg:w-80 shrink-0 overflow-hidden")}>
+        <div className="flex items-center justify-between border-b border-slate-200 p-5 dark:border-white/[0.08] bg-slate-50/50 dark:bg-black/10">
+          <h2 className="text-base font-semibold text-slate-950 dark:text-slate-100">My Watchlists</h2>
           <button 
             onClick={() => setShowCreateFolder(!showCreateFolder)}
             className="rounded p-1 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
@@ -165,10 +167,10 @@ export default function WatchlistPage() {
                   key={wl.id}
                   onClick={() => setSelectedWatchlistId(wl.id)}
                   className={cn(
-                    "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm font-medium transition-colors",
+                    "flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-medium transition-colors mb-1",
                     wl.id === selectedWatchlistId 
-                      ? "bg-primary/10 text-primary" 
-                      : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                      ? "bg-slate-100 text-slate-900 font-semibold dark:bg-white/[0.08] dark:text-slate-100" 
+                      : "text-slate-500 hover:bg-slate-50 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-white/[0.04] dark:hover:text-slate-200"
                   )}
                 >
                   <FolderOpen className={cn("h-4 w-4", wl.id === selectedWatchlistId ? "text-primary/70" : "text-muted-foreground/50")} />
@@ -181,7 +183,7 @@ export default function WatchlistPage() {
       </div>
 
       {/* Main Content - Selected Watchlist Instruments */}
-      <div className="flex flex-1 flex-col overflow-hidden bg-card/20">
+      <div className={cn(panelClass, "flex flex-1 flex-col overflow-hidden")}>
         {!currentWatchlist ? (
           <div className="flex h-full flex-col items-center justify-center text-muted-foreground">
             <Search className="h-12 w-12 mb-4 opacity-20" />
@@ -189,10 +191,10 @@ export default function WatchlistPage() {
           </div>
         ) : (
           <>
-            <div className="flex items-center justify-between border-b border-border bg-card/60 px-6 py-4 backdrop-blur-md">
+            <div className="flex items-center justify-between border-b border-slate-200 bg-slate-50/50 px-6 py-5 dark:border-white/[0.08] dark:bg-black/10">
               <div>
-                <h1 className="text-xl font-bold text-foreground">{currentWatchlist.name}</h1>
-                <p className="text-sm text-muted-foreground mt-0.5">
+                <h1 className="text-xl font-bold text-slate-950 dark:text-slate-100">{currentWatchlist.name}</h1>
+                <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mt-1">
                   {instruments.length} instrument{instruments.length !== 1 && 's'}
                 </p>
               </div>
@@ -217,7 +219,7 @@ export default function WatchlistPage() {
               </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-4 md:p-6">
+            <div className="flex-1 flex flex-col min-h-0 p-4 md:p-6">
               {isLoadingInstruments ? (
                 <div className="flex justify-center p-12">
                   <p className="text-muted-foreground">Loading instruments...</p>
@@ -237,9 +239,9 @@ export default function WatchlistPage() {
                   </button>
                 </div>
               ) : (
-                <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
-                  <table className="w-full text-left text-sm">
-                    <thead className="bg-muted/40 text-muted-foreground">
+                <div className="overflow-y-auto max-h-full rounded-2xl border border-slate-200 bg-white dark:border-white/[0.08] dark:bg-[#0c1322] shadow-sm">
+                  <table className="w-full text-left text-sm relative">
+                    <thead className="sticky top-0 z-10 border-b border-slate-200 bg-slate-50/95 backdrop-blur text-slate-500 shadow-sm dark:border-white/[0.08] dark:bg-[#0c1322]/95 dark:text-slate-400">
                       <tr>
                         <th className="px-4 py-3 font-medium whitespace-nowrap">Symbol</th>
                         <th className="px-4 py-3 font-medium text-right">LTP (₹)</th>

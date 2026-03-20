@@ -10,6 +10,10 @@ import { logger } from "@/lib/logger";
 const PAPER_TRADING_MODE = String(process.env.PAPER_TRADING_MODE ?? "true").trim().toLowerCase() !== "false";
 const DUPLICATE_WINDOW_MS = 2000;
 const DEFAULT_MAX_POSITION_NOTIONAL = Number(process.env.MAX_POSITION_NOTIONAL_PER_SYMBOL ?? "2000000");
+const TRUE_VALUES = new Set(["1", "true", "yes", "on"]);
+const DISABLE_NOTIONAL_CAP = TRUE_VALUES.has(
+  String(process.env.DISABLE_NOTIONAL_CAP ?? "false").trim().toLowerCase()
+);
 
 export class OrderRiskService {
   static async validateTradingSafety(
@@ -78,7 +82,7 @@ export class OrderRiskService {
     const orderNotional = price * payload.quantity;
     const maxNotional = Number(process.env.MAX_POSITION_NOTIONAL_PER_SYMBOL ?? "2000000");
 
-    if (orderNotional > maxNotional) {
+    if (!DISABLE_NOTIONAL_CAP && orderNotional > maxNotional) {
         throw new ApiError(`Order notional ${orderNotional} exceeds limit ${maxNotional}`, 400, "POSITION_LIMIT_EXCEEDED");
     }
 

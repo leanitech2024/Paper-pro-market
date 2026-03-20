@@ -7,3 +7,4 @@ export * from './integrations.schema.js';
 export * from './watchlist.schema.js';
 export * from './ledger.schema.js';
 export * from './write_ahead_journal.schema.js';
+export * from './subscriptions.schema.js';

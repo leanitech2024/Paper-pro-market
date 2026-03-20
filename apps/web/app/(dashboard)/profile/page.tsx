@@ -1,22 +1,20 @@
 "use client";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Badge } from '@/components/ui/badge';
-import { useRiskStore } from '@/stores/trading/risk.store';
-import { User, Mail, Wallet, Crown, LogOut } from 'lucide-react';
-import { useSession, signOut } from "next-auth/react";
-import { toast } from 'sonner';
 import { useEffect } from 'react';
+import { useSession, signOut } from "next-auth/react";
 import { useWalletStore } from '@/stores/wallet.store';
+import { useSubscriptionStore } from '@/stores/subscription.store';
+import { Button } from '@/components/ui/button';
+import Link from 'next/link';
 
-const ProfilePage = () => {
+export default function ProfilePage() {
   const { data: session } = useSession();
   const { balance, fetchWallet } = useWalletStore();
+  const { plan, status, isTrialActive, trialEndDate, fetchSubscription, hasFetched, isLoading } = useSubscriptionStore();
 
   useEffect(() => {
     fetchWallet();
-  }, [fetchWallet]);
+    if (!hasFetched) fetchSubscription();
+  }, [fetchWallet, fetchSubscription, hasFetched]);
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('en-IN', {
@@ -30,127 +28,95 @@ const ProfilePage = () => {
     signOut({ callbackUrl: "/" });
   };
 
+  const daysLeft = trialEndDate
+    ? Math.max(0, Math.ceil((new Date(trialEndDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
+    : 0;
+
+  const isExpired = status === 'expired' || status === 'cancelled';
+  const planLabel = plan === 'free_trial' ? 'Free Trial' : plan === 'basic' ? 'Basic' : 'Pro';
+
   return (
-    <div className="space-y-6 p-4 md:p-6 lg:p-8">
-      {/* Page Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">Profile</h1>
-        <p className="text-muted-foreground">Manage your account information</p>
-      </div>
+    <div className="min-h-[calc(100vh-4rem)] p-4 md:p-8 lg:p-12 font-sans">
+      <div className="max-w-4xl mx-auto space-y-8">
+        
+        {/* Header */}
+        <div>
+          <h1 className="text-3xl font-extrabold tracking-tight text-foreground">Profile</h1>
+          <p className="text-muted-foreground mt-1">Manage your account and preferences</p>
+        </div>
 
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {/* User Info Card */}
-        <Card className="bg-card border-border md:col-span-2 lg:col-span-1">
-          <CardHeader className="text-center pb-2">
-            <div className="flex justify-center mb-4">
-              <Avatar className="h-24 w-24 border-4 border-primary/20">
-                <AvatarImage src={session?.user?.image || ""} alt={session?.user?.name || "User"} />
-                <AvatarFallback className="bg-primary/10 text-primary text-2xl font-bold">
-                  {session?.user?.name?.charAt(0) || "U"}
-                </AvatarFallback>
-              </Avatar>
-            </div>
-            <CardTitle className="text-foreground">{session?.user?.name || "User"}</CardTitle>
-            <CardDescription>Paper Trading Account</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/30">
-              <User className="h-5 w-5 text-muted-foreground" />
-              <div>
-                <p className="text-xs text-muted-foreground">Full Name</p>
-                <p className="text-sm font-medium text-foreground">{session?.user?.name || "User"}</p>
+        <div className="space-y-6">
+          
+          {/* Personal Information */}
+          <section className="rounded-3xl border border-border/50 bg-card/40 backdrop-blur-xl p-8 shadow-sm">
+            <h2 className="text-xl font-bold text-foreground mb-6">Personal Information</h2>
+            
+            <div className="space-y-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between py-4 border-b border-border/50">
+                <div className="text-sm font-medium text-muted-foreground">Name</div>
+                <div className="text-sm font-medium text-foreground flex items-center justify-end gap-2 mt-1 sm:mt-0 text-right">
+                  {session?.user?.name}
+                  {session?.user?.role === 'admin' && (
+                    <span className="bg-primary/10 text-primary text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full">
+                      Admin
+                    </span>
+                  )}
+                </div>
               </div>
-            </div>
+              
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between py-4 border-b border-border/50">
+                <div className="text-sm font-medium text-muted-foreground">Email Address</div>
+                <div className="text-sm font-medium text-foreground mt-1 sm:mt-0 text-right">{session?.user?.email}</div>
+              </div>
 
-            <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/30">
-              <Mail className="h-5 w-5 text-muted-foreground" />
-              <div>
-                <p className="text-xs text-muted-foreground">Email</p>
-                <p className="text-sm font-medium text-foreground">{session?.user?.email || "No email"}</p>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between py-4">
+                <div className="text-sm font-medium text-muted-foreground">Trading Balance</div>
+                <div className="text-sm font-medium text-foreground flex items-center justify-end mt-1 sm:mt-0 text-right">
+                  {formatCurrency(balance)} <span className="text-xs text-muted-foreground font-normal ml-2">(Virtual)</span>
+                </div>
               </div>
             </div>
-          </CardContent>
-        </Card>
+          </section>
 
-        {/* Account Details */}
-        <Card className="bg-card border-border">
-          <CardHeader>
-            <CardTitle className="text-foreground flex items-center gap-2">
-              <Wallet className="h-5 w-5" />
-              Account Balance
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3 py-2">
-              <div className="flex justify-between items-center pt-2">
-                <span className="text-base font-medium">Available Balance:</span>
-                <span className="text-2xl font-bold text-success">{formatCurrency(balance)}</span>
-              </div>
-              <p className="text-xs text-muted-foreground text-center pt-2">
-                Paper trading virtual funds
-              </p>
-            </div>
-          </CardContent>
-        </Card>
+          {/* Subscription Section */}
+          <section className="rounded-3xl border border-border/50 bg-card/40 backdrop-blur-xl p-8 shadow-sm">
+             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
+               <div>
+                 <h2 className="text-xl font-bold text-foreground mb-1">Subscription Plan</h2>
+                 {!hasFetched || isLoading ? (
+                    <div className="h-4 w-32 bg-muted rounded animate-pulse mt-2" />
+                 ) : (
+                    <p className="text-sm text-muted-foreground">
+                      Current Plan: <span className="font-semibold text-foreground">{planLabel}</span>
+                      {isTrialActive && ` (${daysLeft} days left)`}
+                      {isExpired && ` (Expired)`}
+                    </p>
+                 )}
+               </div>
+               
+               <div className="flex gap-3">
+                 <Link href="/subscription">
+                   <Button variant={plan === 'pro' && !isExpired ? 'outline' : 'default'} className="rounded-xl px-6">
+                     {plan === 'pro' && !isExpired ? 'View Details' : 'Upgrade Plan'}
+                   </Button>
+                 </Link>
+               </div>
+             </div>
+          </section>
 
-        {/* Account Type */}
-        <Card className="bg-card border-border">
-          <CardHeader>
-            <CardTitle className="text-foreground flex items-center gap-2">
-              <Crown className="h-5 w-5" />
-              Account Type
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-center py-4">
-              <Badge className="text-lg px-4 py-2 bg-primary/20 text-primary border-primary/30">
-                Free Plan
-              </Badge>
-              <p className="text-sm text-muted-foreground mt-4">
-                Access to all basic features
-              </p>
-            </div>
-            <div className="mt-4 space-y-2 text-sm">
-              <div className="flex items-center gap-2 text-muted-foreground">
-                <div className="h-1.5 w-1.5 rounded-full bg-success" />
-                Paper trading with virtual money
-              </div>
-              <div className="flex items-center gap-2 text-muted-foreground">
-                <div className="h-1.5 w-1.5 rounded-full bg-success" />
-                Real-time simulated data
-              </div>
-              <div className="flex items-center gap-2 text-muted-foreground">
-                <div className="h-1.5 w-1.5 rounded-full bg-success" />
-                Trading journal access
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Logout Section */}
-      <Card className="bg-card border-border">
-        <CardContent className="pt-6">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+          {/* Danger Zone / Action */}
+          <section className="rounded-3xl border border-destructive/20 bg-destructive/5 p-8 flex flex-col sm:flex-row items-center justify-between gap-6">
             <div>
-              <h3 className="font-medium text-foreground">Sign Out</h3>
-              <p className="text-sm text-muted-foreground">
-                End your current session
-              </p>
+               <h3 className="font-bold text-foreground">Global Session</h3>
+               <p className="text-sm text-muted-foreground mt-0.5">Sign out of your account on this device.</p>
             </div>
-            <Button
-              variant="destructive"
-              onClick={handleLogout}
-              className="w-full sm:w-auto"
-            >
-              <LogOut className="mr-2 h-4 w-4" />
-              Logout
+            <Button variant="destructive" onClick={handleLogout} className="rounded-xl px-8 w-full sm:w-auto hover:bg-destructive/90 font-semibold">
+              Sign Out
             </Button>
-          </div>
-        </CardContent>
-      </Card>
+          </section>
+
+        </div>
+      </div>
     </div>
   );
-};
-
-export default ProfilePage;
+}

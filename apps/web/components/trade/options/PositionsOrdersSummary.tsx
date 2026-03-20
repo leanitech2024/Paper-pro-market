@@ -1,12 +1,14 @@
 "use client";
 
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { usePositionsStore } from "@/stores/trading/positions.store";
 import { useTradeExecutionStore } from "@/stores/trading/tradeExecution.store";
 import { useWalletStore } from "@/stores/wallet.store";
 import { useMarketStore } from "@/stores/trading/market.store";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { UserPosition as Position } from "@paper-market/core";
+import { PartialCloseDialog } from "@/components/positions/PartialCloseDialog";
 
 function formatMoney(value: number): string {
   if (!Number.isFinite(value)) return "--";
@@ -81,6 +83,8 @@ export function PositionsOrdersSummary() {
   const balance = useWalletStore((state) => state.balance);
   const quotesByInstrument = useMarketStore((state) => state.quotesByInstrument);
 
+  const [closingPosition, setClosingPosition] = useState<Position | null>(null);
+
   useEffect(() => {
     fetchPositions(true).catch(() => undefined);
     fetchOrders().catch(() => undefined);
@@ -146,18 +150,11 @@ export function PositionsOrdersSummary() {
   const totalPnl = useMemo(() => positionRows.reduce((s, r) => s + r.unrealizedPnl, 0), [positionRows]);
   const dangerCount = positionRows.filter((r) => r.health === "Danger").length;
 
-  const handleClose = useCallback(async (row: PositionRow) => {
-    try {
-      await executeTrade(
-        { instrumentToken: row.instrumentToken, symbol: row.symbol, side: row.side === "BUY" ? "SELL" : "BUY", quantity: Math.abs(row.quantity), entryPrice: row.livePrice },
-        1, "options"
-      );
-      toast.success("Position closed", { description: row.symbol });
-      fetchPositions(true).catch(() => undefined);
-    } catch (err) {
-      toast.error("Close failed", { description: err instanceof Error ? err.message : "Unknown error" });
-    }
-  }, [executeTrade, fetchPositions]);
+  const handleClose = useCallback((row: PositionRow) => {
+    // Find the full Position object to pass to PartialCloseDialog
+    const pos = positions.find((p) => p.instrumentToken === row.instrumentToken);
+    if (pos) setClosingPosition(pos);
+  }, [positions]);
 
   return (
     <section className="rounded-2xl bg-[linear-gradient(180deg,rgba(17,24,39,.75),rgba(8,12,22,.88))] p-3 shadow-[0_10px_35px_rgba(0,0,0,.28)]">
@@ -268,6 +265,18 @@ export function PositionsOrdersSummary() {
       {positionRows.length === 0 && (
         <p className="text-center text-xs text-slate-500">No open positions.</p>
       )}
+
+      <PartialCloseDialog
+        position={closingPosition}
+        open={!!closingPosition}
+        onOpenChange={(v) => { if (!v) setClosingPosition(null); }}
+        livePrice={
+          closingPosition
+            ? Number(quotesByInstrument[String(closingPosition.instrumentToken || "")]?.price ?? 0) ||
+              Number(closingPosition.currentPrice ?? 0)
+            : 0
+        }
+      />
     </section>
   );
 }

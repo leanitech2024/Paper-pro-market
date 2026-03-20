@@ -4,6 +4,9 @@ import { PriceResolverService } from "@/services/market/pricing/price-resolver.s
 import { feedHealthService } from "@/services/market/feeds/feed-health.service";
 import { inMemoryPriceCache } from "./in-memory-price-cache";
 
+const PAPER_TRADING_MODE =
+    String(process.env.PAPER_TRADING_MODE ?? "true").trim().toLowerCase() !== "false";
+
 export interface SlippageModel {
     getSlippageBps(instrument: Instrument): number;
 }
@@ -84,7 +87,7 @@ export class FillEngineService {
         }
 
         // Feed health guard — reject if market data feed is unhealthy
-        if (!feedHealthService.isFeedHealthy()) {
+        if (!feedHealthService.isFeedHealthy() && !PAPER_TRADING_MODE) {
             return {
                 shouldFill: false,
                 executionPrice: null,

@@ -116,7 +116,7 @@ export function BottomBar() {
   const pnlPositive = totalPnl >= 0;
 
   return (
-    <div className={cn("bg-card transition-all duration-300", expanded ? "max-h-[40vh]" : "")}>
+    <div className={cn("bg-white/60 dark:bg-[#0c1322]/80 backdrop-blur-3xl transition-all duration-300", expanded ? "max-h-[40vh]" : "")}>
       {/* ── Stats bar (always visible) ── */}
       <button
         type="button"
@@ -126,10 +126,13 @@ export function BottomBar() {
         {/* Tab headers */}
         <div className="flex items-center gap-4">
           <div
-            className="flex items-center gap-2 text-xs"
+            className={cn(
+              "flex items-center gap-2 text-xs rounded-md px-2 py-1 transition-colors",
+              expanded && activeTab === "positions" ? "bg-primary/10 text-primary" : "hover:bg-muted"
+            )}
             onClick={(e) => { e.stopPropagation(); setExpanded(true); setActiveTab("positions"); }}
           >
-            <span className="text-muted-foreground">Positions</span>
+            <span className={cn(expanded && activeTab === "positions" ? "font-semibold text-foreground" : "text-muted-foreground")}>Positions</span>
             <span
               className={cn(
                 "rounded px-1.5 py-0.5 text-[11px] font-bold tabular-nums",
@@ -140,10 +143,13 @@ export function BottomBar() {
             </span>
           </div>
           <div
-            className="flex items-center gap-2 text-xs"
+            className={cn(
+              "flex items-center gap-2 text-xs rounded-md px-2 py-1 transition-colors",
+              expanded && activeTab === "orders" ? "bg-amber-500/10 text-amber-400" : "hover:bg-muted"
+            )}
             onClick={(e) => { e.stopPropagation(); setExpanded(true); setActiveTab("orders"); }}
           >
-            <span className="text-muted-foreground">Orders</span>
+            <span className={cn(expanded && activeTab === "orders" ? "font-semibold text-foreground" : "text-muted-foreground")}>Orders</span>
             <span
               className={cn(
                 "rounded px-1.5 py-0.5 text-[11px] font-bold tabular-nums",
@@ -185,25 +191,8 @@ export function BottomBar() {
 
       {/* ── Expandable panel ── */}
       {expanded && (
-        <div className="border-t border-border">
-          {/* Tabs */}
-          <div className="flex border-b border-border">
-            {(["positions", "orders"] as const).map((tab) => (
-              <button
-                key={tab}
-                type="button"
-                onClick={() => setActiveTab(tab)}
-                className={cn(
-                  "px-4 py-1.5 text-xs font-semibold capitalize transition-colors",
-                  activeTab === tab
-                    ? "border-b-2 border-primary text-foreground"
-                    : "text-muted-foreground hover:text-foreground"
-                )}
-              >
-                {tab}
-              </button>
-            ))}
-          </div>
+        <div className="border-t border-slate-200/50 dark:border-white/[0.08]">
+
 
           {/* Content */}
           <div className="max-h-[30vh] overflow-auto [scrollbar-width:thin]">
@@ -212,8 +201,8 @@ export function BottomBar() {
                 <p className="py-6 text-center text-xs text-muted-foreground">No open positions</p>
               ) : (
                 <table className="w-full min-w-[700px] text-xs">
-                  <thead className="sticky top-0 bg-card">
-                    <tr className="border-b border-border text-[11px] text-muted-foreground">
+                  <thead className="sticky top-0 bg-transparent backdrop-blur-md">
+                    <tr className="border-b border-slate-200/50 dark:border-white/[0.08] text-[11px] text-muted-foreground">
                       <th className="px-4 py-2 text-left font-medium">Symbol</th>
                       <th className="px-2 py-2 text-center font-medium">Side</th>
                       <th className="px-2 py-2 text-right font-medium">Qty</th>
@@ -227,7 +216,7 @@ export function BottomBar() {
                     {positionRows.map((row) => (
                       <tr
                         key={row.instrumentToken}
-                        className="border-b border-border transition-colors hover:bg-muted/50"
+                        className="border-b border-slate-200/50 dark:border-white/[0.05] transition-colors hover:bg-slate-100/50 dark:hover:bg-white/[0.02]"
                       >
                         <td className="px-4 py-2">
                           <div className="flex items-center gap-1.5">
@@ -279,7 +268,7 @@ export function BottomBar() {
                           <button
                             type="button"
                             onClick={() => handleClose(row)}
-                            className="rounded border border-border bg-background/70 px-2.5 py-1 text-[10px] font-semibold text-muted-foreground transition-colors hover:border-rose-500/40 hover:bg-rose-500/10 hover:text-rose-400"
+                            className="rounded border border-slate-200/50 dark:border-white/[0.08] bg-transparent px-2.5 py-1 text-[10px] font-semibold text-muted-foreground transition-colors hover:border-rose-500/40 hover:bg-rose-500/10 hover:text-rose-400"
                           >
                             Close
                           </button>
@@ -296,8 +285,8 @@ export function BottomBar() {
                 <p className="py-6 text-center text-xs text-muted-foreground">No pending orders</p>
               ) : (
                 <table className="w-full min-w-[600px] text-xs">
-                  <thead className="sticky top-0 bg-card">
-                    <tr className="border-b border-border text-[11px] text-muted-foreground">
+                  <thead className="sticky top-0 bg-transparent backdrop-blur-md">
+                    <tr className="border-b border-slate-200/50 dark:border-white/[0.08] text-[11px] text-muted-foreground">
                       <th className="px-4 py-2 text-left font-medium">Symbol</th>
                       <th className="px-2 py-2 text-center font-medium">Side</th>
                       <th className="px-2 py-2 text-center font-medium">Type</th>
@@ -312,7 +301,7 @@ export function BottomBar() {
                       return (
                         <tr
                           key={String(o.id || Math.random())}
-                          className="border-b border-border hover:bg-muted/50"
+                          className="border-b border-slate-200/50 dark:border-white/[0.05] hover:bg-slate-100/50 dark:hover:bg-white/[0.02]"
                         >
                           <td className="px-4 py-2 font-medium text-foreground">{String(o.symbol || "")}</td>
                           <td className="px-2 py-2 text-center">

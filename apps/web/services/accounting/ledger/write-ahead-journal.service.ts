@@ -187,7 +187,7 @@ export class WriteAheadJournalService {
             })
             .returning();
 
-        const row =
+        let row =
             inserted[0] ||
             (
                 await executor
@@ -201,18 +201,60 @@ export class WriteAheadJournalService {
             throw new ApiError("Failed to prepare write-ahead journal", 500, "WAJ_PREPARE_FAILED");
         }
 
-        if (checksumPayload(row.payload) !== checksum) {
-            logger.error(
+        // If a prior ABORTED entry exists for this journalId (from a failed previous attempt),
+        // overwrite it with the new payload so the retry can proceed cleanly.
+        // An ABORTED entry is safe to reuse — it means no ledger mutations were committed.
+        if (row.status === "ABORTED") {
+            const [updated] = await executor
+                .update(writeAheadJournal)
+                .set({
+                    operationType: operation.operationType,
+                    status: "PREPARED",
+                    userId: operation.userId,
+                    referenceId: operation.referenceId,
+                    payload: operation.payload,
+                    checksum,
+                    committedAt: null,
+                })
+                .where(eq(writeAheadJournal.journalId, journalId))
+                .returning();
+            if (updated) row = updated;
+        }
+
+        // Checksum guard: only enforce integrity on PREPARED/COMMITTED rows (not the row we just
+        // wrote). If the checksum still mismatches after the ABORTED-row upsert above, then a
+        // concurrent in-flight execution for the same order is already in progress — that is a
+        // true conflict, not corruption, so throw without halting the trading engine.
+        if (row.status !== "ABORTED" && checksumPayload(row.payload) !== checksum) {
+            // Only halt for COMMITTED rows — a PREPARED checksum mismatch means a concurrent
+            // execution is in flight with a different fill price, which can happen due to
+            // tick timing. Treat as a transient conflict; the caller's transaction will roll back.
+            if (row.status === "COMMITTED") {
+                logger.error(
+                    {
+                        event: "JOURNAL_CHECKSUM_MISMATCH",
+                        journalId,
+                        operationType: operation.operationType,
+                        userId: operation.userId,
+                        rowStatus: row.status,
+                    },
+                    "JOURNAL_CHECKSUM_MISMATCH — committed row tampered"
+                );
+                haltTrading("JOURNAL_CORRUPTION");
+                throw new ApiError("Write-ahead journal checksum mismatch", 500, "JOURNAL_CORRUPTION");
+            }
+            // PREPARED mismatch: concurrent execution in flight — treat as a transient conflict.
+            logger.warn(
                 {
-                    event: "JOURNAL_CHECKSUM_MISMATCH",
+                    event: "JOURNAL_CONCURRENT_EXECUTION",
                     journalId,
                     operationType: operation.operationType,
                     userId: operation.userId,
+                    rowStatus: row.status,
                 },
-                "JOURNAL_CHECKSUM_MISMATCH"
+                "WAJ journalId already PREPARED by concurrent execution — aborting this attempt"
             );
-            haltTrading("JOURNAL_CORRUPTION");
-            throw new ApiError("Write-ahead journal checksum mismatch", 500, "JOURNAL_CORRUPTION");
+            throw new ApiError("Concurrent execution detected for this order", 409, "WAJ_CONCURRENT_EXECUTION");
         }
 
         logger.info(

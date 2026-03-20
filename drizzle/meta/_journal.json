@@ -141,6 +141,13 @@
       "when": 1773292683055,
       "tag": "0019_daffy_old_lace",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1773815891889,
+      "tag": "0020_fix_ledger_idempotency_unique_index",
+      "breakpoints": true
     }
   ]
 }

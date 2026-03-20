@@ -1,6 +1,6 @@
-import { eq } from "drizzle-orm";
+import { eq, inArray, or } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { ledgerAccounts, wallets } from "@paper-market/core/db";
+import { ledgerAccounts, ledgerEntries, wallets } from "@paper-market/core/db";
 import type { LedgerAccountType } from "@paper-market/core";
 import { logger } from "@/lib/logger";
 import { LedgerService } from "@/services/accounting/ledger/ledger.service";
@@ -19,6 +19,8 @@ const ACCOUNT_TYPES: readonly LedgerAccountType[] = [
 const DEFAULT_WALLET_BALANCE = LedgerService.normalizeAmount(
     process.env.DEFAULT_WALLET_BALANCE ?? "1000000"
 );
+const PAPER_TRADING_MODE =
+    String(process.env.PAPER_TRADING_MODE ?? "true").trim().toLowerCase() !== "false";
 
 function normalizeAmount(value: unknown): string {
     const normalized = LedgerService.normalizeAmount(String(value ?? "0"));
@@ -42,6 +44,20 @@ export async function bootstrapUserLedgerState(userId: string, tx?: TxLike): Pro
     const executor = tx || db;
     await bootstrapLedgerAccounts(userId, executor);
 
+    const accountSet = await ledgerCacheService.getAccountSet(userId, executor);
+    const accountIds = Object.values(accountSet);
+    const [existingEntry] = await executor
+        .select({ id: ledgerEntries.id })
+        .from(ledgerEntries)
+        .where(
+            or(
+                inArray(ledgerEntries.debitAccountId, accountIds),
+                inArray(ledgerEntries.creditAccountId, accountIds)
+            )
+        )
+        .limit(1);
+    const ledgerEmpty = !existingEntry;
+
     const [wallet] = await executor
         .select({
             balance: wallets.balance,
@@ -51,8 +67,14 @@ export async function bootstrapUserLedgerState(userId: string, tx?: TxLike): Pro
         .where(eq(wallets.userId, userId))
         .limit(1);
 
-    const totalBalance = normalizeAmount(wallet?.balance ?? DEFAULT_WALLET_BALANCE);
+    const walletBalance = normalizeAmount(wallet?.balance ?? "0");
     const blockedBalance = normalizeAmount(wallet?.blockedBalance ?? "0");
+    const useDefaultBalance =
+        ledgerEmpty &&
+        PAPER_TRADING_MODE &&
+        LedgerService.compare(walletBalance, "0") <= 0 &&
+        LedgerService.compare(blockedBalance, "0") <= 0;
+    const totalBalance = useDefaultBalance ? DEFAULT_WALLET_BALANCE : walletBalance;
     let freeCash = LedgerService.subtract(totalBalance, blockedBalance);
     if (LedgerService.compare(freeCash, "0") < 0) {
         freeCash = totalBalance;

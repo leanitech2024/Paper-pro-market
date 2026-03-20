@@ -17,141 +17,105 @@ export function PerformanceSummary() {
     }).format(value);
   };
 
+  const tileClass = "rounded-[24px] border border-slate-200/80 bg-white p-4 dark:border-white/[0.08] dark:bg-[#0f1728]";
+  const badgeClass = "rounded-2xl border border-slate-200 bg-slate-50 p-2.5 dark:border-white/[0.08] dark:bg-black/20";
+  const iconClass = "h-4 w-4 text-slate-600 dark:text-slate-300";
+
   return (
-    <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
+    <div className="grid gap-4 grid-cols-2 xl:grid-cols-4">
       {/* 1. Net P&L */}
-      <Card className="bg-card border-border">
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium text-muted-foreground">Net P&L</CardTitle>
-          <IndianRupee className={cn(
-            "h-4 w-4",
-            metrics.netPnL >= 0 ? "text-success" : "text-destructive"
-          )} />
-        </CardHeader>
-        <CardContent>
-          <div className={cn(
-            "text-2xl font-bold tracking-tight",
-            metrics.netPnL >= 0 ? "text-success" : "text-destructive"
-          )}>
-            {metrics.netPnL >= 0 ? "+" : ""}{formatCurrency(metrics.netPnL)}
-          </div>
-          <p className="text-xs text-muted-foreground mt-1">Total realized return</p>
-        </CardContent>
-      </Card>
+      <div className={tileClass}>
+        <div className="mb-4 flex items-center justify-between">
+          <p className="text-[11px] uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">Net P&L</p>
+          <span className={badgeClass}><IndianRupee className={iconClass} /></span>
+        </div>
+        <p className={`text-2xl font-semibold ${metrics.netPnL >= 0 ? "text-emerald-600 dark:text-[#2dd4bf]" : "text-rose-600 dark:text-[#fb7185]"}`}>
+          {metrics.netPnL >= 0 ? "+" : ""}{formatCurrency(metrics.netPnL)}
+        </p>
+        <p className="mt-1 text-xs text-slate-500 dark:text-slate-500">Total realized return</p>
+      </div>
 
       {/* 2. Win Rate */}
-      <Card className="bg-card border-border">
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium text-muted-foreground">Win Rate</CardTitle>
-          <Target className={cn(
-            "h-4 w-4",
-            metrics.winRate >= 50 ? "text-success" : "text-destructive"
-          )} />
-        </CardHeader>
-        <CardContent>
-          <div className={cn(
-            "text-2xl font-bold tracking-tight",
-            metrics.winRate >= 50 ? "text-success" : "text-destructive"
-          )}>
-            {metrics.winRate}%
-          </div>
-          <p className="text-xs text-muted-foreground mt-1">Consistency score</p>
-        </CardContent>
-      </Card>
+      <div className={tileClass}>
+        <div className="mb-4 flex items-center justify-between">
+          <p className="text-[11px] uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">Win Rate</p>
+          <span className={badgeClass}><Target className={iconClass} /></span>
+        </div>
+        <p className={`text-2xl font-semibold ${metrics.winRate >= 50 ? "text-emerald-600 dark:text-[#2dd4bf]" : "text-rose-600 dark:text-[#fb7185]"}`}>
+          {metrics.winRate}%
+        </p>
+        <p className="mt-1 text-xs text-slate-500 dark:text-slate-500">Consistency score</p>
+      </div>
 
       {/* 3. Profit Factor */}
-      <Card className="bg-card border-border">
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium text-muted-foreground">Profit Factor</CardTitle>
-          <TrendingUp className={cn(
-            "h-4 w-4",
-            metrics.profitFactor >= 1.5 ? "text-success" : metrics.profitFactor >= 1 ? "text-orange-500" : "text-destructive"
-          )} />
-        </CardHeader>
-        <CardContent>
-          <div className={cn(
-            "text-2xl font-bold tracking-tight",
-            metrics.profitFactor >= 1.5 ? "text-success" : metrics.profitFactor >= 1 ? "text-orange-500" : "text-destructive"
-          )}>
-            {metrics.profitFactor === Infinity ? "∞" : metrics.profitFactor}
-          </div>
-          <p className="text-xs text-muted-foreground mt-1">Gross Win / Gross Loss</p>
-        </CardContent>
-      </Card>
+      <div className={tileClass}>
+        <div className="mb-4 flex items-center justify-between">
+          <p className="text-[11px] uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">Profit Factor</p>
+          <span className={badgeClass}><TrendingUp className={iconClass} /></span>
+        </div>
+        <p className={`text-2xl font-semibold ${metrics.profitFactor >= 1.5 ? "text-emerald-600 dark:text-[#2dd4bf]" : metrics.profitFactor >= 1 ? "text-amber-600 dark:text-amber-400" : "text-rose-600 dark:text-[#fb7185]"}`}>
+          {metrics.profitFactor === Infinity ? "∞" : metrics.profitFactor}
+        </p>
+        <p className="mt-1 text-xs text-slate-500 dark:text-slate-500">Gross Win / Gross Loss</p>
+      </div>
 
       {/* 4. Expectancy */}
-      <Card className="bg-card border-border">
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium text-muted-foreground">Expectancy</CardTitle>
-          <BarChart3 className={cn(
-            "h-4 w-4",
-            metrics.expectancy > 0 ? "text-success" : "text-destructive"
-          )} />
-        </CardHeader>
-        <CardContent>
-          <div className={cn(
-            "text-2xl font-bold tracking-tight",
-            metrics.expectancy > 0 ? "text-success" : "text-destructive"
-          )}>
-            {metrics.expectancy > 0 ? "+" : ""}{formatCurrency(metrics.expectancy)}
-          </div>
-          <p className="text-xs text-muted-foreground mt-1">Avg P&L per trade</p>
-        </CardContent>
-      </Card>
+      <div className={tileClass}>
+        <div className="mb-4 flex items-center justify-between">
+          <p className="text-[11px] uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">Expectancy</p>
+          <span className={badgeClass}><BarChart3 className={iconClass} /></span>
+        </div>
+        <p className={`text-2xl font-semibold ${metrics.expectancy > 0 ? "text-emerald-600 dark:text-[#2dd4bf]" : "text-rose-600 dark:text-[#fb7185]"}`}>
+          {metrics.expectancy > 0 ? "+" : ""}{formatCurrency(metrics.expectancy)}
+        </p>
+        <p className="mt-1 text-xs text-slate-500 dark:text-slate-500">Avg P&L per trade</p>
+      </div>
 
       {/* 5. Total Trades */}
-      <Card className="bg-card border-border">
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium text-muted-foreground">Total Trades</CardTitle>
-          <Activity className="h-4 w-4 text-muted-foreground" />
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold tracking-tight">{metrics.totalTrades}</div>
-          <p className="text-xs text-muted-foreground mt-1">Closed positions only</p>
-        </CardContent>
-      </Card>
+      <div className={tileClass}>
+        <div className="mb-4 flex items-center justify-between">
+          <p className="text-[11px] uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">Total Trades</p>
+          <span className={badgeClass}><Activity className={iconClass} /></span>
+        </div>
+        <p className="text-2xl font-semibold text-slate-950 dark:text-slate-100">{metrics.totalTrades}</p>
+        <p className="mt-1 text-xs text-slate-500 dark:text-slate-500">Closed positions only</p>
+      </div>
 
       {/* 6. Max Drawdown */}
-      <Card className="bg-card border-border">
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium text-muted-foreground">Max Drawdown</CardTitle>
-          <ArrowDownToLine className="h-4 w-4 text-destructive" />
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold text-destructive tracking-tight">
-            -{formatCurrency(metrics.maxDrawdown)}
-          </div>
-          <p className="text-xs text-muted-foreground mt-1">Largest peak-to-trough drop</p>
-        </CardContent>
-      </Card>
+      <div className={tileClass}>
+        <div className="mb-4 flex items-center justify-between">
+          <p className="text-[11px] uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">Max Drawdown</p>
+          <span className={badgeClass}><ArrowDownToLine className={iconClass} /></span>
+        </div>
+        <p className="text-2xl font-semibold text-rose-600 dark:text-[#fb7185]">
+          -{formatCurrency(metrics.maxDrawdown)}
+        </p>
+        <p className="mt-1 text-xs text-slate-500 dark:text-slate-500">Largest peak-to-trough drop</p>
+      </div>
 
       {/* 7. Average Win */}
-      <Card className="bg-card border-border">
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium text-muted-foreground">Average Win</CardTitle>
-          <TrendingUp className="h-4 w-4 text-success" />
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold text-success tracking-tight">
-            +{formatCurrency(metrics.averageWin)}
-          </div>
-          <p className="text-xs text-muted-foreground mt-1">Per winning trade</p>
-        </CardContent>
-      </Card>
+      <div className={tileClass}>
+        <div className="mb-4 flex items-center justify-between">
+          <p className="text-[11px] uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">Average Win</p>
+          <span className={badgeClass}><TrendingUp className={iconClass} /></span>
+        </div>
+        <p className="text-2xl font-semibold text-emerald-600 dark:text-[#2dd4bf]">
+          +{formatCurrency(metrics.averageWin)}
+        </p>
+        <p className="mt-1 text-xs text-slate-500 dark:text-slate-500">Per winning trade</p>
+      </div>
 
       {/* 8. Average Loss */}
-      <Card className="bg-card border-border">
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium text-muted-foreground">Average Loss</CardTitle>
-          <TrendingDown className="h-4 w-4 text-destructive" />
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold text-destructive tracking-tight">
-            -{formatCurrency(metrics.averageLoss)}
-          </div>
-          <p className="text-xs text-muted-foreground mt-1">Per losing trade</p>
-        </CardContent>
-      </Card>
+      <div className={tileClass}>
+        <div className="mb-4 flex items-center justify-between">
+          <p className="text-[11px] uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">Average Loss</p>
+          <span className={badgeClass}><TrendingDown className={iconClass} /></span>
+        </div>
+        <p className="text-2xl font-semibold text-rose-600 dark:text-[#fb7185]">
+          -{formatCurrency(metrics.averageLoss)}
+        </p>
+        <p className="mt-1 text-xs text-slate-500 dark:text-slate-500">Per losing trade</p>
+      </div>
     </div>
   );
 }

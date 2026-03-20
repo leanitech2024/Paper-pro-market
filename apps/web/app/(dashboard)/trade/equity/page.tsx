@@ -48,6 +48,14 @@ function formatChangePercent(value?: number): string {
   return `${v > 0 ? "+" : ""}${v.toFixed(2)}%`;
 }
 
+const panelClass =
+  "rounded-[28px] border border-slate-200/80 bg-white dark:border-white/[0.08] dark:bg-[#0c1322]";
+const chartPanelClass =
+  "rounded-none border border-slate-200/80 bg-white dark:border-white/[0.08] dark:bg-[#0c1322]";
+const tileClass =
+  "rounded-[24px] border border-slate-200/80 bg-white dark:border-white/[0.08] dark:bg-[#0f1728]";
+const headerBorderClass = "border-b border-slate-200/80 dark:border-white/[0.08]";
+
 export default function EquityPage() {
   const { isMobile, isDesktop } = useTradeViewport();
   const router = useRouter();
@@ -125,7 +133,7 @@ export default function EquityPage() {
   };
 
   const chartNode = (
-    <div className="h-full w-full bg-card/50">
+    <div className="h-full w-full">
       {selectedSymbol ? (
         <Suspense fallback={<Skeleton className="h-full w-full" />}>
           <div className="h-full w-full">
@@ -141,7 +149,9 @@ export default function EquityPage() {
           <PositionsTable />
         </div>
       ) : (
-        <div className="flex h-full items-center justify-center text-muted-foreground">Select a stock to view chart</div>
+        <div className="flex h-full items-center justify-center text-slate-500 dark:text-slate-400">
+          Select a stock to view chart
+        </div>
       )}
     </div>
   );
@@ -169,13 +179,17 @@ export default function EquityPage() {
       />
     </div>
   ) : (
-    <div className="flex h-full items-center justify-center p-4 text-xs text-slate-500">Select a stock to place an order.</div>
+    <div className="flex h-full items-center justify-center p-4 text-xs text-slate-500 dark:text-slate-400">
+      Select a stock to place an order.
+    </div>
   );
 
   const tabletWatchlistNode = (
-    <div className="h-full min-h-0 overflow-hidden bg-background p-2">
-      <div className="h-full min-h-0 overflow-hidden rounded-xl border border-border bg-card shadow-[0_8px_24px_rgba(15,23,42,0.08)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.25)]">
-        <div className="border-b border-border px-3 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+    <div className="h-full min-h-0 overflow-hidden bg-transparent p-2">
+      <div className={`h-full min-h-0 overflow-hidden ${panelClass} shadow-sm`}>
+        <div
+          className={`${headerBorderClass} px-3 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-slate-500 dark:text-slate-400`}
+        >
           Watchlist
         </div>
         <div className="h-[calc(100%-37px)] min-h-0 overflow-hidden">{watchlistNode}</div>
@@ -184,9 +198,11 @@ export default function EquityPage() {
   );
 
   const tabletOrderNode = (
-    <div className="h-full min-h-0 overflow-hidden bg-background p-2">
-      <div className="h-full min-h-0 overflow-hidden rounded-xl border border-border bg-card shadow-[0_8px_24px_rgba(15,23,42,0.08)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.25)]">
-        <div className="border-b border-border px-3 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+    <div className="h-full min-h-0 overflow-hidden bg-transparent p-2">
+      <div className={`h-full min-h-0 overflow-hidden ${panelClass} shadow-sm`}>
+        <div
+          className={`${headerBorderClass} px-3 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-slate-500 dark:text-slate-400`}
+        >
           Order Ticket
         </div>
         <div className="h-[calc(100%-37px)] min-h-0 overflow-hidden">{orderPanelNode}</div>
@@ -195,25 +211,29 @@ export default function EquityPage() {
   );
 
   const mobileChartNode = (
-    <div className="h-full min-h-0 bg-background p-2 pb-3">
-      <div className="h-full min-h-0 overflow-hidden rounded-xl border border-border bg-card shadow-[0_10px_28px_rgba(15,23,42,0.08)] dark:shadow-[0_12px_35px_rgba(0,0,0,0.3)]">
+    <div className="h-full min-h-0 bg-transparent p-2 pb-3">
+      <div className={`h-full min-h-0 overflow-hidden ${chartPanelClass} shadow-sm`}>
         {chartNode}
       </div>
     </div>
   );
 
   const mobileWatchlistNode = (
-    <div className="h-full min-h-0 bg-background p-2 pb-3">
-      <div className="h-full min-h-0 overflow-hidden rounded-xl border border-border bg-card shadow-[0_10px_28px_rgba(15,23,42,0.08)] dark:shadow-[0_12px_35px_rgba(0,0,0,0.3)]">
-        <div className="flex items-center justify-between border-b border-border px-3 py-2">
+    <div className="h-full min-h-0 bg-transparent p-2 pb-3">
+      <div className={`h-full min-h-0 overflow-hidden ${chartPanelClass} shadow-sm`}>
+        <div className={`flex items-center justify-between px-3 py-2 ${headerBorderClass}`}>
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground">Watchlist</p>
-            <p className="text-[11px] text-muted-foreground/80">Tap any stock to open chart</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-500 dark:text-slate-400">
+              Watchlist
+            </p>
+            <p className="text-[11px] text-slate-500/80 dark:text-slate-400/80">
+              Tap any stock to open chart
+            </p>
           </div>
           <button
             type="button"
             onClick={() => setSearchModalOpen(true)}
-            className="inline-flex h-8 items-center gap-1 rounded-md border border-border bg-background/80 px-2.5 text-xs font-medium text-foreground hover:bg-muted"
+            className="inline-flex h-8 items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-2.5 text-xs font-medium text-slate-700 transition-colors hover:bg-slate-100 dark:border-white/[0.08] dark:bg-[#10192b] dark:text-slate-100 dark:hover:bg-white/[0.08]"
           >
             <Search className="h-3.5 w-3.5" />
             Search
@@ -225,13 +245,13 @@ export default function EquityPage() {
   );
 
   const mobileChartNodeWithHeader = (
-    <div className="h-full min-h-0 bg-background p-2 pb-3">
-      <div className="h-full min-h-0 overflow-hidden rounded-xl border border-border bg-card shadow-[0_10px_28px_rgba(15,23,42,0.08)] dark:shadow-[0_12px_35px_rgba(0,0,0,0.3)]">
-        <div className="flex items-center justify-between border-b border-border px-3 py-2">
+    <div className="h-full min-h-0 bg-transparent p-2 pb-3">
+      <div className={`h-full min-h-0 overflow-hidden ${panelClass} shadow-sm`}>
+        <div className={`flex items-center justify-between px-3 py-2 ${headerBorderClass}`}>
           <button
             type="button"
             onClick={() => setMobilePanel("watchlist")}
-            className="inline-flex h-8 items-center gap-1 rounded-md border border-border bg-background/80 px-2 text-xs font-medium text-foreground hover:bg-muted"
+            className="inline-flex h-8 items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-2 text-xs font-medium text-slate-700 transition-colors hover:bg-slate-100 dark:border-white/[0.08] dark:bg-[#10192b] dark:text-slate-100 dark:hover:bg-white/[0.08]"
           >
             <ChevronLeft className="h-3.5 w-3.5" />
             Watchlist
@@ -264,9 +284,13 @@ export default function EquityPage() {
 
   const mobileOrderDrawerNode = (
     <div className="h-[86vh] min-h-0 overflow-hidden bg-background">
-      <div className="border-b border-border px-4 py-3">
-        <p className="text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground">Order Ticket</p>
-        <p className="mt-1 text-sm font-semibold text-foreground">{selectedStock?.symbol || "EQUITY"}</p>
+      <div className="border-b border-slate-200/80 px-4 py-3 dark:border-white/[0.08]">
+        <p className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-500 dark:text-slate-400">
+          Order Ticket
+        </p>
+        <p className="mt-1 text-sm font-semibold text-slate-950 dark:text-slate-100">
+          {selectedStock?.symbol || "EQUITY"}
+        </p>
       </div>
       <div className="h-[calc(100%-62px)] min-h-0 overflow-y-auto">{orderPanelNode}</div>
     </div>
@@ -283,20 +307,20 @@ export default function EquityPage() {
         }}
       />
 
-      <div className="h-[calc(100dvh-6rem)] md:h-[calc(100vh-2rem)] min-h-0 overflow-hidden">
+      <div className="h-[calc(100dvh-6rem)] md:h-[calc(100vh-2rem)] min-h-0 overflow-hidden bg-background">
         <AdaptiveTradeLayout
           desktopLeft={watchlistNode}
           desktopLeftWidth="360px"
           desktopCenter={
-            <div className="relative h-full min-h-0">
+            <div className={`relative h-full min-h-0 overflow-hidden ${chartPanelClass}`}>
               {chartNode}
               {isDesktop && showOrderForm && selectedStock && selectedSymbol ? (
                 <div className="absolute right-4 top-16 z-50 w-[340px] animate-in fade-in slide-in-from-right-8 duration-200">
-                  <div className="relative rounded-lg border border-border bg-card shadow-2xl">
+                  <div className={`relative ${tileClass} shadow-2xl`}>
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="absolute right-2 top-2 z-10 h-7 w-7 rounded-full bg-background/70 hover:bg-background"
+                      className="absolute right-2 top-2 z-10 h-7 w-7 rounded-full bg-slate-100/80 hover:bg-slate-200 dark:bg-white/[0.06] dark:hover:bg-white/[0.12]"
                       onClick={() => setShowOrderForm(false)}
                     >
                       <span className="sr-only">Close</span>

@@ -34,7 +34,6 @@ export class PriceOracleService {
     private readonly recentPriceByToken = new Map<string, { price: number; expiresAt: number }>();
     private readonly inflight = new Map<string, Promise<SystemQuoteDetail | null>>();
 
-    // H-6 FIX: Evict expired entries (and oldest if over max size) to prevent unbounded growth.
     private evictStaleEntries(): void {
         const now = Date.now();
         for (const [key, entry] of this.recentPriceByToken) {
@@ -177,5 +176,3 @@ export class PriceOracleService {
 }
 
 export const priceOracle = new PriceOracleService();
-
-

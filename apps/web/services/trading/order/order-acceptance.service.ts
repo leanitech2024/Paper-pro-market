@@ -66,8 +66,14 @@ export class OrderAcceptanceService {
 
         if (payload.side === currentSide) return;
 
-        if (!Number.isFinite(orderQty) || orderQty !== existingAbsQty) {
-            throw new ApiError("Full exit required in paper mode.", 400, "PARTIAL_EXIT_NOT_ALLOWED");
+        // Allow partial exits: only block if order quantity exceeds the position size
+        // (would flip the position to the other side, which is not supported in paper mode).
+        if (!Number.isFinite(orderQty) || orderQty > existingAbsQty) {
+            throw new ApiError(
+                `Cannot sell ${orderQty} units — position only has ${existingAbsQty}. Partial exits are allowed but over-sells are not.`,
+                400,
+                "INSUFFICIENT_POSITION"
+            );
         }
     }
 

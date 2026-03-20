@@ -60,6 +60,30 @@ export class OrderExecutorService {
                 return 0;
             }
 
+            // Recovery: reset any orders that have been stuck in PROCESSING for
+            // more than 30 seconds back to OPEN so they can be retried. This handles
+            // cases where a previous execution attempt crashed mid-flight (e.g. a
+            // process restart, or a trading halt that was subsequently cleared).
+            const staleThreshold = new Date(Date.now() - 30_000);
+            const staleProcessing = await db
+                .update(orders)
+                .set({ status: "OPEN", updatedAt: new Date() })
+                .where(
+                    and(
+                        eq(orders.status, "PROCESSING"),
+                        sql`${orders.updatedAt} < ${staleThreshold}`,
+                        sql`${orders.childOrderType} IS NULL`
+                    )
+                )
+                .returning({ id: orders.id });
+
+            if (staleProcessing.length > 0) {
+                logger.warn(
+                    { count: staleProcessing.length, ids: staleProcessing.map((o) => o.id) },
+                    "Recovered stale PROCESSING orders back to OPEN"
+                );
+            }
+
             // Atomically claim a batch of OPEN orders by flipping them to
             // PROCESSING. Only this caller will see these exact rows; any
             // concurrent caller will skip them (they are no longer OPEN).

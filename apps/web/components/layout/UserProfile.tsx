@@ -13,7 +13,7 @@ export function UserProfile() {
     if (!session?.user) return null;
 
     return (
-        <div className="border-t border-sidebar-border p-2 flex-shrink-0">
+        <div className="border-t border-slate-200/50 dark:border-white/[0.05] p-2 flex-shrink-0">
             <button
                 onClick={() => router.push("/profile")}
                 className="w-full flex items-center justify-start gap-3 px-2 py-2 h-auto hover:bg-sidebar-accent hover:text-sidebar-accent-foreground rounded-lg transition-colors group/user"

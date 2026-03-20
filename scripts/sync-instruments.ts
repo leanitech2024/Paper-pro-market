@@ -1,15 +1,24 @@
 /**
  * Instrument Sync CLI Script
- * 
+ *
  * Usage:
  *   pnpm exec tsx scripts/sync-instruments.ts
  */
 
-import 'dotenv/config';
-import { syncInstruments } from '../apps/web/lib/instruments/instrument-sync.service';
-import { db } from '../apps/web/lib/db';
-import { instruments } from '@paper-market/core/db';
-import { sql } from 'drizzle-orm';
+import { config as loadEnv } from "dotenv";
+import { existsSync } from "fs";
+
+const envPath =
+  process.env.DOTENV_CONFIG_PATH ||
+  (existsSync(".env.local") ? ".env.local" : ".env");
+loadEnv({ path: envPath });
+
+const { syncInstruments } = await import(
+  "../apps/web/lib/instruments/instrument-sync.service"
+);
+const { db } = await import("../apps/web/lib/db");
+const { instruments } = await import("@paper-market/core/db");
+const { sql } = await import("drizzle-orm");
 
 async function main() {
     console.log('\n' + '='.repeat(70));

@@ -73,6 +73,10 @@ function formatPct(value: number): string {
   return `${value > 0 ? "+" : ""}${value.toFixed(2)}%`;
 }
 
+const panelClass =
+  "rounded-none border border-slate-200/80 bg-white dark:border-white/[0.08] dark:bg-[#0c1322]";
+const headerBorderClass = "border-b border-slate-200/80 dark:border-white/[0.08]";
+
 function OptionsPageContent() {
   const searchParams = useSearchParams();
   const { isMobile } = useTradeViewport();
@@ -379,19 +383,19 @@ function OptionsPageContent() {
 
   const mobileContentNode = (
     <div className="flex h-full min-h-0 flex-col bg-background">
-      <div className="shrink-0 border-b border-border/80 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/85">
+      <div className={`shrink-0 ${headerBorderClass} bg-white/95 backdrop-blur dark:bg-[#0c1322]/95`}>
         <div className="space-y-2 px-3 py-2">
           <div className="flex items-center justify-between gap-2">
             <button
               type="button"
               onClick={handleOpenSearch}
-              className="inline-flex h-9 min-w-0 items-center gap-1.5 rounded-lg border border-border bg-card px-3 text-[11px] font-semibold text-foreground"
+              className="inline-flex h-9 min-w-0 items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-3 text-[11px] font-semibold text-slate-700 dark:border-white/[0.08] dark:bg-[#10192b] dark:text-slate-100"
             >
-              <Search className="h-3.5 w-3.5 text-muted-foreground" />
+              <Search className="h-3.5 w-3.5 text-slate-500 dark:text-slate-300" />
               <span className="truncate uppercase">{underlying || "OPTIONS"}</span>
             </button>
             <div className="flex flex-col items-end">
-              <span className="text-[11px] font-semibold tabular-nums text-foreground">
+              <span className="text-[11px] font-semibold tabular-nums text-slate-950 dark:text-slate-100">
                 {formatLtp(underlyingPrice)}
               </span>
               <span
@@ -403,7 +407,7 @@ function OptionsPageContent() {
                 {formatPct(changePercent)}
               </span>
               {atmStrike ? (
-                <span className="text-[10px] text-muted-foreground">
+                <span className="text-[10px] text-slate-500 dark:text-slate-400">
                   ATM {atmStrike.toLocaleString("en-IN")}
                 </span>
               ) : null}
@@ -437,7 +441,7 @@ function OptionsPageContent() {
 
           <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {expiries.length === 0 ? (
-              <span className="text-[11px] text-muted-foreground">Loading expiries...</span>
+              <span className="text-[11px] text-slate-500 dark:text-slate-400">Loading expiries...</span>
             ) : (
               expiries.slice(0, 8).map((exp) => {
                 const active = exp === selectedExpiry;
@@ -449,8 +453,8 @@ function OptionsPageContent() {
                     className={cn(
                       "shrink-0 rounded-md border px-2.5 py-1 text-[11px] font-semibold transition-colors",
                       active
-                        ? "border-primary/40 bg-primary/15 text-primary"
-                        : "border-border bg-card text-muted-foreground",
+                        ? "border-slate-900 bg-slate-900 text-white dark:border-white/10 dark:bg-white/10 dark:text-slate-100"
+                        : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50 dark:border-white/[0.08] dark:bg-[#10192b] dark:text-slate-300",
                     )}
                   >
                     {formatExpiryChip(exp)}
@@ -460,7 +464,7 @@ function OptionsPageContent() {
             )}
           </div>
 
-          <div className="relative grid h-9 grid-cols-2 rounded-full bg-muted/45 p-1">
+          <div className="relative grid h-9 grid-cols-2 rounded-full bg-slate-100/80 p-1 dark:bg-white/[0.06]">
             <span
               className={cn(
                 "absolute inset-y-1 w-[calc(50%-4px)] rounded-full border transition-transform duration-200",
@@ -479,7 +483,7 @@ function OptionsPageContent() {
                 "relative z-10 h-7 rounded-full text-xs font-semibold transition-colors",
                 mode === "single"
                   ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300"
-                  : "text-muted-foreground",
+                  : "text-slate-500 dark:text-slate-400",
               )}
             >
               Single
@@ -491,14 +495,14 @@ function OptionsPageContent() {
                 "relative z-10 h-7 rounded-full text-xs font-semibold transition-colors",
                 mode === "strategy"
                   ? "bg-rose-500/15 text-rose-700 dark:text-rose-300"
-                  : "text-muted-foreground",
+                  : "text-slate-500 dark:text-slate-400",
               )}
             >
               Strategy
             </button>
           </div>
 
-          <div className="flex items-center gap-1 overflow-x-auto rounded-full bg-muted/40 p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <div className="flex items-center gap-1 overflow-x-auto rounded-full bg-slate-100/70 p-1 dark:bg-white/[0.06] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             <button
               type="button"
               onClick={() => {
@@ -508,8 +512,8 @@ function OptionsPageContent() {
               className={cn(
                 "h-8 min-w-[74px] rounded-full px-3 text-[11px] font-semibold transition-colors",
                 mobileView === "chain"
-                  ? "bg-background text-foreground shadow-sm"
-                  : "text-muted-foreground",
+                  ? "bg-white text-slate-900 shadow-sm dark:bg-[#10192b] dark:text-slate-100"
+                  : "text-slate-500 dark:text-slate-400",
               )}
             >
               Chain
@@ -523,8 +527,8 @@ function OptionsPageContent() {
               className={cn(
                 "h-8 min-w-[82px] rounded-full px-3 text-[11px] font-semibold transition-colors",
                 mobileView === "positions"
-                  ? "bg-background text-foreground shadow-sm"
-                  : "text-muted-foreground",
+                  ? "bg-white text-slate-900 shadow-sm dark:bg-[#10192b] dark:text-slate-100"
+                  : "text-slate-500 dark:text-slate-400",
               )}
             >
               Positions
@@ -535,8 +539,8 @@ function OptionsPageContent() {
               className={cn(
                 "h-8 min-w-[70px] rounded-full px-3 text-[11px] font-semibold transition-colors",
                 mobileOrderOpen
-                  ? "bg-background text-foreground shadow-sm"
-                  : "text-muted-foreground",
+                  ? "bg-white text-slate-900 shadow-sm dark:bg-[#10192b] dark:text-slate-100"
+                  : "text-slate-500 dark:text-slate-400",
               )}
             >
               Order
@@ -546,7 +550,7 @@ function OptionsPageContent() {
       </div>
 
       <div className="min-h-0 flex-1 p-2 pb-3">
-        <div className="h-full min-h-0 overflow-hidden rounded-xl border border-border bg-card shadow-[0_10px_28px_rgba(15,23,42,0.08)] dark:shadow-[0_12px_35px_rgba(0,0,0,0.3)]">
+        <div className={`h-full min-h-0 overflow-hidden ${panelClass}`}>
           {mobileViewNode}
         </div>
       </div>
@@ -558,12 +562,28 @@ function OptionsPageContent() {
       <AdaptiveTradeLayout
         header={!isMobile ? headerNode : undefined}
         desktopLeft={undefined}
-        desktopCenter={chainNode}
-        desktopRight={<div className="h-full min-h-0 overflow-y-auto">{renderPanel()}</div>}
+        desktopCenter={
+          <div className={`h-full min-h-0 overflow-hidden ${panelClass}`}>
+            {chainNode}
+          </div>
+        }
+        desktopRight={
+          <div className={`h-full min-h-0 overflow-hidden ${panelClass}`}>
+            <div className="h-full min-h-0 overflow-y-auto">{renderPanel()}</div>
+          </div>
+        }
         desktopRightWidth="340px"
-        tabletTop={chainNode}
+        tabletTop={
+          <div className={`h-full min-h-0 overflow-hidden ${panelClass}`}>
+            {chainNode}
+          </div>
+        }
         tabletLeft={undefined}
-        tabletRight={<div className="h-full min-h-0 overflow-y-auto">{renderPanel()}</div>}
+        tabletRight={
+          <div className={`h-full min-h-0 overflow-hidden ${panelClass}`}>
+            <div className="h-full min-h-0 overflow-y-auto">{renderPanel()}</div>
+          </div>
+        }
         mobileContent={mobileContentNode}
         mobileOrderTitle={`${underlying} options order ticket`}
         mobileOrderOpen={mobileOrderOpen}

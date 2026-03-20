@@ -161,7 +161,11 @@ export const useTradeExecutionStore = create<TradeExecutionState>((set, get) => 
 
         const backendMessage = (() => {
           if (errorCode === "MARKET_CLOSED")
-            return "Market is closed. Trading hours are 9:15 AM – 3:30 PM IST (Mon–Fri). You can still exit existing positions anytime.";
+            return (
+              apiError?.message ||
+              data?.message ||
+              "Market is closed. Trading hours are 9:15 AM - 3:30 PM IST (Mon-Fri). You can still exit existing positions anytime."
+            );
           if (errorCode === "INSUFFICIENT_FUNDS")
             return apiError?.message || data?.message || "Insufficient balance to place this order.";
           if (errorCode === "INSTRUMENT_INACTIVE")
@@ -293,3 +297,4 @@ export const useTradeExecutionStore = create<TradeExecutionState>((set, get) => 
     console.warn("settleExpiredPositions is deprecated. Backend handles expiry.");
   },
 }));
+

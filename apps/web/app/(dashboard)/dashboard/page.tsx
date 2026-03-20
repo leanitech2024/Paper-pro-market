@@ -223,7 +223,7 @@ const DashboardPage = () => {
   const badgeClass = "rounded-2xl border border-slate-200 bg-slate-50 p-2.5 dark:border-white/[0.08] dark:bg-black/20";
 
   return (
-    <div className="min-h-full w-full bg-gradient-to-b from-slate-100 via-white to-slate-100/80 pb-24 pt-1 text-slate-950 dark:from-[#09111e] dark:via-[#0b1220] dark:to-[#0b1324] dark:text-slate-50 md:pb-8">
+    <div className="min-h-full w-full pb-24 pt-1 md:pb-8">
       <div className="flex w-full flex-col gap-4 px-2 sm:px-4 md:gap-6 md:px-6 xl:px-8">
         {isError && (
           <div className="rounded-2xl border border-rose-300 bg-rose-50 p-3 text-sm text-rose-700 dark:border-rose-500/40 dark:bg-rose-500/10 dark:text-rose-300">
