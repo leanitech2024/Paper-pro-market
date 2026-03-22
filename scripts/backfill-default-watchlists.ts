@@ -2,16 +2,40 @@
  * Backfill default watchlists for all users.
  *
  * Usage:
- *   pnpm exec tsx scripts/backfill-default-watchlists.ts
+ *   npx tsx scripts/backfill-default-watchlists.ts
+ *   ENV_FILE=.env.production npx tsx scripts/backfill-default-watchlists.ts
  */
 
 import { config as loadEnv } from "dotenv";
-import { existsSync } from "fs";
+import { existsSync } from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 
-const envPath =
-  process.env.DOTENV_CONFIG_PATH ||
-  (existsSync(".env.local") ? ".env.local" : ".env");
-loadEnv({ path: envPath });
+function resolveRepoRoot() {
+  return path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+}
+
+function loadEnvFromCandidates() {
+  const repoRoot = resolveRepoRoot();
+  const candidates = [
+    process.env.ENV_FILE,
+    process.env.DOTENV_CONFIG_PATH,
+    // path.join(repoRoot, ".env.local"),
+    path.join(repoRoot, ".env.production"),
+    path.join(repoRoot, "apps", "web", ".env.local"),
+    path.join(repoRoot, ".env"),
+  ].filter(Boolean) as string[];
+
+  for (const envPath of candidates) {
+    if (existsSync(envPath)) {
+      loadEnv({ path: envPath });
+      console.log(`Loaded env: ${envPath}`);
+      return;
+    }
+  }
+}
+
+loadEnvFromCandidates();
 
 const { db } = await import("../apps/web/lib/db");
 const { users } = await import("@paper-market/core/db");
