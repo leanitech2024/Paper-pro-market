@@ -1,11 +1,16 @@
 "use client";
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useSubscriptionStore } from '@/stores/subscription.store';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { toast } from 'sonner';
+import { Loader2 } from 'lucide-react';
+
+const RUPEE = "\u20B9";
 
 export default function SubscriptionPage() {
   const { plan, status, isTrialActive, trialEndDate, fetchSubscription, hasFetched } = useSubscriptionStore();
+  const [isUpgrading, setIsUpgrading] = useState<null | 'basic' | 'pro'>(null);
 
   useEffect(() => {
     if (!hasFetched) fetchSubscription();
@@ -17,6 +22,25 @@ export default function SubscriptionPage() {
 
   const isExpired = status === 'expired' || status === 'cancelled';
   const planLabel = plan === 'free_trial' ? 'Free Trial' : plan === 'basic' ? 'Basic' : 'Pro';
+
+  const handleUpgrade = async (nextPlan: 'basic' | 'pro') => {
+    if (isUpgrading) return;
+    setIsUpgrading(nextPlan);
+    try {
+      const res = await fetch('/api/v1/subscription/upgrade', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ plan: nextPlan }),
+      });
+      if (!res.ok) throw new Error('Upgrade failed');
+      await fetchSubscription();
+      toast.success(`Upgraded to ${nextPlan === 'basic' ? 'Basic' : 'Pro'}`);
+    } catch (error) {
+      toast.error('Upgrade failed. Please try again.');
+    } finally {
+      setIsUpgrading(null);
+    }
+  };
 
   return (
     <div className="min-h-[calc(100vh-4rem)] p-4 md:p-8 lg:p-12 font-sans">
@@ -66,7 +90,12 @@ export default function SubscriptionPage() {
             <div className="mb-8">
               <h3 className="text-lg font-bold text-foreground">Basic</h3>
               <div className="mt-4 flex items-baseline gap-1">
-                <span className="text-3xl font-extrabold text-foreground">₹89</span>
+                <span
+                  className="text-3xl font-extrabold text-foreground"
+                  style={{ fontFamily: "Segoe UI, Noto Sans, Arial, sans-serif" }}
+                >
+                  {RUPEE}89
+                </span>
                 <span className="text-sm text-muted-foreground font-medium">/month</span>
               </div>
               <p className="text-sm text-muted-foreground mt-4">
@@ -92,11 +121,15 @@ export default function SubscriptionPage() {
               </div>
             </div>
 
-            <a href="mailto:support@papermarket.in" className="mt-auto">
-              <Button variant={plan === 'basic' && status === 'active' ? 'outline' : 'secondary'} className="w-full rounded-xl py-6 font-semibold">
-                {plan === 'basic' && status === 'active' ? 'Current Plan' : 'Select Basic'}
-              </Button>
-            </a>
+            <Button
+              variant={plan === 'basic' && status === 'active' ? 'outline' : 'secondary'}
+              className="w-full rounded-xl py-6 font-semibold mt-auto"
+              onClick={() => handleUpgrade('basic')}
+              disabled={plan === 'basic' && status === 'active' || isUpgrading !== null}
+            >
+              {isUpgrading === 'basic' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              {plan === 'basic' && status === 'active' ? 'Current Plan' : 'Select Basic'}
+            </Button>
           </div>
 
           {/* Pro Tier */}
@@ -106,7 +139,12 @@ export default function SubscriptionPage() {
             <div className="mb-8">
               <h3 className="text-lg font-bold text-foreground">Pro</h3>
               <div className="mt-4 flex items-baseline gap-1">
-                <span className="text-3xl font-extrabold text-foreground">₹149</span>
+                <span
+                  className="text-3xl font-extrabold text-foreground"
+                  style={{ fontFamily: "Segoe UI, Noto Sans, Arial, sans-serif" }}
+                >
+                  {RUPEE}149
+                </span>
                 <span className="text-sm text-muted-foreground font-medium">/month</span>
               </div>
               <p className="text-sm text-muted-foreground mt-4">
@@ -124,11 +162,14 @@ export default function SubscriptionPage() {
               ))}
             </div>
 
-            <a href="mailto:support@papermarket.in" className="mt-auto">
-              <Button className="w-full bg-primary text-primary-foreground hover:bg-primary/90 rounded-xl py-6 font-semibold">
-                {plan === 'pro' && status === 'active' ? 'Current Plan' : 'Upgrade to Pro'}
-              </Button>
-            </a>
+            <Button
+              className="w-full bg-primary text-primary-foreground hover:bg-primary/90 rounded-xl py-6 font-semibold mt-auto"
+              onClick={() => handleUpgrade('pro')}
+              disabled={plan === 'pro' && status === 'active' || isUpgrading !== null}
+            >
+              {isUpgrading === 'pro' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              {plan === 'pro' && status === 'active' ? 'Current Plan' : 'Upgrade to Pro'}
+            </Button>
           </div>
 
         </div>

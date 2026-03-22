@@ -160,6 +160,11 @@ async function createProdRedis(): Promise<RedisClient> {
 }
 
 export function getRedis(): RedisClient | null {
+  if (process.env.DISABLE_REDIS === 'true') {
+    initialized = true;
+    redisClient = null;
+    return null;
+  }
   if (initialized) return redisClient;
   initialized = true;
 

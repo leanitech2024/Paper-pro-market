@@ -55,8 +55,19 @@ function SignupForm() {
                 throw new Error(data.error?.message || data.message || "Something went wrong");
             }
 
-            toast.success("Account created successfully! Please sign in.");
-            router.push("/login");
+            const result = await signIn("credentials", {
+                email: formData.email,
+                password: formData.password,
+                redirect: false,
+            });
+
+            if (result?.error) {
+                toast.error("Account created but sign-in failed. Please log in manually.");
+                router.push("/login");
+                return;
+            }
+
+            router.replace(callbackUrl || "/trade/equity");
         } catch (error: any) {
             toast.error(error.message);
         } finally {

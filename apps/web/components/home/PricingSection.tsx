@@ -1,12 +1,14 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Check, X, Sparkles, Crown } from "lucide-react";
+import { Check, X } from "lucide-react";
 import Link from "next/link";
+
+const RUPEE = "\u20B9";
 
 const plans = [
   {
     name: "Free Trial",
-    price: "₹0",
+    price: `${RUPEE}0`,
     period: "/3 days",
     description: "Test drive the platform with no commitment",
     buttonText: "Start Free Trial",
@@ -17,15 +19,15 @@ const plans = [
       { text: "Unlimited paper trades", included: true },
       { text: "Positions & orders tracking", included: true },
       { text: "Watchlist management", included: true },
-      { text: "Analytics dashboard", included: false },
-      { text: "Trade journal", included: false },
-      { text: "Export data (CSV)", included: false },
+      { text: "Analytics dashboard", included: true },
+      { text: "Trade journal", included: true },
+      { text: "Export data (CSV)", included: true },
     ],
     popular: false,
   },
   {
     name: "Basic",
-    price: "₹89",
+    price: `${RUPEE}89`,
     period: "/month",
     description: "Essential features for learning paper trading",
     buttonText: "Start with Basic",
@@ -44,7 +46,7 @@ const plans = [
   },
   {
     name: "Pro",
-    price: "₹149",
+    price: `${RUPEE}149`,
     period: "/month",
     description: "All features for serious traders & strategy testing",
     buttonText: "Upgrade to Pro",
@@ -117,7 +119,10 @@ const PricingSection = () => {
 
                 {/* Price */}
                 <div className="mb-4">
-                  <span className="text-4xl font-bold text-foreground">
+                  <span
+                    className="text-4xl font-bold text-foreground"
+                    style={{ fontFamily: "Segoe UI, Noto Sans, Arial, sans-serif" }}
+                  >
                     {plan.price}
                   </span>
                   <span className="text-muted-foreground">{plan.period}</span>

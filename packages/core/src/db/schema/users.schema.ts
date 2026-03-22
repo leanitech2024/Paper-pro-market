@@ -1,5 +1,5 @@
 
-import { pgTable, text, timestamp, numeric, integer, index } from 'drizzle-orm/pg-core';
+import { pgTable, text, timestamp, numeric, integer, index, boolean } from 'drizzle-orm/pg-core';
 import { type InferSelectModel, type InferInsertModel } from 'drizzle-orm';
 
 
@@ -11,7 +11,9 @@ export const users = pgTable('users', {
     image: text('image'),
     password: text('password'), // Added for credentials auth
     role: text('role').notNull().default('user'), // 'user' | 'admin'
+    isActive: boolean('isActive').notNull().default(true),
     balance: numeric('balance', { precision: 12, scale: 2 }).notNull().default('0'), // 12 digits, 2 decimal places
+    onboardingCompleted: boolean('onboardingCompleted').notNull().default(false),
     createdAt: timestamp('createdAt').defaultNow(),
 });
 

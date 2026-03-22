@@ -58,8 +58,6 @@ export class OrderService {
    */
   static async cancelOrder(userId: string, orderId: string) {
     try {
-      OrderStateMachineService.assertTransition("OPEN", "CANCELLED", "OrderService.cancelOrder");
-
       const [cancelledOrder] = await db.transaction(async (tx) => {
         const order = await OrderStateMachineService.transition(
           orderId,
@@ -172,4 +170,3 @@ export class OrderService {
     }
   }
 }
-

@@ -1,3 +1,7 @@
+// WARNING: Run this AFTER drizzle-kit migrate, never before.
+// Running reconcile first marks migrations as applied without executing them,
+// which means drizzle-kit migrate will skip the SQL entirely.
+// Correct order: drizzle-kit migrate → reconcile
 import "dotenv/config";
 import crypto from "node:crypto";
 import fs from "node:fs";

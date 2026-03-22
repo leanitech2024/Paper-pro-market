@@ -5,7 +5,7 @@ import { logger } from '@/lib/logger';
 import { z } from 'zod';
 
 const upgradeSchema = z.object({
-    plan: z.enum(['basic', 'pro']),
+    plan: z.enum(['free_trial', 'basic', 'pro']),
 });
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
@@ -23,6 +23,15 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
                 { error: 'Invalid request body', code: 'VALIDATION_ERROR' },
                 { status: 400 }
             );
+        }
+
+        if (parsed.data.plan === 'free_trial') {
+            const effectivePlan = await SubscriptionService.getEffectivePlan(session.user.id);
+            return NextResponse.json({
+                message: 'Trial plan selected',
+                plan: effectivePlan.plan,
+                status: effectivePlan.status,
+            });
         }
 
         await SubscriptionService.upgradePlan(session.user.id, parsed.data.plan);

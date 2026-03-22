@@ -173,15 +173,15 @@ export function GlobalSearchModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl gap-0 border border-border bg-card p-0 text-foreground shadow-xl dark:border-white/12 dark:bg-[linear-gradient(180deg,rgba(17,24,39,.9),rgba(8,12,22,.95))] dark:text-slate-100 dark:shadow-[0_24px_70px_rgba(0,0,0,.55)]">
-        <DialogHeader className="border-b border-border px-6 pb-4 pt-6 dark:border-white/10">
+      <DialogContent className="w-[92vw] max-w-3xl gap-0 overflow-hidden border border-border bg-background p-0 text-foreground shadow-2xl dark:border-white/10 dark:bg-slate-950 dark:text-slate-100">
+        <DialogHeader className="border-b border-border px-4 pb-4 pt-5 sm:px-6 dark:border-white/10">
           <DialogTitle className="text-lg font-semibold text-foreground dark:text-white">
             Symbol Search
           </DialogTitle>
         </DialogHeader>
 
         {/* Search */}
-        <div className="px-6 pb-4">
+        <div className="px-4 pb-4 sm:px-6">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground dark:text-slate-400" />
 
@@ -190,13 +190,13 @@ export function GlobalSearchModal({
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder={placeholder}
-              className="h-10 border-border bg-background pl-10 pr-4 text-foreground placeholder:text-muted-foreground focus-visible:border-primary focus-visible:ring-primary/30 dark:border-white/10 dark:bg-[#0f1628] dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus-visible:border-[#2d6cff] dark:focus-visible:ring-[#2d6cff]"
+              className="h-11 rounded-lg border-border bg-muted/30 pl-10 pr-4 text-foreground placeholder:text-muted-foreground shadow-sm focus-visible:border-primary focus-visible:ring-0 focus-visible:ring-offset-0 dark:border-white/10 dark:bg-slate-900/60 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus-visible:border-[#2d6cff]"
             />
           </div>
         </div>
 
         {/* Categories */}
-        <div className="flex gap-2 border-b border-border px-6 pb-3 dark:border-white/10">
+        <div className="flex flex-wrap gap-2 border-b border-border px-4 pb-3 sm:px-6 dark:border-white/10">
           {categories.map((cat) => (
             <Button
               key={cat}
@@ -217,7 +217,7 @@ export function GlobalSearchModal({
 
         {/* RESULTS + SINGLE TOOLTIP PROVIDER */}
         <TooltipProvider delayDuration={80} skipDelayDuration={200}>
-          <ScrollArea className="h-[440px]">
+          <ScrollArea className="h-[52vh] max-h-[520px] sm:h-[440px]">
             {query.length <= 1 ? (
               <div className="flex flex-col items-center justify-center h-full text-center p-8">
                 <TrendingUp className="mb-4 h-12 w-12 text-muted-foreground/45 dark:text-slate-500/40" />
@@ -241,7 +241,7 @@ export function GlobalSearchModal({
             ) : (
               <div className="divide-y divide-border dark:divide-white/10">
                 {/* Header */}
-                <div className="grid grid-cols-12 gap-4 bg-muted/40 px-6 py-2 text-xs font-semibold tracking-wide text-muted-foreground dark:bg-white/[0.03] dark:text-slate-400">
+                <div className="hidden sm:grid grid-cols-12 gap-4 bg-muted/40 px-6 py-2 text-xs font-semibold tracking-wide text-muted-foreground dark:bg-white/[0.03] dark:text-slate-400">
                   <div className="col-span-4">SYMBOL</div>
                   <div className="col-span-5">DESCRIPTION</div>
                   <div className="col-span-2 text-right">EXCHANGE</div>
@@ -259,28 +259,31 @@ export function GlobalSearchModal({
                       key={`${stock.symbol}-${idx}`}
                       onClick={() => handleSelect(stock)}
                       className={cn(
-                        "grid cursor-pointer grid-cols-12 gap-4 border-l-2 px-6 py-3 transition-colors",
+                        "flex cursor-pointer flex-col gap-2 border-l-2 px-4 py-3 transition-colors sm:grid sm:grid-cols-12 sm:gap-4 sm:px-6",
                         selectedIndex === idx
                           ? "border-primary bg-primary/10 dark:border-[#2d6cff] dark:bg-[#2d6cff]/12"
                           : "border-transparent hover:bg-muted/50 dark:hover:bg-white/[0.04]"
                       )}
                     >
-                      <div className="col-span-4 text-sm font-semibold text-foreground dark:text-white">
-                        {stock.symbol}
+                      <div className="flex items-center justify-between sm:block sm:col-span-4 text-sm font-semibold text-foreground dark:text-white">
+                        <span>{stock.symbol}</span>
+                        <span className="inline-flex items-center rounded border border-border bg-muted/45 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground sm:hidden dark:border-white/15 dark:bg-white/[0.04] dark:text-slate-300">
+                          NSE
+                        </span>
                       </div>
 
-                      <div className="col-span-5 truncate text-sm text-muted-foreground dark:text-slate-300">
+                      <div className="truncate text-sm text-muted-foreground sm:col-span-5 dark:text-slate-300">
                         {stock.name}
                       </div>
 
-                      <div className="col-span-2 text-right">
+                      <div className="hidden sm:flex sm:col-span-2 sm:justify-end">
                         <span className="inline-flex items-center rounded border border-border bg-muted/45 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground dark:border-white/15 dark:bg-white/[0.04] dark:text-slate-300">
                           NSE
                         </span>
                       </div>
 
                       {/* Bookmark */}
-                      <div className="col-span-1 flex justify-end">
+                      <div className="flex justify-end sm:col-span-1">
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <Button

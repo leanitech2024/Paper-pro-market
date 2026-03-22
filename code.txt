@@ -1,0 +1,865 @@
+===== drizzle/meta/_journal.json =====
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1769090903867,
+      "tag": "0000_rare_stryfe",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1769160274949,
+      "tag": "0001_fast_joshua_kane",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1769769889354,
+      "tag": "0002_spooky_dragon_lord",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1770107391443,
+      "tag": "0003_fast_catseye",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1770710405111,
+      "tag": "0004_cuddly_blink",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1771012800000,
+      "tag": "0005_market_snapshot_fields",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1771199200000,
+      "tag": "0006_drop_instrument_price_columns",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1770906055873,
+      "tag": "0007_spicy_wolfsbane",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1771239670299,
+      "tag": "0008_bumpy_iron_patriot",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1771249000000,
+      "tag": "0010_mtm_wallet_fields",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1771250400000,
+      "tag": "0011_liquidation_account_state",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1771261200000,
+      "tag": "0012_expiry_settlement",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1771268400000,
+      "tag": "0013_double_entry_ledger",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1771272000000,
+      "tag": "0014_write_ahead_journal",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1771275600000,
+      "tag": "0015_global_ledger_sequence",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1771279200000,
+      "tag": "0016_ledger_idempotency_key",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1771483200000,
+      "tag": "0017_option_consistency",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1771494335326,
+      "tag": "0017_abandoned_firebird",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1773117979904,
+      "tag": "0018_add_processing_order_status",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1773292683055,
+      "tag": "0019_daffy_old_lace",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1773815891889,
+      "tag": "0020_fix_ledger_idempotency_unique_index",
+      "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1774110088639,
+      "tag": "0021_naive_susan_delgado",
+      "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1774115583322,
+      "tag": "0022_order_reserved_margin_indexes",
+      "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1774115583323,
+      "tag": "0023_add_user_is_active",
+      "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1774153862772,
+      "tag": "0024_dear_captain_flint",
+      "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1774155202728,
+      "tag": "0025_backfill_onboarding_completed",
+      "breakpoints": true
+    }
+  ]
+}
+
+===== scripts/backfill-default-watchlists.ts =====
+/**
+ * Backfill default watchlists for all users.
+ *
+ * Usage:
+ *   pnpm exec tsx scripts/backfill-default-watchlists.ts
+ */
+
+import { config as loadEnv } from "dotenv";
+import { existsSync } from "fs";
+
+const envPath =
+  process.env.DOTENV_CONFIG_PATH ||
+  (existsSync(".env.local") ? ".env.local" : ".env");
+loadEnv({ path: envPath });
+
+const { db } = await import("../apps/web/lib/db");
+const { users } = await import("@paper-market/core/db");
+const { WatchlistService } = await import(
+  "../apps/web/services/market/catalog/watchlist.service"
+);
+const { asc } = await import("drizzle-orm");
+
+async function main() {
+  const batchSize = 200;
+  let offset = 0;
+  let processed = 0;
+  let ensured = 0;
+  let failed = 0;
+
+  console.log("Backfilling default watchlists for all users...");
+
+  while (true) {
+    const batch = await db
+      .select({ id: users.id })
+      .from(users)
+      .orderBy(asc(users.id))
+      .limit(batchSize)
+      .offset(offset);
+
+    if (batch.length === 0) break;
+
+    for (const user of batch) {
+      processed += 1;
+      try {
+        await WatchlistService.ensureDefaultWatchlist(user.id);
+        ensured += 1;
+      } catch (error) {
+        failed += 1;
+        console.error(`Failed for user ${user.id}:`, error);
+      }
+    }
+
+    offset += batch.length;
+  }
+
+  console.log(
+    `Done. processed=${processed} ensured=${ensured} failed=${failed}`
+  );
+}
+
+main().catch((error) => {
+  console.error("Backfill failed:", error);
+  process.exit(1);
+});
+
+===== apps/web/services/market/catalog/watchlist.service.ts =====
+/**
+ * Watchlist Service
+ * Handles user watchlist CRUD operations
+ */
+
+import { db } from '@/lib/db';
+import { watchlists, watchlistItems, instruments } from '@paper-market/core/db';
+import { type Watchlist, type NewWatchlist } from '@paper-market/core';
+import { eq, and, sql, inArray } from 'drizzle-orm';
+import { logger } from '@/lib/logger';
+import { cache } from '@/lib/cache';
+
+const DEFAULT_WATCHLIST_NAME = 'Top 20 Stocks';
+const DEFAULT_WATCHLIST_SYMBOLS = [
+  'RELIANCE',
+  'HDFCBANK',
+  'ICICIBANK',
+  'SBIN',
+  'KOTAKBANK',
+  'AXISBANK',
+  'BAJFINANCE',
+  'BAJAJFINSV',
+  'TCS',
+  'INFY',
+  'HCLTECH',
+  'WIPRO',
+  'TECHM',
+  'MARUTI',
+  'TATAMOTORS',
+  'M&M',
+  'HEROMOTOCO',
+  'EICHERMOT',
+  'LT',
+  'ULTRACEMCO',
+];
+
+export class WatchlistService {
+  private static async resolveDefaultWatchlistInstruments() {
+    const desiredCount = DEFAULT_WATCHLIST_SYMBOLS.length;
+    const equityInstruments = await db
+      .select({
+        instrumentToken: instruments.instrumentToken,
+        tradingsymbol: instruments.tradingsymbol,
+      })
+      .from(instruments)
+      .where(
+        and(
+          inArray(instruments.tradingsymbol, DEFAULT_WATCHLIST_SYMBOLS),
+          eq(instruments.segment, 'NSE_EQ'),
+          eq(instruments.isActive, true)
+        )
+      );
+
+    const bySymbol = new Map(
+      equityInstruments.map((instrument) => [instrument.tradingsymbol, instrument])
+    );
+    const orderedPrimary = DEFAULT_WATCHLIST_SYMBOLS
+      .map((symbol) => bySymbol.get(symbol))
+      .filter((instrument): instrument is { instrumentToken: string; tradingsymbol: string } => Boolean(instrument));
+
+    if (orderedPrimary.length >= desiredCount) {
+      return {
+        instruments: orderedPrimary,
+        seededFrom: 'top-20',
+      } as const;
+    }
+
+    const fallbackInstruments = await db
+      .select({
+        instrumentToken: instruments.instrumentToken,
+        tradingsymbol: instruments.tradingsymbol,
+      })
+      .from(instruments)
+      .where(
+        and(
+          eq(instruments.segment, 'NSE_EQ'),
+          eq(instruments.isActive, true)
+        )
+      )
+      .limit(desiredCount * 3);
+
+    const selected = [...orderedPrimary];
+    const seenTokens = new Set(selected.map((instrument) => instrument.instrumentToken));
+    for (const instrument of fallbackInstruments) {
+      if (selected.length >= desiredCount) break;
+      if (seenTokens.has(instrument.instrumentToken)) continue;
+      selected.push(instrument);
+      seenTokens.add(instrument.instrumentToken);
+    }
+
+    return {
+      instruments: selected,
+      seededFrom: orderedPrimary.length > 0 ? 'top-20-plus-fallback' : 'fallback-active-nse-eq',
+    } as const;
+  }
+
+  static async ensureDefaultWatchlist(userId: string) {
+    const existingDefault = await db.query.watchlists.findFirst({
+      where: and(eq(watchlists.userId, userId), eq(watchlists.isDefault, true)),
+    });
+
+    if (existingDefault) {
+      await this.seedWatchlistIfEmpty(existingDefault.id, userId);
+      return existingDefault;
+    }
+
+    try {
+      return await this.createDefaultWatchlist(userId);
+    } catch (error) {
+      const concurrentDefault = await db.query.watchlists.findFirst({
+        where: and(eq(watchlists.userId, userId), eq(watchlists.isDefault, true)),
+      });
+      if (!concurrentDefault) throw error;
+      await this.seedWatchlistIfEmpty(concurrentDefault.id, userId);
+      return concurrentDefault;
+    }
+  }
+
+  /**
+   * Get all watchlists for a user
+   */
+  static async getUserWatchlists(userId: string) {
+    try {
+      const userWatchlists = await db
+        .select({
+          id: watchlists.id,
+          name: watchlists.name,
+          isDefault: watchlists.isDefault,
+          maxItems: watchlists.maxItems,
+          createdAt: watchlists.createdAt,
+          instrumentCount: sql<number>`count(${watchlistItems.id})::int`,
+        })
+        .from(watchlists)
+        .leftJoin(watchlistItems, eq(watchlists.id, watchlistItems.watchlistId))
+        .where(eq(watchlists.userId, userId))
+        .groupBy(watchlists.id)
+        .orderBy(sql`${watchlists.isDefault} DESC, ${watchlists.createdAt} DESC`);
+
+      return userWatchlists;
+    } catch (error) {
+      logger.error({ err: error, userId }, 'Failed to get user watchlists');
+      throw error;
+    }
+  }
+
+  /**
+   * Get watchlist with instruments
+   */
+  static async getWatchlistWithInstruments(watchlistId: string, userId: string) {
+    try {
+      // Verify ownership
+      const watchlist = await db.query.watchlists.findFirst({
+        where: and(
+          eq(watchlists.id, watchlistId),
+          eq(watchlists.userId, userId)
+        ),
+      });
+
+      if (!watchlist) {
+        throw new Error('Watchlist not found or access denied');
+      }
+
+      // Get instruments
+      const items = await db
+        .select({
+          instrumentToken: instruments.instrumentToken,
+          tradingsymbol: instruments.tradingsymbol,
+          name: instruments.name,
+          lotSize: instruments.lotSize,
+          exchange: instruments.exchange,
+          segment: instruments.segment,
+          addedAt: watchlistItems.addedAt,
+        })
+        .from(watchlistItems)
+        .innerJoin(instruments, eq(watchlistItems.instrumentToken, instruments.instrumentToken))
+        .where(eq(watchlistItems.watchlistId, watchlistId))
+        .orderBy(watchlistItems.addedAt);
+
+      const result = {
+        ...watchlist,
+        instruments: items,
+      };
+
+      return result;
+    } catch (error) {
+      logger.error({ err: error, watchlistId, userId }, 'Failed to get watchlist with instruments');
+      throw error;
+    }
+  }
+
+  /**
+   * Create a new watchlist
+   */
+  static async createWatchlist(userId: string, name: string) {
+    try {
+      const [newWatchlist] = await db
+        .insert(watchlists)
+        .values({
+          userId,
+          name,
+          isDefault: false, // Only first watchlist should be default
+          maxItems: 20,
+        })
+        .returning();
+
+      logger.info({ watchlistId: newWatchlist.id, userId, name }, 'Created watchlist');
+      return newWatchlist;
+    } catch (error) {
+      logger.error({ err: error, userId, name }, 'Failed to create watchlist');
+      throw error;
+    }
+  }
+
+  /**
+   * Create default watchlist for a new user
+   * Called during user signup
+   */
+  static async createDefaultWatchlist(userId: string) {
+    try {
+      // Create default watchlist
+      const [watchlist] = await db
+        .insert(watchlists)
+        .values({
+          userId,
+          name: DEFAULT_WATCHLIST_NAME,
+          isDefault: true,
+          maxItems: 20,
+        })
+        .returning();
+
+      const { instruments: selectedInstruments, seededFrom } =
+        await this.resolveDefaultWatchlistInstruments();
+
+      if (selectedInstruments.length > 0) {
+        await db
+          .insert(watchlistItems)
+          .values(
+            selectedInstruments.map(inst => ({
+            watchlistId: watchlist.id,
+            instrumentToken: inst.instrumentToken,
+            }))
+          )
+          .onConflictDoNothing();
+      }
+
+      logger.info(
+        {
+          watchlistId: watchlist.id,
+          userId,
+          count: selectedInstruments.length,
+          seededFrom,
+        },
+        'Created default watchlist'
+      );
+      return watchlist;
+    } catch (error) {
+      logger.error({ err: error, userId }, 'Failed to create default watchlist');
+      throw error;
+    }
+  }
+
+  /**
+   * Backfill instruments when a default watchlist exists but is empty.
+   */
+  static async seedWatchlistIfEmpty(watchlistId: string, userId: string) {
+    try {
+      const watchlist = await db.query.watchlists.findFirst({
+        where: and(eq(watchlists.id, watchlistId), eq(watchlists.userId, userId)),
+      });
+
+      if (!watchlist) {
+        throw new Error('Watchlist not found or access denied');
+      }
+
+      const [existingCount] = await db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(watchlistItems)
+        .where(eq(watchlistItems.watchlistId, watchlistId));
+
+      if (existingCount.count > 0) {
+        return { seeded: 0, skipped: true as const };
+      }
+
+      const { instruments: selectedInstruments, seededFrom } =
+        await this.resolveDefaultWatchlistInstruments();
+
+      if (selectedInstruments.length > 0) {
+        await db
+          .insert(watchlistItems)
+          .values(
+            selectedInstruments.map((inst) => ({
+              watchlistId,
+              instrumentToken: inst.instrumentToken,
+            }))
+          )
+          .onConflictDoNothing();
+      }
+
+      const [afterCount] = await db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(watchlistItems)
+        .where(eq(watchlistItems.watchlistId, watchlistId));
+
+      logger.info(
+        {
+          watchlistId,
+          userId,
+          before: existingCount.count,
+          after: afterCount.count,
+          seededFrom,
+        },
+        'Seeded empty watchlist'
+      );
+
+      return { seeded: afterCount.count, skipped: false as const };
+    } catch (error) {
+      logger.error({ err: error, watchlistId, userId }, 'Failed to seed empty watchlist');
+      throw error;
+    }
+  }
+
+  /**
+   * Delete a watchlist
+   */
+  static async deleteWatchlist(watchlistId: string, userId: string) {
+    try {
+      // Verify ownership and not default
+      const watchlist = await db.query.watchlists.findFirst({
+        where: and(
+          eq(watchlists.id, watchlistId),
+          eq(watchlists.userId, userId)
+        ),
+      });
+
+      if (!watchlist) {
+        throw new Error('Watchlist not found or access denied');
+      }
+
+      if (watchlist.isDefault) {
+        throw new Error('Cannot delete default watchlist');
+      }
+
+      await db.delete(watchlists).where(eq(watchlists.id, watchlistId));
+
+      logger.info({ watchlistId, userId }, 'Deleted watchlist');
+      return { success: true };
+    } catch (error) {
+      logger.error({ err: error, watchlistId, userId }, 'Failed to delete watchlist');
+      throw error;
+    }
+  }
+
+  /**
+   * Add instrument to watchlist
+   */
+  static async addInstrument(watchlistId: string, instrumentToken: string, userId: string) {
+    try {
+      // Verify ownership
+      const watchlist = await db.query.watchlists.findFirst({
+        where: and(
+          eq(watchlists.id, watchlistId),
+          eq(watchlists.userId, userId)
+        ),
+      });
+
+      if (!watchlist) {
+        throw new Error('Watchlist not found or access denied');
+      }
+
+      // Check if instrument exists
+      const instrument = await db.query.instruments.findFirst({
+        where: eq(instruments.instrumentToken, instrumentToken),
+      });
+
+      if (!instrument) {
+        throw new Error('Instrument not found');
+      }
+
+      // Check max items limit
+      const currentCount = await db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(watchlistItems)
+        .where(eq(watchlistItems.watchlistId, watchlistId));
+
+      if (watchlist.maxItems && currentCount[0].count >= watchlist.maxItems) {
+        throw new Error(`Watchlist is full (max ${watchlist.maxItems} items)`);
+      }
+
+      // Add to watchlist (unique constraint will prevent duplicates)
+      const [item] = await db
+        .insert(watchlistItems)
+        .values({
+          watchlistId,
+          instrumentToken,
+        })
+        .returning();
+      
+      // Invalidate cache
+      cache.delete(`watchlist:${watchlistId}:instruments`);
+
+      logger.info({ watchlistId, instrumentToken, userId }, 'Added instrument to watchlist');
+      return item;
+    } catch (error) {
+      logger.error({ err: error, watchlistId, instrumentToken, userId }, 'Failed to add instrument');
+      throw error;
+    }
+  }
+
+  /**
+   * Remove instrument from watchlist
+   */
+  static async removeInstrument(watchlistId: string, instrumentToken: string, userId: string) {
+    try {
+      // Verify ownership
+      const watchlist = await db.query.watchlists.findFirst({
+        where: and(
+          eq(watchlists.id, watchlistId),
+          eq(watchlists.userId, userId)
+        ),
+      });
+
+      if (!watchlist) {
+        throw new Error('Watchlist not found or access denied');
+      }
+
+      await db
+        .delete(watchlistItems)
+        .where(
+          and(
+            eq(watchlistItems.watchlistId, watchlistId),
+            eq(watchlistItems.instrumentToken, instrumentToken)
+          )
+        );
+
+      logger.info({ watchlistId, instrumentToken, userId }, 'Removed instrument from watchlist');
+      
+      // Invalidate cache
+      cache.delete(`watchlist:${watchlistId}:instruments`);
+      
+      return { success: true };
+    } catch (error) {
+      logger.error({ err: error, watchlistId, instrumentToken, userId }, 'Failed to remove instrument');
+      throw error;
+    }
+  }
+}
+
+===== scripts/sync-instruments.ts =====
+/**
+ * Instrument Sync CLI Script
+ *
+ * Usage:
+ *   pnpm exec tsx scripts/sync-instruments.ts
+ */
+
+import { config as loadEnv } from "dotenv";
+import { existsSync } from "fs";
+
+const envPath =
+  process.env.DOTENV_CONFIG_PATH ||
+  (existsSync(".env.local") ? ".env.local" : ".env");
+loadEnv({ path: envPath });
+
+const { syncInstruments } = await import(
+  "../apps/web/lib/instruments/instrument-sync.service"
+);
+const { db } = await import("../apps/web/lib/db");
+const { instruments } = await import("@paper-market/core/db");
+const { sql } = await import("drizzle-orm");
+
+async function main() {
+    console.log('\n' + '='.repeat(70));
+    console.log('  INSTRUMENT SYNC - Upstox Master Data');
+    console.log('='.repeat(70));
+    console.log('');
+
+    try {
+        // Show pre-sync stats
+        console.log('📊 Pre-Sync Database State:\n');
+        const preStats = await getInstrumentStats();
+        displayStats(preStats);
+
+        // Run sync
+        console.log('\n🔄 Starting sync...\n');
+        
+        // syncInstruments now returns a full SyncReport
+        const report = await syncInstruments();
+        
+        // Show results
+        console.log('\n' + '='.repeat(70));
+        console.log('  SYNC COMPLETE');
+        console.log('='.repeat(70));
+        console.log('');
+        console.log('📈 Sync Report:');
+        console.log('');
+        
+        // Use safe access to prevent crashes if a field is missing (though service ensures type safety)
+        const total = (report.totalProcessed ?? 0).toLocaleString();
+        const upserted = (report.upserted ?? 0).toLocaleString();
+        const updated = (report.updated ?? 0).toLocaleString();
+        const deactivated = (report.deactivated ?? 0).toLocaleString();
+        const purged = (report.purged ?? 0).toLocaleString();
+        const errors = (report.errors ?? 0).toLocaleString();
+        const durationSec = ((report.duration ?? 0) / 1000).toFixed(2);
+
+        console.log(`   Total Processed:  ${total}`);
+        console.log(`   Upserted (Valid): ${upserted} (Includes updates)`);
+        console.log(`   Deactivated:      ${deactivated}`);
+        console.log(`   Purged (Old):     ${purged}`);
+        console.log(`   Skipped/Invalid:  ${errors}`);
+        console.log(`   Duration:         ${durationSec}s`);
+        console.log('');
+
+        // Show post-sync stats
+        console.log('📊 Post-Sync Database State:\n');
+        const postStats = await getInstrumentStats();
+        displayStats(postStats);
+
+        // Show segment breakdown
+        console.log('\n📋 Instruments by Segment (Active):\n');
+        const segmentStats = await getSegmentStats();
+        segmentStats.forEach(stat => {
+            console.log(`   ${(stat.segment || 'Unknown').padEnd(20)}: ${Number(stat.count).toLocaleString()}`);
+        });
+
+        // Validation checks
+        console.log('\n✅ Validation Checks:\n');
+        
+        const [foCount] = await db
+            .select({ count: sql<number>`count(*)` })
+            .from(instruments)
+            .where(sql`segment = 'NSE_FO' AND "isActive" = true`);
+        
+        const foTotal = Number(foCount.count);
+        
+        if (foTotal > 1000) {
+            console.log(`   ✅ NSE_FO: ${foTotal.toLocaleString()} instruments`);
+        } else {
+            console.log(`   ⚠️  NSE_FO: Only ${foTotal.toLocaleString()} instruments (expected thousands)`);
+        }
+
+        const [eqCount] = await db
+            .select({ count: sql<number>`count(*)` })
+            .from(instruments)
+            .where(sql`segment = 'NSE_EQ' AND "isActive" = true`);
+        
+        const eqTotal = Number(eqCount.count);
+        
+        if (eqTotal > 100) {
+            console.log(`   ✅ NSE_EQ: ${eqTotal.toLocaleString()} instruments`);
+        } else {
+            console.log(`   ⚠️  NSE_EQ: Only ${eqTotal.toLocaleString()} instruments`);
+        }
+
+        console.log('\n' + '='.repeat(70));
+        console.log('');
+        console.log('✅ Sync completed successfully!\n');
+        
+        process.exit(0);
+    } catch (error: any) {
+        console.error('\n❌ Sync failed:', error.message);
+        console.error(error);
+        console.log('');
+        process.exit(1);
+    }
+}
+
+async function getInstrumentStats() {
+    const [total] = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(instruments);
+    
+    const [active] = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(instruments)
+        .where(sql`"isActive" = true`);
+    
+    const [inactive] = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(instruments)
+        .where(sql`"isActive" = false`);
+
+    return {
+        total: Number(total.count),
+        active: Number(active.count),
+        inactive: Number(inactive.count),
+    };
+}
+
+async function getSegmentStats() {
+    return await db
+        .select({
+            segment: instruments.segment,
+            count: sql<number>`count(*)`,
+        })
+        .from(instruments)
+        .where(sql`"isActive" = true`)
+        .groupBy(instruments.segment)
+        .orderBy(sql`count(*) DESC`);
+}
+
+function displayStats(stats: { total: number; active: number; inactive: number }) {
+    console.log(`   Total:            ${stats.total.toLocaleString()}`);
+    console.log(`   Active:           ${stats.active.toLocaleString()}`);
+    console.log(`   Inactive:         ${stats.inactive.toLocaleString()}`);
+}
+
+main();

@@ -6,7 +6,7 @@ import { Star, ChevronLeft, ChevronRight } from 'lucide-react';
 const testimonials = [
   {
     id: 1,
-    image: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=800&h=800&fit=crop',
+    image: '/images/testimonial/img-1.avif',
     rating: 4.8,
     text: "As a complete beginner, I was nervous about trading. This platform helped me understand how markets work without risking any real money.",
     author: "Rahul M.",
@@ -14,15 +14,15 @@ const testimonials = [
   },
   {
     id: 2,
-    image: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=800&h=800&fit=crop',
+    image: '/images/testimonial/img-2.avif',
     rating: 5.0,
-    text: "Paper Market Pro allowed me to test my strategies in real market conditions and analyze my mistakes before going live.",
+    text: "Paper Market Pro allowed me to test my strategies in real market conditions and analyze my mistakes before going live and learn faster.",
     author: "Priya S.",
     title: "Aspiring Trader"
   },
   {
     id: 3,
-    image: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=800&h=800&fit=crop',
+    image: '/images/testimonial/img-3.avif',
     rating: 4.6,
     text: "The journal and performance stats helped me improve discipline and risk management. It feels like a real trading environment, minus the risk.",
     author: "Aditya D.",

@@ -30,11 +30,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           .limit(1);
 
         if (!user || !user.password) return null;
+        if (user.isActive === false) return null;
 
         const passwordsMatch = await compare(password, user.password);
         if (!passwordsMatch) return null;
 
-        return { ...user, role: user.role ?? 'user' };
+        return { ...user, role: user.role ?? 'user', onboardingCompleted: user.onboardingCompleted };
       },
     }),
   ],
@@ -47,10 +48,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           const emailStr = String(profile.email);
 
           const [existingUser] = await db
-            .select({ id: users.id, role: users.role })
+            .select({ id: users.id, role: users.role, isActive: users.isActive, onboardingCompleted: users.onboardingCompleted })
             .from(users)
             .where(eq(users.email, emailStr))
             .limit(1);
+
+          if (existingUser && existingUser.isActive === false) {
+            return false;
+          }
 
           if (!existingUser) {
             // C-10 FIX: All three operations (user row, wallet, ledger accounts)
@@ -88,9 +93,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
             user.id = createdId;
             user.role = 'user'; // New users default to 'user' role
+            user.onboardingCompleted = false;
           } else {
             user.id = existingUser.id;
             user.role = existingUser.role ?? 'user';
+            user.onboardingCompleted = existingUser.onboardingCompleted;
           }
         } catch (error) {
           logger.error({ err: error }, "Error in Google signIn callback");
@@ -100,11 +107,23 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       return true;
     },
 
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger, session }) {
       if (user) {
         token.sub = user.id;
         token.id = user.id;
         if (user.role) token.role = user.role;
+        token.onboardingCompleted = user.onboardingCompleted ?? false;
+      }
+      if (trigger === "update" && session) {
+        const sessionUser = (session as any).user ?? session;
+        if (sessionUser?.id) {
+          token.sub = sessionUser.id;
+          token.id = sessionUser.id;
+        }
+        if (sessionUser?.role) token.role = sessionUser.role;
+        if (sessionUser?.onboardingCompleted !== undefined) {
+          token.onboardingCompleted = sessionUser.onboardingCompleted;
+        }
       }
       if (!token.id && token.sub) {
         token.id = token.sub;
@@ -113,5 +132,3 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     },
   },
 });
-
-

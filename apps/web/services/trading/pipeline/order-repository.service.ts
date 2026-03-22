@@ -10,6 +10,7 @@ import { buildLedgerIdempotencyKey, resolveLedgerReferenceType } from "@/service
 
 type CreateOrderOptions = {
   isClosingOrder?: boolean;
+  initialStatus?: typeof orders.$inferSelect["status"];
 };
 
 export class OrderRepositoryService {
@@ -42,7 +43,7 @@ export class OrderRepositoryService {
           : payload.exitReason === "EXPIRY" && Number.isFinite(payload.settlementPrice)
             ? Number(payload.settlementPrice).toString()
             : null,
-      status: "OPEN",
+      status: options.initialStatus ?? "OPEN",
       productType: payload.productType ?? "CNC",
       leverage: payload.leverage ?? 1,
       stopLossPrice: payload.stopLossPrice?.toString() ?? null,

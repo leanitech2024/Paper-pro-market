@@ -71,8 +71,7 @@ export class OrderExecutorService {
                 .where(
                     and(
                         eq(orders.status, "PROCESSING"),
-                        sql`${orders.updatedAt} < ${staleThreshold}`,
-                        sql`${orders.childOrderType} IS NULL`
+                        sql`${orders.updatedAt} < ${staleThreshold}`
                     )
                 )
                 .returning({ id: orders.id });
@@ -106,15 +105,30 @@ export class OrderExecutorService {
 
             let executedCount = 0;
 
+            const reopenOrder = async (orderId: string) => {
+                try {
+                    await OrderStateMachineService.transition(orderId, "PROCESSING", "OPEN");
+                } catch (error) {
+                    if (error instanceof ApiError && (error.code === "TRANSITION_FAILED" || error.code === "INVALID_STATE_TRANSITION")) {
+                        logger.debug(
+                            { err: error, orderId },
+                            "Order already left PROCESSING; skipping reopen"
+                        );
+                        return;
+                    }
+                    throw error;
+                }
+            };
+
             for (const order of claimedOrders) {
                 try {
                     const executed = await this.tryExecuteOrder(order);
                     if (executed) {
                         executedCount++;
                     } else {
-                        // Not fillable right now — restore to OPEN so the next
+                        // Not fillable right now -- restore to OPEN so the next
                         // tick can retry.
-                        await OrderStateMachineService.transition(order.id, "PROCESSING", "OPEN");
+                        await reopenOrder(order.id);
                     }
                 } catch (error) {
                     logger.error(
@@ -123,7 +137,7 @@ export class OrderExecutorService {
                     );
                     // Restore to OPEN on unexpected error so the order is not
                     // silently dropped.
-                    await OrderStateMachineService.transition(order.id, "PROCESSING", "OPEN");
+                    await reopenOrder(order.id);
                 }
             }
 
@@ -395,13 +409,12 @@ export class OrderExecutorService {
                         executedAt: new Date(),
                     };
 
-                    const [_, [trade]] = await Promise.all([
-                        OrderStateMachineService.transition(order.id, "PROCESSING", "FILLED", tx, {
-                            executionPrice: finalExecutionPrice.toString(),
-                            executedAt: new Date(),
-                        }),
-                        tx.insert(trades).values(newTrade).returning(),
-                    ]);
+                    await OrderStateMachineService.transition(order.id, "PROCESSING", "FILLED", tx, {
+                        executionPrice: finalExecutionPrice.toString(),
+                        executedAt: new Date(),
+                    });
+
+                    const [trade] = await tx.insert(trades).values(newTrade).returning();
 
                     if (instrument.instrumentType === "FUTURE") {
                         if (marginBlockDelta > 0) {
@@ -681,20 +694,28 @@ export class OrderExecutorService {
                         }
 
                         if (optionMarginToRelease > 0) {
-                            await WalletService.releaseMarginBlock(
-                                order.userId,
-                                optionMarginToRelease,
-                                trade.id,
-                                tx,
-                                `Option Margin Release ${order.symbol}`,
-                                {
-                                    ledgerReferenceType: "OPTION_MARGIN_RELEASE",
-                                    skipWaj: true,
-                                    skipWalletSync: true,
-                                    sequenceCollector: ledgerSequences,
-                                    idempotencyKey: buildLedgerIdempotencyKey(order, "OPTION_MARGIN_RELEASE"),
-                                }
-                            );
+                            const snapshot = await LedgerService.reconstructUserEquity(order.userId, tx);
+                            const blocked = Number(snapshot.marginBlocked);
+                            const safeRelease = Number.isFinite(blocked)
+                                ? Math.min(optionMarginToRelease, blocked)
+                                : optionMarginToRelease;
+
+                            if (safeRelease > 0) {
+                                await WalletService.releaseMarginBlock(
+                                    order.userId,
+                                    safeRelease,
+                                    trade.id,
+                                    tx,
+                                    `Option Margin Release ${order.symbol}`,
+                                    {
+                                        ledgerReferenceType: "OPTION_MARGIN_RELEASE",
+                                        skipWaj: true,
+                                        skipWalletSync: true,
+                                        sequenceCollector: ledgerSequences,
+                                        idempotencyKey: buildLedgerIdempotencyKey(order, "OPTION_MARGIN_RELEASE"),
+                                    }
+                                );
+                            }
                         }
                     } else {
                         throw new ApiError(
@@ -804,6 +825,13 @@ export class OrderExecutorService {
                 await OrderStateMachineService.transition(order.id, "PROCESSING", "REJECTED");
                 return false;
             }
+            if (apiErr?.code === "TRANSITION_FAILED" || apiErr?.code === "INVALID_STATE_TRANSITION") {
+                logger.debug(
+                    { err: error, orderId: order.id },
+                    "Order already left PROCESSING; skipping execution"
+                );
+                return false;
+            }
 
             // C-3 FIX: For any other unexpected error (DB timeout, network blip, etc.)
             // restore to OPEN so the next tick can retry. Without this the order stays
@@ -838,6 +866,9 @@ export class OrderExecutorService {
 
         const requiresImmediateSettlementFill = payload.exitReason === "EXPIRY";
         try {
+            if (order.status === "OPEN") {
+                await OrderStateMachineService.transition(order.id, "OPEN", "PROCESSING");
+            }
             logger.info({ orderId: order.id }, "Executing MARKET order immediately");
             const executed = await this.tryExecuteOrder(order, {
                 force: options.force,
@@ -848,6 +879,12 @@ export class OrderExecutorService {
             }
         } catch (error) {
             logger.error({ err: error, orderId: order.id }, "Failed to execute MARKET order");
+            await db.update(orders)
+                .set({ status: "OPEN", updatedAt: new Date() })
+                .where(and(eq(orders.id, order.id), eq(orders.status, "PROCESSING")))
+                .catch((restoreErr) =>
+                    logger.error({ err: restoreErr, orderId: order.id }, "Failed to restore order to OPEN")
+                );
             if (requiresImmediateSettlementFill) {
                 throw error;
             }

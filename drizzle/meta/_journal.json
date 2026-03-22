@@ -148,6 +148,41 @@
       "when": 1773815891889,
       "tag": "0020_fix_ledger_idempotency_unique_index",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1774110088639,
+      "tag": "0021_naive_susan_delgado",
+      "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1774115583322,
+      "tag": "0022_order_reserved_margin_indexes",
+      "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1774115583323,
+      "tag": "0023_add_user_is_active",
+      "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1774153862772,
+      "tag": "0024_dear_captain_flint",
+      "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1774155202728,
+      "tag": "0025_backfill_onboarding_completed",
+      "breakpoints": true
     }
   ]
 }

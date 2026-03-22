@@ -77,7 +77,10 @@ export class OrderRiskService {
       return;
     }
 
-    // Check per-instrument notional limit (Order Size Limit)
+    // Check per-instrument notional limit (Order Size Limit).
+    // NOTE: For MARKET orders, we don't have a fill price yet, so this resolves
+    // to 0 and effectively bypasses the cap. This is intentional for paper mode
+    // but should be revisited if enforcing notional caps on live trading.
     const price = Number((payload as any).limitPrice || (payload as any).settlementPrice || 0); // approx
     const orderNotional = price * payload.quantity;
     const maxNotional = Number(process.env.MAX_POSITION_NOTIONAL_PER_SYMBOL ?? "2000000");

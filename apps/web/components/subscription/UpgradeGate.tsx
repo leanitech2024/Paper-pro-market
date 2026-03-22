@@ -12,6 +12,8 @@ interface UpgradeGateProps {
     children: React.ReactNode;
 }
 
+const RUPEE = "\u20B9";
+
 const FEATURE_LABELS: Record<string, string> = {
     analytics: 'Analytics',
     journal: 'Journal',
@@ -67,14 +69,24 @@ export function UpgradeGate({ feature, children }: UpgradeGateProps) {
                         <div className="flex items-center gap-3 rounded-lg bg-muted/30 p-3">
                             <Sparkles className="h-5 w-5 text-amber-500 flex-shrink-0" />
                             <div>
-                                <p className="font-medium text-foreground text-sm">Basic — ₹89/month</p>
+                                <p
+                                    className="font-medium text-foreground text-sm"
+                                    style={{ fontFamily: "Segoe UI, Noto Sans, Arial, sans-serif" }}
+                                >
+                                    {"Basic - "}{RUPEE}89/month
+                                </p>
                                 <p className="text-xs text-muted-foreground">Trading, positions, orders, watchlist</p>
                             </div>
                         </div>
                         <div className="flex items-center gap-3 rounded-lg bg-primary/10 p-3 ring-1 ring-primary/20">
                             <Crown className="h-5 w-5 text-primary flex-shrink-0" />
                             <div>
-                                <p className="font-medium text-foreground text-sm">Pro — ₹149/month</p>
+                                <p
+                                    className="font-medium text-foreground text-sm"
+                                    style={{ fontFamily: "Segoe UI, Noto Sans, Arial, sans-serif" }}
+                                >
+                                    {"Pro - "}{RUPEE}149/month
+                                </p>
                                 <p className="text-xs text-muted-foreground">Everything + Analytics, Journal & Export</p>
                             </div>
                         </div>

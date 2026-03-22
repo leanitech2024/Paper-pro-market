@@ -1,11 +1,14 @@
-import "dotenv/config";
 import { createDb, users, subscriptions, wallets } from "@paper-market/core/db";
 import { eq } from "drizzle-orm";
 import bcrypt from "bcryptjs";
+import { config as loadEnv } from "dotenv";
+import { existsSync } from "fs";
 
-// Force load envs since we run from outside Next.js
-import { config } from "dotenv";
-config({ path: ".env.local" });
+// Load envs since we run from outside Next.js
+const envPath =
+  process.env.DOTENV_CONFIG_PATH ||
+  (existsSync(".env.local") ? ".env.local" : ".env");
+loadEnv({ path: envPath });
 
 const { db, pool } = createDb(process.env.DATABASE_URL!);
 

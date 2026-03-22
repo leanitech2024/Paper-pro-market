@@ -23,7 +23,10 @@ export const authConfig = {
     callbacks: {
         authorized({ auth, request: { nextUrl } }) {
             const isLoggedIn = !!auth?.user;
-            const isOnAuth = nextUrl.pathname.startsWith("/login") || nextUrl.pathname.startsWith("/signup");
+            const isOnAuth =
+                nextUrl.pathname.startsWith("/login") ||
+                nextUrl.pathname.startsWith("/signup") ||
+                nextUrl.pathname.startsWith("/admin/login");
 
             // Define all protected routes (requires authentication)
             const protectedRoutes = [
@@ -37,8 +40,12 @@ export const authConfig = {
                 "/watchlist",
                 "/journal",
                 "/settings",
-                "/admin",
             ];
+
+            // Allow public access to admin login
+            if (isOnAuth && nextUrl.pathname.startsWith("/admin/login")) {
+                return true;
+            }
 
             const isProtectedRoute = protectedRoutes.some(route => 
                 nextUrl.pathname.startsWith(route)
@@ -61,6 +68,9 @@ export const authConfig = {
                 if (token.role) {
                     session.user.role = token.role;
                 }
+                if (token.onboardingCompleted !== undefined) {
+                    session.user.onboardingCompleted = token.onboardingCompleted as boolean;
+                }
             }
             return session;
         },
@@ -73,6 +83,7 @@ export const authConfig = {
                 if (user.role) {
                     token.role = user.role;
                 }
+                token.onboardingCompleted = user.onboardingCompleted ?? false;
             } else if (!token.id && token.sub) {
                 token.id = token.sub;
             }

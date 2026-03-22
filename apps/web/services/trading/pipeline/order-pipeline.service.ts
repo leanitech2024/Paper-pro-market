@@ -64,12 +64,17 @@ export class OrderPipelineService {
     }
 
     // Pass the required margin to creation
+    const isImmediateMarket = payload.orderType === "MARKET" && !validation.stageAfterHours;
+
     const order = await OrderRepositoryService.createOrder(
       userId,
       payload,
       validation.instrument,
       requiredMargin,
-      { isClosingOrder: options.isClosingOrder }
+      {
+        isClosingOrder: options.isClosingOrder,
+        initialStatus: isImmediateMarket ? "PROCESSING" : "OPEN",
+      }
     );
 
     const executionStartMs = performance.now();
