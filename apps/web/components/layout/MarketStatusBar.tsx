@@ -30,11 +30,11 @@ export function MarketStatusBar() {
 
   const selectedKey = symbolToIndexInstrumentKey(toCanonicalSymbol(selectedSymbol || ""));
 
-  const formatPrice = (price: number) =>
-    Number.isFinite(price) && price > 0 ? price.toFixed(2) : "--";
+  const formatPrice = (price: number, hasQuote: boolean) =>
+    hasQuote ? price.toFixed(2) : "";
 
   const formatChange = (changePercent: number, hasQuote: boolean) => {
-    if (!hasQuote) return "--";
+    if (!hasQuote) return "";
     const safe = Number.isFinite(changePercent) ? changePercent : 0;
     const sign = safe > 0 ? "+" : "";
     return `${sign}${safe.toFixed(2)}%`;
@@ -69,10 +69,12 @@ export function MarketStatusBar() {
               >
                 {cfg.label}
               </span>
-              <span className="text-foreground">{formatPrice(price)}</span>
+              <span className="text-foreground tabular-nums min-w-[64px] inline-block text-right">
+                {formatPrice(price, hasQuote)}
+              </span>
               <span
                 className={cn(
-                  "text-[10px]",
+                  "text-[10px] tabular-nums min-w-[56px] inline-block text-right",
                   hasQuote ? (changePercent >= 0 ? "text-[#089981]" : "text-[#F23645]") : "text-muted-foreground"
                 )}
               >

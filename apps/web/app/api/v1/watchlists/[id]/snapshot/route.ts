@@ -135,7 +135,12 @@ export async function GET(
           )
         );
         if (upstoxKeys.length > 0) {
-          const details = await UpstoxService.getSystemQuoteDetails(upstoxKeys);
+          const details = await Promise.race([
+            UpstoxService.getSystemQuoteDetails(upstoxKeys),
+            new Promise<Record<string, never>>((resolve) =>
+              setTimeout(() => resolve({}), 1500)
+            ),
+          ]);
           for (const [rawKey, detailRaw] of Object.entries(details)) {
             const detail = detailRaw as { lastPrice: number; closePrice: number | null };
             const normalizedKey = toInstrumentKey(rawKey);
@@ -166,9 +171,13 @@ export async function GET(
         symbol: row.tradingsymbol,
         name: row.name,
         instrumentToken: row.instrumentToken,
-        price: prices?.price ?? 0,
-        change: prices?.change ?? 0,
-        changePercent: prices?.changePct ?? 0,
+        ...(prices
+          ? {
+              price: prices.price,
+              change: prices.change,
+              changePercent: prices.changePct,
+            }
+          : {}),
         lotSize: row.lotSize ?? 1,
         exchange: row.exchange ?? 'NSE',
         segment: row.segment ?? 'NSE_EQ',

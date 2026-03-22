@@ -256,19 +256,28 @@ export function WatchlistPanel({ instruments, onSelect, selectedSymbol, onOpenSe
             const fallbackPrice = Number(stock.price);
             const fallbackChange = Number(stock.change);
             const fallbackChangePercent = Number(stock.changePercent);
-            const livePrice =
-              quote?.price ?? (Number.isFinite(fallbackPrice) && fallbackPrice > 0 ? fallbackPrice : 0);
-            const liveChange =
-              quote?.change ?? (Number.isFinite(fallbackChange) ? fallbackChange : 0);
-            const liveChangePercent =
-              quote?.changePercent ??
-              (Number.isFinite(fallbackChangePercent) ? fallbackChangePercent : 0);
-            const hasQuote = Number.isFinite(livePrice) && livePrice > 0;
+            const hasFallbackPrice = Number.isFinite(fallbackPrice) && fallbackPrice > 0;
+
+            const quotePrice = typeof quote?.price === 'number' ? quote.price : undefined;
+            const quoteChange = typeof quote?.change === 'number' ? quote.change : undefined;
+            const quoteChangePercent =
+              typeof quote?.changePercent === 'number' ? quote.changePercent : undefined;
+
+            const hasLiveQuote = Number.isFinite(quotePrice) && (quotePrice ?? 0) > 0;
+            const livePrice = hasLiveQuote ? quotePrice : (hasFallbackPrice ? fallbackPrice : undefined);
+            const liveChange = hasLiveQuote
+              ? (Number.isFinite(quoteChange) ? quoteChange : 0)
+              : (hasFallbackPrice && Number.isFinite(fallbackChange) ? fallbackChange : undefined);
+            const liveChangePercent = hasLiveQuote
+              ? (Number.isFinite(quoteChangePercent) ? quoteChangePercent : 0)
+              : (hasFallbackPrice && Number.isFinite(fallbackChangePercent) ? fallbackChangePercent : undefined);
+
+            const hasQuote = Number.isFinite(livePrice) && (livePrice ?? 0) > 0;
             const renderedStock: Stock = {
               ...stock,
-              price: livePrice,
-              change: liveChange,
-              changePercent: liveChangePercent,
+              price: Number.isFinite(livePrice) ? (livePrice as number) : 0,
+              change: Number.isFinite(liveChange) ? (liveChange as number) : 0,
+              changePercent: Number.isFinite(liveChangePercent) ? (liveChangePercent as number) : 0,
             };
 
             return (
@@ -294,20 +303,21 @@ export function WatchlistPanel({ instruments, onSelect, selectedSymbol, onOpenSe
               {/* Right: Price/Percentage OR B/S Buttons */}
               <div className="flex items-center gap-2">
                 {hoveredSymbol !== stock.symbol ? (
-                  // Normal State: Show Price + Percentage
-                  <div className="flex flex-col items-end gap-1">
-                    <span 
-                      className="text-sm font-mono font-semibold"
-                      style={{ color: hasQuote ? (liveChange >= 0 ? '#089981' : '#F23645') : '#6b7280' }}
-                    >
-                      {hasQuote ? livePrice.toLocaleString('en-IN') : '--'}
-                    </span>
-                    <span className="text-xs font-mono text-slate-500 dark:text-slate-400">
-                      {hasQuote
-                        ? `${liveChange >= 0 ? '+' : ''}${liveChange.toFixed(2)} (${liveChangePercent.toFixed(2)}%)`
-                        : '--'}
-                    </span>
-                  </div>
+                  hasQuote ? (
+                    <div className="flex w-20 flex-col items-end gap-1">
+                      <span
+                        className="text-sm font-mono font-semibold"
+                        style={{ color: (liveChange ?? 0) >= 0 ? '#089981' : '#F23645' }}
+                      >
+                        {(livePrice as number).toLocaleString('en-IN')}
+                      </span>
+                      <span className="text-xs font-mono text-slate-500 dark:text-slate-400">
+                        {`${(liveChange ?? 0) >= 0 ? '+' : ''}${(liveChange ?? 0).toFixed(2)} (${(liveChangePercent ?? 0).toFixed(2)}%)`}
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="w-20" />
+                  )
                 ) : (
                   // Hover State: Show B/S Buttons + Menu
                   <>

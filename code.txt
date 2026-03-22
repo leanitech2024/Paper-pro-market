@@ -1,865 +1,670 @@
-===== drizzle/meta/_journal.json =====
-{
-  "version": "7",
-  "dialect": "postgresql",
-  "entries": [
-    {
-      "idx": 0,
-      "version": "7",
-      "when": 1769090903867,
-      "tag": "0000_rare_stryfe",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "7",
-      "when": 1769160274949,
-      "tag": "0001_fast_joshua_kane",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "7",
-      "when": 1769769889354,
-      "tag": "0002_spooky_dragon_lord",
-      "breakpoints": true
-    },
-    {
-      "idx": 3,
-      "version": "7",
-      "when": 1770107391443,
-      "tag": "0003_fast_catseye",
-      "breakpoints": true
-    },
-    {
-      "idx": 4,
-      "version": "7",
-      "when": 1770710405111,
-      "tag": "0004_cuddly_blink",
-      "breakpoints": true
-    },
-    {
-      "idx": 5,
-      "version": "7",
-      "when": 1771012800000,
-      "tag": "0005_market_snapshot_fields",
-      "breakpoints": true
-    },
-    {
-      "idx": 6,
-      "version": "7",
-      "when": 1771199200000,
-      "tag": "0006_drop_instrument_price_columns",
-      "breakpoints": true
-    },
-    {
-      "idx": 7,
-      "version": "7",
-      "when": 1770906055873,
-      "tag": "0007_spicy_wolfsbane",
-      "breakpoints": true
-    },
-    {
-      "idx": 8,
-      "version": "7",
-      "when": 1771239670299,
-      "tag": "0008_bumpy_iron_patriot",
-      "breakpoints": true
-    },
-    {
-      "idx": 9,
-      "version": "7",
-      "when": 1771249000000,
-      "tag": "0010_mtm_wallet_fields",
-      "breakpoints": true
-    },
-    {
-      "idx": 10,
-      "version": "7",
-      "when": 1771250400000,
-      "tag": "0011_liquidation_account_state",
-      "breakpoints": true
-    },
-    {
-      "idx": 11,
-      "version": "7",
-      "when": 1771261200000,
-      "tag": "0012_expiry_settlement",
-      "breakpoints": true
-    },
-    {
-      "idx": 12,
-      "version": "7",
-      "when": 1771268400000,
-      "tag": "0013_double_entry_ledger",
-      "breakpoints": true
-    },
-    {
-      "idx": 13,
-      "version": "7",
-      "when": 1771272000000,
-      "tag": "0014_write_ahead_journal",
-      "breakpoints": true
-    },
-    {
-      "idx": 14,
-      "version": "7",
-      "when": 1771275600000,
-      "tag": "0015_global_ledger_sequence",
-      "breakpoints": true
-    },
-    {
-      "idx": 15,
-      "version": "7",
-      "when": 1771279200000,
-      "tag": "0016_ledger_idempotency_key",
-      "breakpoints": true
-    },
-    {
-      "idx": 16,
-      "version": "7",
-      "when": 1771483200000,
-      "tag": "0017_option_consistency",
-      "breakpoints": true
-    },
-    {
-      "idx": 17,
-      "version": "7",
-      "when": 1771494335326,
-      "tag": "0017_abandoned_firebird",
-      "breakpoints": true
-    },
-    {
-      "idx": 18,
-      "version": "7",
-      "when": 1773117979904,
-      "tag": "0018_add_processing_order_status",
-      "breakpoints": true
-    },
-    {
-      "idx": 19,
-      "version": "7",
-      "when": 1773292683055,
-      "tag": "0019_daffy_old_lace",
-      "breakpoints": true
-    },
-    {
-      "idx": 20,
-      "version": "7",
-      "when": 1773815891889,
-      "tag": "0020_fix_ledger_idempotency_unique_index",
-      "breakpoints": true
-    },
-    {
-      "idx": 21,
-      "version": "7",
-      "when": 1774110088639,
-      "tag": "0021_naive_susan_delgado",
-      "breakpoints": true
-    },
-    {
-      "idx": 22,
-      "version": "7",
-      "when": 1774115583322,
-      "tag": "0022_order_reserved_margin_indexes",
-      "breakpoints": true
-    },
-    {
-      "idx": 23,
-      "version": "7",
-      "when": 1774115583323,
-      "tag": "0023_add_user_is_active",
-      "breakpoints": true
-    },
-    {
-      "idx": 24,
-      "version": "7",
-      "when": 1774153862772,
-      "tag": "0024_dear_captain_flint",
-      "breakpoints": true
-    },
-    {
-      "idx": 25,
-      "version": "7",
-      "when": 1774155202728,
-      "tag": "0025_backfill_onboarding_completed",
-      "breakpoints": true
-    }
-  ]
-}
-
-===== scripts/backfill-default-watchlists.ts =====
+﻿===== apps/web/app/api/v1/watchlists/route.ts =====
 /**
- * Backfill default watchlists for all users.
- *
- * Usage:
- *   pnpm exec tsx scripts/backfill-default-watchlists.ts
+ * GET /api/v1/watchlists
+ * Get all watchlists for the authenticated user
  */
 
-import { config as loadEnv } from "dotenv";
-import { existsSync } from "fs";
+import { NextResponse } from 'next/server';
+import { auth } from '@/lib/auth';
+import { WatchlistService } from '@/services/market/catalog/watchlist.service';
+import { logger } from '@/lib/logger';
 
-const envPath =
-  process.env.DOTENV_CONFIG_PATH ||
-  (existsSync(".env.local") ? ".env.local" : ".env");
-loadEnv({ path: envPath });
+export const dynamic = 'force-dynamic';
 
-const { db } = await import("../apps/web/lib/db");
-const { users } = await import("@paper-market/core/db");
-const { WatchlistService } = await import(
-  "../apps/web/services/market/catalog/watchlist.service"
-);
-const { asc } = await import("drizzle-orm");
-
-async function main() {
-  const batchSize = 200;
-  let offset = 0;
-  let processed = 0;
-  let ensured = 0;
-  let failed = 0;
-
-  console.log("Backfilling default watchlists for all users...");
-
-  while (true) {
-    const batch = await db
-      .select({ id: users.id })
-      .from(users)
-      .orderBy(asc(users.id))
-      .limit(batchSize)
-      .offset(offset);
-
-    if (batch.length === 0) break;
-
-    for (const user of batch) {
-      processed += 1;
-      try {
-        await WatchlistService.ensureDefaultWatchlist(user.id);
-        ensured += 1;
-      } catch (error) {
-        failed += 1;
-        console.error(`Failed for user ${user.id}:`, error);
-      }
+export async function GET() {
+  try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    offset += batch.length;
+    await WatchlistService.ensureDefaultWatchlist(session.user.id);
+    const watchlists = await WatchlistService.getUserWatchlists(session.user.id);
+
+    return NextResponse.json({ success: true, data: watchlists });
+  } catch (error) {
+    logger.error({ err: error }, 'GET /api/v1/watchlists failed');
+    return NextResponse.json({ error: 'Failed to fetch watchlists' }, { status: 500 });
+  }
+}
+
+/**
+ * POST /api/v1/watchlists
+ * Create a new watchlist
+ */
+export async function POST(req: Request) {
+  try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const body = await req.json();
+    const { name } = body;
+
+    if (!name || typeof name !== 'string' || name.trim().length === 0) {
+      return NextResponse.json(
+        { error: 'Watchlist name is required' },
+        { status: 400 }
+      );
+    }
+
+    const watchlist = await WatchlistService.createWatchlist(
+      session.user.id,
+      name.trim()
+    );
+
+    return NextResponse.json({
+      success: true,
+      data: watchlist,
+    });
+  } catch (error) {
+    logger.error({ err: error }, 'POST /api/v1/watchlists failed');
+    return NextResponse.json(
+      { error: 'Failed to create watchlist' },
+      { status: 500 }
+    );
+  }
+}
+
+
+
+===== apps/web/components/trade/watchlist/WatchlistPanel.tsx =====
+"use client";
+
+import { useState, useEffect, useMemo, useRef } from 'react';
+import { Button } from '@/components/ui/button';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { cn } from '@/lib/utils';
+import { Stock } from '@paper-market/core';
+import { Plus, ChevronDown } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { useMarketStore } from '@/stores/trading/market.store';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { toast } from 'sonner';
+import { WatchlistItemMenu } from './WatchlistItemMenu';
+import { WatchlistSkeleton } from './WatchlistSkeleton';
+import { useWatchlists, useWatchlistInstruments, useCreateWatchlist } from '@/hooks/queries/use-watchlists';
+import { toCanonicalSymbol, toInstrumentKey, toSymbolKey } from '@paper-market/core';
+
+interface WatchlistPanelProps {
+  instruments: Stock[];
+  onSelect: (stock: Stock) => void;
+  selectedSymbol?: string;
+  onOpenSearch: () => void;
+  onClearSelection?: () => void;
+}
+
+export function WatchlistPanel({ instruments, onSelect, selectedSymbol, onOpenSearch, onClearSelection }: WatchlistPanelProps) {
+  const [isCreating, setIsCreating] = useState(false);
+  const [newWatchlistName, setNewWatchlistName] = useState('');
+  const [hoveredSymbol, setHoveredSymbol] = useState<string | null>(null);
+  const [preferredWatchlistId, setPreferredWatchlistId] = useState<string | null>(null);
+  const lastAppliedQuerySnapshotRef = useRef<string>('');
+
+  // ðŸ”¥ NEW: TanStack Query hooks for data fetching
+  const { data: watchlists = [], isLoading: isLoadingWatchlists } = useWatchlists();
+  const createWatchlistMutation = useCreateWatchlist();
+
+  useEffect(() => {
+    const saved = typeof window !== 'undefined' ? localStorage.getItem('lastWatchlistId') : null;
+    if (saved) setPreferredWatchlistId(saved);
+  }, []);
+  
+  // Get active watchlist ID from Zustand (UI state only)
+  const { activeWatchlistId, setActiveWatchlistId, setStocks } = useMarketStore();
+  const quotesByInstrument = useMarketStore((state) => state.quotesByInstrument);
+  const selectQuote = useMarketStore((state) => state.selectQuote);
+  // 1ï¸âƒ£ Determine the actual watchlist ID to use
+  let resolvedWatchlistId = activeWatchlistId;
+  const activeIsValid = watchlists.some(w => w.id === resolvedWatchlistId);
+
+  if (!activeIsValid) {
+    // If not valid, try from local storage first
+    let fallback = preferredWatchlistId;
+    if (!fallback || !watchlists.some(w => w.id === fallback)) {
+        // Otherwise use default or first available
+        fallback = watchlists.find(w => w.isDefault)?.id || watchlists[0]?.id || null;
+    }
+    resolvedWatchlistId = fallback;
   }
 
-  console.log(
-    `Done. processed=${processed} ensured=${ensured} failed=${failed}`
+  // 2ï¸âƒ£ Sync back to Zustand & LocalStorage
+  useEffect(() => {
+    if (isLoadingWatchlists) return;
+    
+    if (resolvedWatchlistId && activeWatchlistId !== resolvedWatchlistId) {
+       setActiveWatchlistId(resolvedWatchlistId);
+    }
+    
+    if (resolvedWatchlistId) {
+      localStorage.setItem('lastWatchlistId', resolvedWatchlistId);
+    }
+  }, [resolvedWatchlistId, activeWatchlistId, isLoadingWatchlists, setActiveWatchlistId]);
+  
+  // Fetch instruments for active watchlist
+  const { data: queryInstruments = [], isLoading: isLoadingInstruments } = useWatchlistInstruments(resolvedWatchlistId);
+
+  // Sync query data to Zustand store (for SSE price updates)
+  useEffect(() => {
+    if (isLoadingInstruments || !queryInstruments) return;
+
+    // Only apply when query payload itself changed.
+    // Do NOT compare against live store state; SSE updates would be overwritten.
+    const querySnapshot = queryInstruments
+      .map((s) => {
+        const price = Number(s.price || 0).toFixed(2);
+        const change = Number(s.change || 0).toFixed(2);
+        const changePercent = Number(s.changePercent || 0).toFixed(2);
+        return `${s.instrumentToken}:${price}:${change}:${changePercent}`;
+      })
+      .sort()
+      .join(',');
+
+    if (querySnapshot === lastAppliedQuerySnapshotRef.current) return;
+
+    setStocks(queryInstruments);
+    lastAppliedQuerySnapshotRef.current = querySnapshot;
+  }, [queryInstruments, isLoadingInstruments, setStocks]);
+
+  const activeWatchlist = watchlists.find(w => w.id === resolvedWatchlistId);
+  const isFetchingWatchlistData = isLoadingWatchlists || isLoadingInstruments;
+
+  // Render immediately from query data; switch to store-backed prices once available.
+  const localMatches = useMemo(() => {
+    if (instruments.length > 0) return instruments;
+    return queryInstruments;
+  }, [instruments, queryInstruments]);
+  const selectedSymbolKey = useMemo(
+    () => toSymbolKey(toCanonicalSymbol(selectedSymbol || "")),
+    [selectedSymbol]
+  );
+  const handleItemRemoved = (stock: Stock) => {
+    const removedSymbolKey = toSymbolKey(toCanonicalSymbol(stock.symbol || ""));
+    if (removedSymbolKey && removedSymbolKey === selectedSymbolKey) {
+      onClearSelection?.();
+    }
+  };
+
+  const handleCreateWatchlist = async () => {
+    if (!newWatchlistName.trim()) return;
+    
+    try {
+      const res = await createWatchlistMutation.mutateAsync(newWatchlistName.trim());
+      
+      // ðŸ”¥ FIX: Switch to the new watchlist immediately
+      if (res.success && res.data?.id) {
+        setActiveWatchlistId(res.data.id);
+      }
+      
+      setNewWatchlistName('');
+      setIsCreating(false);
+      toast.success('Watchlist created');
+    } catch (error) {
+        toast.error('Failed to create watchlist');
+    }
+  };
+
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  //  SKELETON LOADER: Show placeholders while fetching
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  if (isFetchingWatchlistData && localMatches.length === 0) {
+    return <WatchlistSkeleton />;
+  }
+
+  return (
+    <div className="flex h-full min-h-0 w-full max-w-full flex-col overflow-hidden overscroll-y-contain border-r border-slate-200/80 bg-white dark:border-white/[0.08] dark:bg-[#0c1322]">
+      {/* Header with Selector */}
+      <div className="flex items-center justify-between px-3 h-9 border-b border-slate-200/80 bg-slate-50/80 dark:border-white/[0.08] dark:bg-[#10192b]">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button className="flex items-center gap-1 text-xs font-bold uppercase tracking-wider text-slate-900 hover:text-slate-950 dark:text-slate-100 dark:hover:text-white transition-colors">
+              {activeWatchlist?.name || 'Watchlist'}
+              <ChevronDown className="h-3 w-3" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="w-48">
+            {watchlists.map(watchlist => (
+              <DropdownMenuItem
+                key={watchlist.id}
+                onClick={() => setActiveWatchlistId(watchlist.id)}
+                className={cn(
+                  "text-xs cursor-pointer",
+                  watchlist.id === resolvedWatchlistId && "bg-slate-100 font-medium dark:bg-white/[0.06]"
+                )}
+              >
+                {watchlist.name}
+                {watchlist.isDefault && (
+                  <span className="ml-auto text-[10px] text-muted-foreground"></span>
+                )}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+        
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-6 w-6"
+          onClick={() => setIsCreating(true)}
+        >
+          <Plus className="h-3.5 w-3.5" />
+        </Button>
+      </div>
+
+      {/* Create Watchlist Dialog */}
+      <Dialog open={isCreating} onOpenChange={(open) => {
+        setIsCreating(open);
+        if (!open) setNewWatchlistName('');
+      }}>
+        <DialogContent className="sm:max-w-[425px] bg-white/90 dark:bg-[#0c1322]/95 backdrop-blur-xl border-slate-200/80 dark:border-white/[0.08] shadow-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-bold text-foreground">Create New Watchlist</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="flex flex-col gap-2">
+              <label htmlFor="name" className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                Watchlist Name
+              </label>
+              <Input
+                id="name"
+                className="h-10 text-sm focus-visible:ring-primary/50"
+                placeholder="e.g. My Favorites, Long Term..."
+                value={newWatchlistName}
+                onChange={(e) => setNewWatchlistName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleCreateWatchlist();
+                }}
+                autoFocus
+              />
+            </div>
+          </div>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="px-4"
+              onClick={() => {
+                setIsCreating(false);
+                setNewWatchlistName('');
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              size="sm"
+              className="px-6 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold"
+              onClick={handleCreateWatchlist}
+              disabled={!newWatchlistName.trim() || createWatchlistMutation.isPending}
+            >
+              {createWatchlistMutation.isPending ? 'Creating...' : 'Create Watchlist'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* List Content */}
+      <ScrollArea className="flex-1 min-h-0 h-full overscroll-y-contain">
+        <div className="flex flex-col">
+          {localMatches.map((stock, i) => {
+            const quoteKey = stock.instrumentToken
+              ? toInstrumentKey(stock.instrumentToken)
+              : "";
+            const quote = quoteKey
+              ? (quotesByInstrument[quoteKey] || selectQuote(quoteKey))
+              : null;
+            const fallbackPrice = Number(stock.price);
+            const fallbackChange = Number(stock.change);
+            const fallbackChangePercent = Number(stock.changePercent);
+            const livePrice =
+              quote?.price ?? (Number.isFinite(fallbackPrice) && fallbackPrice > 0 ? fallbackPrice : 0);
+            const liveChange =
+              quote?.change ?? (Number.isFinite(fallbackChange) ? fallbackChange : 0);
+            const liveChangePercent =
+              quote?.changePercent ??
+              (Number.isFinite(fallbackChangePercent) ? fallbackChangePercent : 0);
+            const hasQuote = Number.isFinite(livePrice) && livePrice > 0;
+            const renderedStock: Stock = {
+              ...stock,
+              price: livePrice,
+              change: liveChange,
+              changePercent: liveChangePercent,
+            };
+
+            return (
+            <div
+              key={`${stock.symbol}-${i}`}
+              onClick={() => onSelect(renderedStock)}
+              onMouseEnter={() => {
+                setHoveredSymbol(stock.symbol);
+              }}
+              onMouseLeave={() => setHoveredSymbol(null)}
+              className={cn(
+                "group flex items-center justify-between px-3 py-2.5 border-b border-slate-200/60 dark:border-white/[0.05] cursor-pointer transition-colors hover:bg-slate-50 dark:hover:bg-white/[0.03]",
+                selectedSymbolKey === toSymbolKey(toCanonicalSymbol(stock.symbol)) &&
+                  "bg-slate-100/80 border-l-2 border-l-primary dark:bg-white/[0.06]"
+              )}
+            >
+              {/* Left: Symbol + Name */}
+              <div className="flex flex-col gap-1 flex-1">
+                <span className="text-sm font-bold text-slate-900 dark:text-slate-100">{stock.symbol}</span>
+                <span className="text-xs text-slate-500 dark:text-slate-400 truncate max-w-[140px]">{stock.name}</span>
+              </div>
+              
+              {/* Right: Price/Percentage OR B/S Buttons */}
+              <div className="flex items-center gap-2">
+                {hoveredSymbol !== stock.symbol ? (
+                  // Normal State: Show Price + Percentage
+                  <div className="flex flex-col items-end gap-1">
+                    <span 
+                      className="text-sm font-mono font-semibold"
+                      style={{ color: hasQuote ? (liveChange >= 0 ? '#089981' : '#F23645') : '#6b7280' }}
+                    >
+                      {hasQuote ? livePrice.toLocaleString('en-IN') : '--'}
+                    </span>
+                    <span className="text-xs font-mono text-slate-500 dark:text-slate-400">
+                      {hasQuote
+                        ? `${liveChange >= 0 ? '+' : ''}${liveChange.toFixed(2)} (${liveChangePercent.toFixed(2)}%)`
+                        : '--'}
+                    </span>
+                  </div>
+                ) : (
+                  // Hover State: Show B/S Buttons + Menu
+                  <>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onSelect(renderedStock);
+                        window.triggerTrade?.('BUY');
+                      }}
+                      className="h-7 px-3 text-xs font-bold border border-[#089981] text-[#089981] bg-transparent hover:bg-[#089981] hover:text-white transition-colors"
+                    >
+                      B
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onSelect(renderedStock);
+                        window.triggerTrade?.('SELL');
+                      }}
+                      className="h-7 px-3 text-xs font-bold border border-[#F23645] text-[#F23645] bg-transparent hover:bg-[#F23645] hover:text-white transition-colors"
+                    >
+                      S
+                    </Button>
+                    <div className="pointer-events-auto" onClick={(e) => e.stopPropagation()}>
+                      <WatchlistItemMenu
+                        stock={renderedStock}
+                        isInWatchlist={true}
+                        onSelect={onSelect}
+                        onRemoved={handleItemRemoved}
+                      />
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+            );
+          })}
+          
+          {!isFetchingWatchlistData && localMatches.length === 0 && (
+            <div className="p-4 text-center text-xs text-slate-500 dark:text-slate-400">
+              No symbols in watchlist
+            </div>
+          )}
+        </div>
+      </ScrollArea>
+    </div>
   );
 }
 
-main().catch((error) => {
-  console.error("Backfill failed:", error);
-  process.exit(1);
-});
 
-===== apps/web/services/market/catalog/watchlist.service.ts =====
-/**
- * Watchlist Service
- * Handles user watchlist CRUD operations
- */
 
-import { db } from '@/lib/db';
-import { watchlists, watchlistItems, instruments } from '@paper-market/core/db';
-import { type Watchlist, type NewWatchlist } from '@paper-market/core';
-import { eq, and, sql, inArray } from 'drizzle-orm';
-import { logger } from '@/lib/logger';
-import { cache } from '@/lib/cache';
+===== apps/web/hooks/queries/use-watchlists.ts =====
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Stock } from '@paper-market/core';
+import { toInstrumentKey } from '@paper-market/core';
 
-const DEFAULT_WATCHLIST_NAME = 'Top 20 Stocks';
-const DEFAULT_WATCHLIST_SYMBOLS = [
-  'RELIANCE',
-  'HDFCBANK',
-  'ICICIBANK',
-  'SBIN',
-  'KOTAKBANK',
-  'AXISBANK',
-  'BAJFINANCE',
-  'BAJAJFINSV',
-  'TCS',
-  'INFY',
-  'HCLTECH',
-  'WIPRO',
-  'TECHM',
-  'MARUTI',
-  'TATAMOTORS',
-  'M&M',
-  'HEROMOTOCO',
-  'EICHERMOT',
-  'LT',
-  'ULTRACEMCO',
-];
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ðŸ“Š WATCHLIST QUERY HOOKS
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
-export class WatchlistService {
-  private static async resolveDefaultWatchlistInstruments() {
-    const desiredCount = DEFAULT_WATCHLIST_SYMBOLS.length;
-    const equityInstruments = await db
-      .select({
-        instrumentToken: instruments.instrumentToken,
-        tradingsymbol: instruments.tradingsymbol,
-      })
-      .from(instruments)
-      .where(
-        and(
-          inArray(instruments.tradingsymbol, DEFAULT_WATCHLIST_SYMBOLS),
-          eq(instruments.segment, 'NSE_EQ'),
-          eq(instruments.isActive, true)
-        )
-      );
-
-    const bySymbol = new Map(
-      equityInstruments.map((instrument) => [instrument.tradingsymbol, instrument])
-    );
-    const orderedPrimary = DEFAULT_WATCHLIST_SYMBOLS
-      .map((symbol) => bySymbol.get(symbol))
-      .filter((instrument): instrument is { instrumentToken: string; tradingsymbol: string } => Boolean(instrument));
-
-    if (orderedPrimary.length >= desiredCount) {
-      return {
-        instruments: orderedPrimary,
-        seededFrom: 'top-20',
-      } as const;
-    }
-
-    const fallbackInstruments = await db
-      .select({
-        instrumentToken: instruments.instrumentToken,
-        tradingsymbol: instruments.tradingsymbol,
-      })
-      .from(instruments)
-      .where(
-        and(
-          eq(instruments.segment, 'NSE_EQ'),
-          eq(instruments.isActive, true)
-        )
-      )
-      .limit(desiredCount * 3);
-
-    const selected = [...orderedPrimary];
-    const seenTokens = new Set(selected.map((instrument) => instrument.instrumentToken));
-    for (const instrument of fallbackInstruments) {
-      if (selected.length >= desiredCount) break;
-      if (seenTokens.has(instrument.instrumentToken)) continue;
-      selected.push(instrument);
-      seenTokens.add(instrument.instrumentToken);
-    }
-
-    return {
-      instruments: selected,
-      seededFrom: orderedPrimary.length > 0 ? 'top-20-plus-fallback' : 'fallback-active-nse-eq',
-    } as const;
-  }
-
-  static async ensureDefaultWatchlist(userId: string) {
-    const existingDefault = await db.query.watchlists.findFirst({
-      where: and(eq(watchlists.userId, userId), eq(watchlists.isDefault, true)),
-    });
-
-    if (existingDefault) {
-      await this.seedWatchlistIfEmpty(existingDefault.id, userId);
-      return existingDefault;
-    }
-
-    try {
-      return await this.createDefaultWatchlist(userId);
-    } catch (error) {
-      const concurrentDefault = await db.query.watchlists.findFirst({
-        where: and(eq(watchlists.userId, userId), eq(watchlists.isDefault, true)),
-      });
-      if (!concurrentDefault) throw error;
-      await this.seedWatchlistIfEmpty(concurrentDefault.id, userId);
-      return concurrentDefault;
-    }
-  }
-
-  /**
-   * Get all watchlists for a user
-   */
-  static async getUserWatchlists(userId: string) {
-    try {
-      const userWatchlists = await db
-        .select({
-          id: watchlists.id,
-          name: watchlists.name,
-          isDefault: watchlists.isDefault,
-          maxItems: watchlists.maxItems,
-          createdAt: watchlists.createdAt,
-          instrumentCount: sql<number>`count(${watchlistItems.id})::int`,
-        })
-        .from(watchlists)
-        .leftJoin(watchlistItems, eq(watchlists.id, watchlistItems.watchlistId))
-        .where(eq(watchlists.userId, userId))
-        .groupBy(watchlists.id)
-        .orderBy(sql`${watchlists.isDefault} DESC, ${watchlists.createdAt} DESC`);
-
-      return userWatchlists;
-    } catch (error) {
-      logger.error({ err: error, userId }, 'Failed to get user watchlists');
-      throw error;
-    }
-  }
-
-  /**
-   * Get watchlist with instruments
-   */
-  static async getWatchlistWithInstruments(watchlistId: string, userId: string) {
-    try {
-      // Verify ownership
-      const watchlist = await db.query.watchlists.findFirst({
-        where: and(
-          eq(watchlists.id, watchlistId),
-          eq(watchlists.userId, userId)
-        ),
-      });
-
-      if (!watchlist) {
-        throw new Error('Watchlist not found or access denied');
-      }
-
-      // Get instruments
-      const items = await db
-        .select({
-          instrumentToken: instruments.instrumentToken,
-          tradingsymbol: instruments.tradingsymbol,
-          name: instruments.name,
-          lotSize: instruments.lotSize,
-          exchange: instruments.exchange,
-          segment: instruments.segment,
-          addedAt: watchlistItems.addedAt,
-        })
-        .from(watchlistItems)
-        .innerJoin(instruments, eq(watchlistItems.instrumentToken, instruments.instrumentToken))
-        .where(eq(watchlistItems.watchlistId, watchlistId))
-        .orderBy(watchlistItems.addedAt);
-
-      const result = {
-        ...watchlist,
-        instruments: items,
-      };
-
-      return result;
-    } catch (error) {
-      logger.error({ err: error, watchlistId, userId }, 'Failed to get watchlist with instruments');
-      throw error;
-    }
-  }
-
-  /**
-   * Create a new watchlist
-   */
-  static async createWatchlist(userId: string, name: string) {
-    try {
-      const [newWatchlist] = await db
-        .insert(watchlists)
-        .values({
-          userId,
-          name,
-          isDefault: false, // Only first watchlist should be default
-          maxItems: 20,
-        })
-        .returning();
-
-      logger.info({ watchlistId: newWatchlist.id, userId, name }, 'Created watchlist');
-      return newWatchlist;
-    } catch (error) {
-      logger.error({ err: error, userId, name }, 'Failed to create watchlist');
-      throw error;
-    }
-  }
-
-  /**
-   * Create default watchlist for a new user
-   * Called during user signup
-   */
-  static async createDefaultWatchlist(userId: string) {
-    try {
-      // Create default watchlist
-      const [watchlist] = await db
-        .insert(watchlists)
-        .values({
-          userId,
-          name: DEFAULT_WATCHLIST_NAME,
-          isDefault: true,
-          maxItems: 20,
-        })
-        .returning();
-
-      const { instruments: selectedInstruments, seededFrom } =
-        await this.resolveDefaultWatchlistInstruments();
-
-      if (selectedInstruments.length > 0) {
-        await db
-          .insert(watchlistItems)
-          .values(
-            selectedInstruments.map(inst => ({
-            watchlistId: watchlist.id,
-            instrumentToken: inst.instrumentToken,
-            }))
-          )
-          .onConflictDoNothing();
-      }
-
-      logger.info(
-        {
-          watchlistId: watchlist.id,
-          userId,
-          count: selectedInstruments.length,
-          seededFrom,
-        },
-        'Created default watchlist'
-      );
-      return watchlist;
-    } catch (error) {
-      logger.error({ err: error, userId }, 'Failed to create default watchlist');
-      throw error;
-    }
-  }
-
-  /**
-   * Backfill instruments when a default watchlist exists but is empty.
-   */
-  static async seedWatchlistIfEmpty(watchlistId: string, userId: string) {
-    try {
-      const watchlist = await db.query.watchlists.findFirst({
-        where: and(eq(watchlists.id, watchlistId), eq(watchlists.userId, userId)),
-      });
-
-      if (!watchlist) {
-        throw new Error('Watchlist not found or access denied');
-      }
-
-      const [existingCount] = await db
-        .select({ count: sql<number>`count(*)::int` })
-        .from(watchlistItems)
-        .where(eq(watchlistItems.watchlistId, watchlistId));
-
-      if (existingCount.count > 0) {
-        return { seeded: 0, skipped: true as const };
-      }
-
-      const { instruments: selectedInstruments, seededFrom } =
-        await this.resolveDefaultWatchlistInstruments();
-
-      if (selectedInstruments.length > 0) {
-        await db
-          .insert(watchlistItems)
-          .values(
-            selectedInstruments.map((inst) => ({
-              watchlistId,
-              instrumentToken: inst.instrumentToken,
-            }))
-          )
-          .onConflictDoNothing();
-      }
-
-      const [afterCount] = await db
-        .select({ count: sql<number>`count(*)::int` })
-        .from(watchlistItems)
-        .where(eq(watchlistItems.watchlistId, watchlistId));
-
-      logger.info(
-        {
-          watchlistId,
-          userId,
-          before: existingCount.count,
-          after: afterCount.count,
-          seededFrom,
-        },
-        'Seeded empty watchlist'
-      );
-
-      return { seeded: afterCount.count, skipped: false as const };
-    } catch (error) {
-      logger.error({ err: error, watchlistId, userId }, 'Failed to seed empty watchlist');
-      throw error;
-    }
-  }
-
-  /**
-   * Delete a watchlist
-   */
-  static async deleteWatchlist(watchlistId: string, userId: string) {
-    try {
-      // Verify ownership and not default
-      const watchlist = await db.query.watchlists.findFirst({
-        where: and(
-          eq(watchlists.id, watchlistId),
-          eq(watchlists.userId, userId)
-        ),
-      });
-
-      if (!watchlist) {
-        throw new Error('Watchlist not found or access denied');
-      }
-
-      if (watchlist.isDefault) {
-        throw new Error('Cannot delete default watchlist');
-      }
-
-      await db.delete(watchlists).where(eq(watchlists.id, watchlistId));
-
-      logger.info({ watchlistId, userId }, 'Deleted watchlist');
-      return { success: true };
-    } catch (error) {
-      logger.error({ err: error, watchlistId, userId }, 'Failed to delete watchlist');
-      throw error;
-    }
-  }
-
-  /**
-   * Add instrument to watchlist
-   */
-  static async addInstrument(watchlistId: string, instrumentToken: string, userId: string) {
-    try {
-      // Verify ownership
-      const watchlist = await db.query.watchlists.findFirst({
-        where: and(
-          eq(watchlists.id, watchlistId),
-          eq(watchlists.userId, userId)
-        ),
-      });
-
-      if (!watchlist) {
-        throw new Error('Watchlist not found or access denied');
-      }
-
-      // Check if instrument exists
-      const instrument = await db.query.instruments.findFirst({
-        where: eq(instruments.instrumentToken, instrumentToken),
-      });
-
-      if (!instrument) {
-        throw new Error('Instrument not found');
-      }
-
-      // Check max items limit
-      const currentCount = await db
-        .select({ count: sql<number>`count(*)::int` })
-        .from(watchlistItems)
-        .where(eq(watchlistItems.watchlistId, watchlistId));
-
-      if (watchlist.maxItems && currentCount[0].count >= watchlist.maxItems) {
-        throw new Error(`Watchlist is full (max ${watchlist.maxItems} items)`);
-      }
-
-      // Add to watchlist (unique constraint will prevent duplicates)
-      const [item] = await db
-        .insert(watchlistItems)
-        .values({
-          watchlistId,
-          instrumentToken,
-        })
-        .returning();
-      
-      // Invalidate cache
-      cache.delete(`watchlist:${watchlistId}:instruments`);
-
-      logger.info({ watchlistId, instrumentToken, userId }, 'Added instrument to watchlist');
-      return item;
-    } catch (error) {
-      logger.error({ err: error, watchlistId, instrumentToken, userId }, 'Failed to add instrument');
-      throw error;
-    }
-  }
-
-  /**
-   * Remove instrument from watchlist
-   */
-  static async removeInstrument(watchlistId: string, instrumentToken: string, userId: string) {
-    try {
-      // Verify ownership
-      const watchlist = await db.query.watchlists.findFirst({
-        where: and(
-          eq(watchlists.id, watchlistId),
-          eq(watchlists.userId, userId)
-        ),
-      });
-
-      if (!watchlist) {
-        throw new Error('Watchlist not found or access denied');
-      }
-
-      await db
-        .delete(watchlistItems)
-        .where(
-          and(
-            eq(watchlistItems.watchlistId, watchlistId),
-            eq(watchlistItems.instrumentToken, instrumentToken)
-          )
-        );
-
-      logger.info({ watchlistId, instrumentToken, userId }, 'Removed instrument from watchlist');
-      
-      // Invalidate cache
-      cache.delete(`watchlist:${watchlistId}:instruments`);
-      
-      return { success: true };
-    } catch (error) {
-      logger.error({ err: error, watchlistId, instrumentToken, userId }, 'Failed to remove instrument');
-      throw error;
-    }
-  }
+interface Watchlist {
+  id: string;
+  name: string;
+  isDefault: boolean;
+  userId: string;
 }
 
-===== scripts/sync-instruments.ts =====
-/**
- * Instrument Sync CLI Script
- *
- * Usage:
- *   pnpm exec tsx scripts/sync-instruments.ts
- */
+interface WatchlistInstrument {
+  instrumentToken: string;
+  tradingsymbol: string;
+  name: string;
+  lotSize: number;
+}
 
-import { config as loadEnv } from "dotenv";
-import { existsSync } from "fs";
+type QuoteApiItem = {
+  last_price?: number;
+  close_price?: number;
+};
 
-const envPath =
-  process.env.DOTENV_CONFIG_PATH ||
-  (existsSync(".env.local") ? ".env.local" : ".env");
-loadEnv({ path: envPath });
+type AddInstrumentInput = string | Stock;
 
-const { syncInstruments } = await import(
-  "../apps/web/lib/instruments/instrument-sync.service"
-);
-const { db } = await import("../apps/web/lib/db");
-const { instruments } = await import("@paper-market/core/db");
-const { sql } = await import("drizzle-orm");
+function toQuoteLookup(payload: Record<string, QuoteApiItem>): Map<string, QuoteApiItem> {
+  const out = new Map<string, QuoteApiItem>();
 
-async function main() {
-    console.log('\n' + '='.repeat(70));
-    console.log('  INSTRUMENT SYNC - Upstox Master Data');
-    console.log('='.repeat(70));
-    console.log('');
+  for (const [rawKey, quote] of Object.entries(payload || {})) {
+    const normalized = toInstrumentKey(rawKey);
+    if (!normalized) continue;
 
-    try {
-        // Show pre-sync stats
-        console.log('📊 Pre-Sync Database State:\n');
-        const preStats = await getInstrumentStats();
-        displayStats(preStats);
+    out.set(normalized, quote);
+    out.set(normalized.replace('|', ':'), quote);
+    out.set(normalized.replace(':', '|'), quote);
+  }
 
-        // Run sync
-        console.log('\n🔄 Starting sync...\n');
-        
-        // syncInstruments now returns a full SyncReport
-        const report = await syncInstruments();
-        
-        // Show results
-        console.log('\n' + '='.repeat(70));
-        console.log('  SYNC COMPLETE');
-        console.log('='.repeat(70));
-        console.log('');
-        console.log('📈 Sync Report:');
-        console.log('');
-        
-        // Use safe access to prevent crashes if a field is missing (though service ensures type safety)
-        const total = (report.totalProcessed ?? 0).toLocaleString();
-        const upserted = (report.upserted ?? 0).toLocaleString();
-        const updated = (report.updated ?? 0).toLocaleString();
-        const deactivated = (report.deactivated ?? 0).toLocaleString();
-        const purged = (report.purged ?? 0).toLocaleString();
-        const errors = (report.errors ?? 0).toLocaleString();
-        const durationSec = ((report.duration ?? 0) / 1000).toFixed(2);
+  return out;
+}
 
-        console.log(`   Total Processed:  ${total}`);
-        console.log(`   Upserted (Valid): ${upserted} (Includes updates)`);
-        console.log(`   Deactivated:      ${deactivated}`);
-        console.log(`   Purged (Old):     ${purged}`);
-        console.log(`   Skipped/Invalid:  ${errors}`);
-        console.log(`   Duration:         ${durationSec}s`);
-        console.log('');
 
-        // Show post-sync stats
-        console.log('📊 Post-Sync Database State:\n');
-        const postStats = await getInstrumentStats();
-        displayStats(postStats);
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ðŸ” QUERY: Fetch all watchlists
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+export function useWatchlists() {
+  return useQuery({
+    queryKey: ['watchlists'],
+    queryFn: async () => {
+      const res = await fetch('/api/v1/watchlists');
+      if (!res.ok) throw new Error('Failed to fetch watchlists');
+      const { data } = await res.json();
+      return data as Watchlist[];
+    },
+    staleTime: 5 * 60_000, // 5 minutes â€” watchlist names rarely change
+    refetchOnWindowFocus: false,
+    retry: 1,
+  });
+}
 
-        // Show segment breakdown
-        console.log('\n📋 Instruments by Segment (Active):\n');
-        const segmentStats = await getSegmentStats();
-        segmentStats.forEach(stat => {
-            console.log(`   ${(stat.segment || 'Unknown').padEnd(20)}: ${Number(stat.count).toLocaleString()}`);
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ðŸ” QUERY: Fetch instruments for a specific watchlist
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+export function useWatchlistInstruments(watchlistId: string | null) {
+  return useQuery({
+    queryKey: ['watchlist', watchlistId],
+    queryFn: async () => {
+      if (!watchlistId) return [];
+      const res = await fetch(`/api/v1/watchlists/${watchlistId}/snapshot`);
+      if (!res.ok) throw new Error('Failed to fetch watchlist');
+      const { data } = await res.json();
+      return (data ?? []) as Stock[];
+    },
+    enabled: !!watchlistId,
+    staleTime: 15_000,
+    refetchOnWindowFocus: false,
+    retry: 0,
+    placeholderData: (prev) => prev,
+  });
+}
+
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// âœï¸ MUTATION: Create new watchlist
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+export function useCreateWatchlist() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async (name: string) => {
+      const res = await fetch('/api/v1/watchlists', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name }),
+      });
+      
+      if (!res.ok) throw new Error('Failed to create watchlist');
+      return res.json();
+    },
+    onSuccess: (result) => {
+      const createdWatchlist = result?.data;
+
+      if (createdWatchlist) {
+        queryClient.setQueryData<Watchlist[]>(['watchlists'], (current = []) => {
+          const withoutDuplicate = current.filter((item) => item.id !== createdWatchlist.id);
+          const defaultWatchlists = withoutDuplicate.filter((item) => item.isDefault);
+          const customWatchlists = withoutDuplicate.filter((item) => !item.isDefault);
+          return [...defaultWatchlists, createdWatchlist, ...customWatchlists];
         });
+      }
 
-        // Validation checks
-        console.log('\n✅ Validation Checks:\n');
-        
-        const [foCount] = await db
-            .select({ count: sql<number>`count(*)` })
-            .from(instruments)
-            .where(sql`segment = 'NSE_FO' AND "isActive" = true`);
-        
-        const foTotal = Number(foCount.count);
-        
-        if (foTotal > 1000) {
-            console.log(`   ✅ NSE_FO: ${foTotal.toLocaleString()} instruments`);
-        } else {
-            console.log(`   ⚠️  NSE_FO: Only ${foTotal.toLocaleString()} instruments (expected thousands)`);
-        }
-
-        const [eqCount] = await db
-            .select({ count: sql<number>`count(*)` })
-            .from(instruments)
-            .where(sql`segment = 'NSE_EQ' AND "isActive" = true`);
-        
-        const eqTotal = Number(eqCount.count);
-        
-        if (eqTotal > 100) {
-            console.log(`   ✅ NSE_EQ: ${eqTotal.toLocaleString()} instruments`);
-        } else {
-            console.log(`   ⚠️  NSE_EQ: Only ${eqTotal.toLocaleString()} instruments`);
-        }
-
-        console.log('\n' + '='.repeat(70));
-        console.log('');
-        console.log('✅ Sync completed successfully!\n');
-        
-        process.exit(0);
-    } catch (error: any) {
-        console.error('\n❌ Sync failed:', error.message);
-        console.error(error);
-        console.log('');
-        process.exit(1);
-    }
+      queryClient.invalidateQueries({ queryKey: ['watchlists'] });
+    },
+  });
 }
 
-async function getInstrumentStats() {
-    const [total] = await db
-        .select({ count: sql<number>`count(*)` })
-        .from(instruments);
-    
-    const [active] = await db
-        .select({ count: sql<number>`count(*)` })
-        .from(instruments)
-        .where(sql`"isActive" = true`);
-    
-    const [inactive] = await db
-        .select({ count: sql<number>`count(*)` })
-        .from(instruments)
-        .where(sql`"isActive" = false`);
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// âœï¸ MUTATION: Delete a watchlist
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+export function useDeleteWatchlist() {
+  const queryClient = useQueryClient();
 
-    return {
-        total: Number(total.count),
-        active: Number(active.count),
-        inactive: Number(inactive.count),
-    };
+  return useMutation({
+    mutationFn: async (watchlistId: string) => {
+      const res = await fetch(`/api/v1/watchlists/${watchlistId}`, {
+        method: 'DELETE',
+      });
+      
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || 'Failed to delete watchlist');
+      }
+      return res.json();
+    },
+    onSuccess: (_, deletedId) => {
+      queryClient.setQueryData<Watchlist[]>(['watchlists'], (current = []) => 
+        current.filter(w => w.id !== deletedId)
+      );
+      queryClient.removeQueries({ queryKey: ['watchlist', deletedId] });
+    },
+  });
 }
 
-async function getSegmentStats() {
-    return await db
-        .select({
-            segment: instruments.segment,
-            count: sql<number>`count(*)`,
-        })
-        .from(instruments)
-        .where(sql`"isActive" = true`)
-        .groupBy(instruments.segment)
-        .orderBy(sql`count(*) DESC`);
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// âœï¸ MUTATION: Add instrument to watchlist
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+export function useAddInstrument(watchlistId: string) {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async (input: AddInstrumentInput) => {
+      const instrumentToken =
+        typeof input === 'string' ? input : String(input.instrumentToken || '').trim();
+      const res = await fetch(`/api/v1/watchlists/${watchlistId}/instruments`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ instrumentToken }),
+      });
+      
+      if (!res.ok) throw new Error('Failed to add instrument');
+      return res.json();
+    },
+    onMutate: async (input: AddInstrumentInput) => {
+      await queryClient.cancelQueries({ queryKey: ['watchlist', watchlistId] });
+
+      const previousWatchlist = queryClient.getQueryData<Stock[]>(['watchlist', watchlistId]);
+      const optimisticStock = typeof input === 'string' ? null : input;
+      const optimisticToken = typeof input === 'string'
+        ? String(input || '').trim()
+        : String(input.instrumentToken || '').trim();
+
+      if (optimisticStock && optimisticToken) {
+        queryClient.setQueryData<Stock[]>(['watchlist', watchlistId], (current = []) => {
+          if (current.some((item) => item.instrumentToken === optimisticToken)) return current;
+          return [...current, optimisticStock];
+        });
+      }
+
+      return { previousWatchlist };
+    },
+    onError: (_error, _input, context) => {
+      if (context?.previousWatchlist) {
+        queryClient.setQueryData(['watchlist', watchlistId], context.previousWatchlist);
+      }
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['watchlist', watchlistId] });
+    },
+  });
 }
 
-function displayStats(stats: { total: number; active: number; inactive: number }) {
-    console.log(`   Total:            ${stats.total.toLocaleString()}`);
-    console.log(`   Active:           ${stats.active.toLocaleString()}`);
-    console.log(`   Inactive:         ${stats.inactive.toLocaleString()}`);
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// âœï¸ MUTATION: Remove instrument from watchlist
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+export function useRemoveInstrument(watchlistId: string) {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async (instrumentToken: string) => {
+      const res = await fetch(`/api/v1/watchlists/${watchlistId}/instruments/${instrumentToken}`, {
+        method: 'DELETE',
+      });
+      
+      if (!res.ok) throw new Error('Failed to remove instrument');
+      return res.json();
+    },
+    onMutate: async (instrumentToken: string) => {
+      await queryClient.cancelQueries({ queryKey: ['watchlist', watchlistId] });
+
+      const previousWatchlist = queryClient.getQueryData<Stock[]>(['watchlist', watchlistId]);
+
+      queryClient.setQueryData<Stock[]>(['watchlist', watchlistId], (current = []) =>
+        current.filter((item) => item.instrumentToken !== instrumentToken)
+      );
+
+      return { previousWatchlist };
+    },
+    onError: (_error, _instrumentToken, context) => {
+      if (context?.previousWatchlist) {
+        queryClient.setQueryData(['watchlist', watchlistId], context.previousWatchlist);
+      }
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['watchlist', watchlistId] });
+    },
+  });
 }
 
-main();
+
+

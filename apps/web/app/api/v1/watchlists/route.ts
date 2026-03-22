@@ -17,7 +17,6 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    await WatchlistService.ensureDefaultWatchlist(session.user.id);
     const watchlists = await WatchlistService.getUserWatchlists(session.user.id);
 
     return NextResponse.json({ success: true, data: watchlists });
