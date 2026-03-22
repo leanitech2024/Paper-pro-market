@@ -146,11 +146,7 @@ export function EquityTradingForm({
       <div className={cn("flex h-full min-h-0 flex-col bg-transparent", sheetMode && "rounded-none")}>
         <div className="flex shrink-0 items-center justify-between border-b border-slate-200/80 dark:border-white/[0.08] px-4 py-3">
           <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Equity Order</div>
-          <button type="button" onClick={() => onOpenSearch?.()} className="inline-flex items-center gap-1.5 rounded-md border border-slate-200/80 dark:border-white/[0.08] bg-white/40 dark:bg-white/5 px-2 py-1 text-[10px] font-semibold text-foreground hover:bg-slate-100 dark:hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-60" disabled={!onOpenSearch}>
-            <Search className="h-3 w-3" />Search
-          </button>
         </div>
-
         <div className={cn("flex-1 space-y-3 overflow-y-auto px-4 py-3 [scrollbar-width:thin]", sheetMode && "pb-20")}>
           {!selectedStock ? (
             <div className="flex h-full min-h-[220px] items-center justify-center rounded-xl border border-slate-200/80 dark:border-white/[0.08] bg-white/40 dark:bg-white/[0.02]">

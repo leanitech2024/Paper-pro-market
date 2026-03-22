@@ -95,9 +95,9 @@ export function AdaptiveTradeLayout({
 
   const renderDesktop = () => (
     <div className="grid h-full min-h-0" style={{ gridTemplateColumns: desktopColumns }}>
-      {desktopLeft ? <div className="min-h-0 overflow-y-auto border-r border-border">{desktopLeft}</div> : null}
+      {desktopLeft ? <div className="min-h-0 overflow-hidden border-r border-border">{desktopLeft}</div> : null}
       <div className="min-h-0 overflow-hidden">{desktopCenter}</div>
-      {desktopRight ? <div className="min-h-0 overflow-y-auto border-l border-border">{desktopRight}</div> : null}
+      {desktopRight ? <div className="min-h-0 overflow-hidden border-l border-border">{desktopRight}</div> : null}
     </div>
   );
 
