@@ -311,9 +311,14 @@ export function WatchlistPanel({ instruments, onSelect, selectedSymbol, onOpenSe
                       >
                         {(livePrice as number).toLocaleString('en-IN')}
                       </span>
-                      <span className="text-xs font-mono text-slate-500 dark:text-slate-400">
-                        {`${(liveChange ?? 0) >= 0 ? '+' : ''}${(liveChange ?? 0).toFixed(2)} (${(liveChangePercent ?? 0).toFixed(2)}%)`}
-                      </span>
+                      <div className="flex items-center gap-1 text-xs font-mono text-slate-500 dark:text-slate-400 whitespace-nowrap">
+                        <span>
+                          {`${(liveChange ?? 0) >= 0 ? '+' : ''}${(liveChange ?? 0).toFixed(2)}`}
+                        </span>
+                        <span>
+                          {`(${(liveChangePercent ?? 0).toFixed(2)}%)`}
+                        </span>
+                      </div>
                     </div>
                   ) : (
                     <div className="w-20" />

@@ -42,7 +42,7 @@ export function MarketStatusBar() {
 
   return (
     <div className="h-8 bg-card/60 backdrop-blur-md border-b border-white/5 flex items-center px-4 justify-between text-xs overflow-hidden">
-      <div className="flex items-center gap-4 text-muted-foreground font-mono">
+      <div className="flex items-center gap-2 text-muted-foreground font-mono">
         {INDEX_CONFIG.map((cfg) => {
           const key = cfg.instrumentKey;
           const quote =
@@ -69,12 +69,12 @@ export function MarketStatusBar() {
               >
                 {cfg.label}
               </span>
-              <span className="text-foreground tabular-nums min-w-[64px] inline-block text-right">
+              <span className="text-foreground tabular-nums text-right">
                 {formatPrice(price, hasQuote)}
               </span>
               <span
                 className={cn(
-                  "text-[10px] tabular-nums min-w-[56px] inline-block text-right",
+                  "text-[10px] tabular-nums text-right",
                   hasQuote ? (changePercent >= 0 ? "text-[#089981]" : "text-[#F23645]") : "text-muted-foreground"
                 )}
               >
