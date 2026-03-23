@@ -1,28 +1,33 @@
 "use client";
 
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { forwardRef } from 'react';
-import { cn } from '@/lib/utils';
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { forwardRef } from "react";
+import { cn } from "@/lib/utils";
 
-interface NavLinkProps {
+interface NavLinkProps
+  extends React.AnchorHTMLAttributes<HTMLAnchorElement> {
   to: string;
   className?: string;
   activeClassName?: string;
   children?: React.ReactNode;
-  onClick?: () => void;
+  onClick?: (e: React.MouseEvent<HTMLAnchorElement>) => void;
 }
 
 const NavLink = forwardRef<HTMLAnchorElement, NavLinkProps>(
-  ({ to, className, activeClassName, children, onClick, ...props }, ref) => {
+  (
+    { to, className, activeClassName, children, onClick, ...props },
+    ref
+  ) => {
     const pathname = usePathname();
-    // Use exact match for active state to avoid conflicts
+
+    // exact match (you can later extend this if needed)
     const isActive = pathname === to;
 
     return (
-      <Link 
-        href={to} 
-        ref={ref} 
+      <Link
+        href={to}
+        ref={ref}
         className={cn(className, isActive && activeClassName)}
         onClick={onClick}
         {...props}
@@ -30,9 +35,9 @@ const NavLink = forwardRef<HTMLAnchorElement, NavLinkProps>(
         {children}
       </Link>
     );
-  },
+  }
 );
 
-NavLink.displayName = 'NavLink';
+NavLink.displayName = "NavLink";
 
 export { NavLink };

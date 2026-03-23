@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from 'react';
+import { useSession } from 'next-auth/react';
 import { useSubscriptionStore } from '@/stores/subscription.store';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -9,6 +10,7 @@ import { Loader2 } from 'lucide-react';
 const RUPEE = "\u20B9";
 
 export default function SubscriptionPage() {
+  const { update } = useSession();
   const { plan, status, isTrialActive, trialEndDate, fetchSubscription, hasFetched } = useSubscriptionStore();
   const [isUpgrading, setIsUpgrading] = useState<null | 'basic' | 'pro'>(null);
 
@@ -33,6 +35,7 @@ export default function SubscriptionPage() {
         body: JSON.stringify({ plan: nextPlan }),
       });
       if (!res.ok) throw new Error('Upgrade failed');
+      await update({ subscriptionStatus: 'active' });
       await fetchSubscription();
       toast.success(`Upgraded to ${nextPlan === 'basic' ? 'Basic' : 'Pro'}`);
     } catch (error) {

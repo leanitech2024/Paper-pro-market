@@ -68,7 +68,7 @@ const HeroSection = () => {
 
           {/* Action Buttons */}
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <Link href="/trade/equity">
+            <Link href="/dashboard">
               <Button
                 size="lg"
                 className="h-12 px-8 rounded-full gap-2

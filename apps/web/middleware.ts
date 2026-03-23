@@ -120,8 +120,56 @@ export default auth((req) => {
     }
   }
 
-  // Allow all other routes
-  return NextResponse.next();
+  // 5. Expiry Gate — block specific routes, allow everything else
+  if (isLoggedIn) {
+    const isExpired = req.auth?.user?.subscriptionStatus === 'expired';
+    const isAdmin = req.auth?.user?.role === 'admin';
+
+    // Routes blocked when expired
+    const EXPIRY_BLOCKED_ROUTES = [
+      '/trade/equity',
+      '/trade/futures',
+      '/trade/options',
+      '/trade/strategy',
+      '/analytics',
+      '/journal',
+    ];
+
+    const isBlocked = EXPIRY_BLOCKED_ROUTES.some(r => path.startsWith(r));
+
+    if (isExpired && !isAdmin && isBlocked) {
+      return NextResponse.redirect(new URL('/subscription', nextUrl));
+    }
+  }
+
+  // 6. Plan Feature Gate
+  const PRO_ONLY_ROUTES = ['/analytics', '/journal'];
+  const isProOnlyRoute = PRO_ONLY_ROUTES.some(r => path.startsWith(r));
+
+  if (isLoggedIn && isProOnlyRoute) {
+    const subscriptionStatus = req.auth?.user?.subscriptionStatus;
+    const plan = req.auth?.user?.plan;
+    const isAdmin = req.auth?.user?.role === 'admin';
+    
+    const hasAccess = 
+      isAdmin ||
+      plan === 'pro' ||
+      (plan === 'free_trial' && subscriptionStatus === 'active');
+    
+    if (!hasAccess) {
+      return NextResponse.redirect(new URL('/subscription', nextUrl));
+    }
+  }
+
+  // Allow all other routes — inject x-pathname and x-user-id headers
+  const requestHeaders = new Headers(req.headers);
+  requestHeaders.set('x-pathname', path);
+  if (req.auth?.user?.id) {
+    requestHeaders.set('x-user-id', req.auth.user.id);
+  }
+  return NextResponse.next({
+    request: { headers: requestHeaders },
+  });
 });
 
 export const config = {

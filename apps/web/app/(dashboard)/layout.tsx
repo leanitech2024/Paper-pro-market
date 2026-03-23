@@ -2,7 +2,8 @@ import DashboardLayoutClient from '@/components/layout/DashboardLayoutClient';
 import { Providers } from '@/components/layout/Providers';
 import { auth } from '@/lib/auth';
 import { SubscriptionService } from '@/services/subscription/subscription.service';
-import { PlanExpiredModal } from '@/components/subscription/PlanExpiredModal';
+import { headers } from 'next/headers';
+import { redirect } from 'next/navigation';
 
 export default async function DashboardLayout({
   children,
@@ -22,11 +23,27 @@ export default async function DashboardLayout({
 
   const isExpired = status === 'expired' && role !== 'admin';
 
+  const headersList = await headers();
+  const pathname = headersList.get('x-pathname') ?? '';
+
+  const EXPIRY_BLOCKED_IN_LAYOUT = [
+    '/trade/equity',
+    '/trade/futures',
+    '/trade/options',
+    '/analytics',
+    '/journal',
+  ];
+
+  const isBlockedRoute = EXPIRY_BLOCKED_IN_LAYOUT.some(r => pathname.startsWith(r));
+
+  if (isExpired && isBlockedRoute) {
+    redirect('/subscription');
+  }
+
   return (
     <div data-theme="terminal" className="bg-background min-h-screen text-foreground font-sans ">
       <Providers>
         <DashboardLayoutClient>
-          {isExpired && <PlanExpiredModal />}
           {children}
         </DashboardLayoutClient>
       </Providers>

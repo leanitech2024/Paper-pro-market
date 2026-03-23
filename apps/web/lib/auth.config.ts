@@ -71,6 +71,15 @@ export const authConfig = {
                 if (token.onboardingCompleted !== undefined) {
                     session.user.onboardingCompleted = token.onboardingCompleted as boolean;
                 }
+                if (token.subscriptionStatus !== undefined) {
+                    session.user.subscriptionStatus = token.subscriptionStatus as string;
+                }
+                if (token.subscriptionCheckedAt !== undefined) {
+                    session.user.subscriptionCheckedAt = token.subscriptionCheckedAt as number;
+                }
+                if (token.plan !== undefined) {
+                    session.user.plan = token.plan as string;
+                }
             }
             return session;
         },
@@ -84,6 +93,15 @@ export const authConfig = {
                     token.role = user.role;
                 }
                 token.onboardingCompleted = user.onboardingCompleted ?? false;
+                if (user.subscriptionStatus !== undefined) {
+                    token.subscriptionStatus = user.subscriptionStatus;
+                }
+                if (user.subscriptionCheckedAt !== undefined) {
+                    token.subscriptionCheckedAt = user.subscriptionCheckedAt;
+                }
+                if (user.plan !== undefined) {
+                    token.plan = user.plan;
+                }
             } else if (!token.id && token.sub) {
                 token.id = token.sub;
             }

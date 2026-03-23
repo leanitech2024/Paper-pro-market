@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { Loader2, Check, X } from "lucide-react";
@@ -76,6 +77,7 @@ const plans = [
 ] as const;
 
 export function StepSelectPlan({ onNext }: StepSelectPlanProps) {
+  const { update } = useSession();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
 
@@ -90,6 +92,8 @@ export function StepSelectPlan({ onNext }: StepSelectPlanProps) {
       });
 
       if (!res.ok) throw new Error("Failed to select plan");
+
+      await update({ subscriptionStatus: 'active' });
 
       toast.success(`${plan === "free_trial" ? "Trial" : plan} plan selected`);
       onNext();

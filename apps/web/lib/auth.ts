@@ -124,10 +124,32 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         if (sessionUser?.onboardingCompleted !== undefined) {
           token.onboardingCompleted = sessionUser.onboardingCompleted;
         }
+        if (sessionUser?.subscriptionStatus !== undefined) {
+          token.subscriptionStatus = sessionUser.subscriptionStatus;
+        }
+        if (sessionUser?.plan !== undefined) {
+          token.plan = sessionUser.plan;
+        }
       }
       if (!token.id && token.sub) {
         token.id = token.sub;
       }
+
+      if (token.id) {
+        const tokenAge = Date.now() - ((token.subscriptionCheckedAt as number) ?? 0);
+        if (!token.subscriptionStatus || trigger === "update" || tokenAge > 3600_000) {
+          try {
+            const sub = await SubscriptionService.getEffectivePlan(token.id);
+            token.subscriptionStatus = sub.status;
+            token.plan = sub.plan;
+            token.subscriptionCheckedAt = Date.now();
+          } catch (error) {
+            logger.error({ err: error, userId: token.id }, "Failed to fetch subscription status for JWT");
+            token.subscriptionStatus = token.subscriptionStatus || "unknown";
+          }
+        }
+      }
+
       return token;
     },
   },

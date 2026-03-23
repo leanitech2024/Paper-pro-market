@@ -7,6 +7,9 @@ declare module "next-auth" {
       id: string;
       role?: string;
       onboardingCompleted?: boolean;
+      subscriptionStatus?: string;
+      subscriptionCheckedAt?: number;
+      plan?: string;
     } & DefaultSession["user"];
   }
 
@@ -14,6 +17,9 @@ declare module "next-auth" {
     id: string;
     role?: string;
     onboardingCompleted?: boolean;
+    subscriptionStatus?: string;
+    subscriptionCheckedAt?: number;
+    plan?: string;
   }
 }
 
@@ -22,5 +28,8 @@ declare module "next-auth/jwt" {
     id: string;
     role?: string;
     onboardingCompleted?: boolean;
+    subscriptionStatus?: string;
+    subscriptionCheckedAt?: number;
+    plan?: string;
   }
 }

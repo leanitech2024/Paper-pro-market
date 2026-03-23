@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { OrderService } from "@/services/trading/order/order.service";
 import { handleError, ApiError } from "@/lib/errors";
 import { PlaceOrderSchema, OrderQuerySchema } from "@paper-market/core";
+import { requireActiveSubscription } from "@/lib/subscription.guard";
 
 /**
  * Place a new order.
@@ -13,6 +14,14 @@ export async function POST(req: NextRequest) {
         if (!session?.user?.id) {
             console.warn("⚠️ Order Route: No Session ID found");
             throw new ApiError("Unauthorized", 401, "UNAUTHORIZED");
+        }
+
+        const hasActiveSubscription = await requireActiveSubscription(session.user.id);
+        if (!hasActiveSubscription) {
+            return NextResponse.json(
+                { error: 'Subscription expired', code: 'SUBSCRIPTION_EXPIRED' },
+                { status: 403 }
+            );
         }
 
         const body = await req.json();

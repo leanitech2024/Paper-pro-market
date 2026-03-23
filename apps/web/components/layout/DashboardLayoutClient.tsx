@@ -27,6 +27,18 @@ export default function DashboardLayoutClient({ children }: { children: ReactNod
   const fetchWallet = useWalletStore((state) => state.fetchWallet);
   const fetchPositions = usePositionsStore((state) => state.fetchPositions);
   const fetchSubscription = useSubscriptionStore((state) => state.fetchSubscription);
+  const seedFromSession = useSubscriptionStore((state) => state.seedFromSession);
+  const { data: session } = useSession();
+
+  // Seed store immediately from JWT — shows correct lock state before fetch completes
+  useEffect(() => {
+    if (session?.user?.subscriptionStatus) {
+      seedFromSession(
+        (session.user as { plan?: string }).plan ?? 'free_trial',
+        session.user.subscriptionStatus,
+      );
+    }
+  }, [session, seedFromSession]);
 
   useEffect(() => {
     fetchWallet();
@@ -71,6 +83,9 @@ function DashboardContentWrapper({ children }: { children: ReactNode }) {
   const { isOpen, searchMode, placeholder, onSelect, closeSearch } = useSearchStore();
   const { data: session } = useSession();
   const isAdmin = session?.user?.role === 'admin';
+  // Note: session is already consumed in the parent for seeding — these selectors react to store updates
+  const plan = useSubscriptionStore((state) => state.plan);
+  const subscriptionStatus = useSubscriptionStore((state) => state.status);
 
   return (
 
@@ -88,6 +103,8 @@ function DashboardContentWrapper({ children }: { children: ReactNode }) {
         setMobileOpen={setMobileMenuOpen}
         compactHidden={isEquityTradeRoute}
         disableMobile={isEquityTradeRoute}
+        plan={plan}
+        subscriptionStatus={subscriptionStatus}
       />
 
       <div

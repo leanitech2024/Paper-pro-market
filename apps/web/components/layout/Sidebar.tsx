@@ -1,6 +1,7 @@
 "use client";
 
 import { NavLink } from '@/components/NavLink';
+import { toast } from 'sonner';
 import {
   LayoutDashboard,
   TrendingUp,
@@ -12,7 +13,8 @@ import {
   BarChart3,
   Shield,
   Crown,
-  LucideIcon
+  LucideIcon,
+  Lock
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import Logo from '@/components/general/Logo';
@@ -25,6 +27,7 @@ interface NavItem {
   icon: LucideIcon;
   label: string;
   adminOnly?: boolean;
+  requiresPro?: boolean;
   children?: { to: string; icon: LucideIcon; label: string }[];
 }
 
@@ -43,8 +46,8 @@ const navItems: NavItem[] = [
   { to: '/positions', icon: Briefcase, label: 'Positions' },
   { to: '/orders', icon: History, label: 'Orders' },
   { to: '/watchlist', icon: Eye, label: 'Watchlist' },
-  { to: '/analytics', icon: BarChart3, label: 'Analytics' },
-  { to: '/journal', icon: BookOpen, label: 'Journal' },
+  { to: '/analytics', icon: BarChart3, label: 'Analytics', requiresPro: true },
+  { to: '/journal', icon: BookOpen, label: 'Journal', requiresPro: true },
   { to: '/subscription', icon: Crown, label: 'Plans' },
   { to: '/settings', icon: Settings, label: 'Settings' },
   { to: '/admin', icon: Shield, label: 'Admin', adminOnly: true },
@@ -56,6 +59,8 @@ interface SidebarProps {
   setMobileOpen?: (open: boolean) => void;
   compactHidden?: boolean;
   disableMobile?: boolean;
+  plan?: string;
+  subscriptionStatus?: string;
 }
 
 export function Sidebar({
@@ -64,13 +69,37 @@ export function Sidebar({
   setMobileOpen,
   compactHidden = false,
   disableMobile = false,
+  plan,
+  subscriptionStatus,
 }: SidebarProps) {
   const pathname = usePathname();
   const filteredNavItems = navItems.filter((item) => !item.adminOnly || isAdmin);
 
-  const NavContent = () => (
-    <nav className="flex-1 space-y-1 p-2 overflow-y-auto overflow-x-hidden scrollbar-none">
-      {filteredNavItems.map((item) => {
+  const isLocked = (item: NavItem): boolean => {
+    if (!item.requiresPro) return false;
+    if (plan === 'pro') return false;
+    if (plan === 'free_trial' && subscriptionStatus === 'active') return false;
+    return true; // basic or expired trial
+  };
+
+  const isExpiredUser = subscriptionStatus === 'expired';
+
+  const NavContent = () => {
+    const handleNavClick = (e: React.MouseEvent, item: NavItem) => {
+      if (isLocked(item)) {
+        e.preventDefault();
+        toast.error('Upgrade your plan to access this feature', {
+          description: 'This feature requires a Pro plan.',
+          duration: 3000,
+        });
+        return;
+      }
+      setMobileOpen?.(false);
+    };
+
+    return (
+      <nav className="flex-1 space-y-1 p-2 overflow-y-auto overflow-x-hidden scrollbar-none">
+        {filteredNavItems.map((item) => {
         const isParentActive = pathname?.startsWith(item.to);
 
         // --- Render Group with Children (Trade) ---
@@ -105,10 +134,42 @@ export function Sidebar({
                 "md:opacity-0 md:max-h-0 md:overflow-hidden md:pointer-events-none",
                 "md:group-hover:opacity-100 md:group-hover:max-h-96 md:group-hover:pointer-events-auto"
               )}>
-                {item.children.map((child) => {
+              {item.children.map((child) => {
                   const isChildActive =
                     pathname === child.to || pathname?.startsWith(`${child.to}/`);
-                  
+
+                  if (isExpiredUser) {
+                    return (
+                      <div
+                        key={child.to}
+                        onClick={() => {
+                          toast.error('Subscription expired', {
+                            description: 'Please upgrade your plan to access trading features.',
+                            duration: 3000,
+                          });
+                        }}
+                        className={cn(
+                          'flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium overflow-hidden',
+                          'transition-all duration-200 cursor-pointer opacity-60',
+                          'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
+                          'md:group-hover:pl-6',
+                          'pl-3',
+                        )}
+                      >
+                        <child.icon className="h-5 w-5 flex-shrink-0" />
+                        <span className={cn(
+                          "whitespace-nowrap transition-all duration-200 flex items-center gap-1.5",
+                          "max-md:block max-md:opacity-100",
+                          "md:opacity-0 md:max-w-0 md:overflow-hidden",
+                          "md:group-hover:opacity-100 md:group-hover:max-w-[200px]"
+                        )}>
+                          {child.label}
+                          <Lock className="h-3 w-3 text-slate-400 dark:text-slate-500 flex-shrink-0" />
+                        </span>
+                      </div>
+                    );
+                  }
+
                   return (
                     <NavLink
                       key={child.to}
@@ -150,29 +211,53 @@ export function Sidebar({
         
         return (
           <div key={item.to} className="relative group/item">
-            <NavLink
-              to={item.to}
-              className={cn(
-                'flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium overflow-hidden',
-                'transition-all duration-200',
-                'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
-                isActive && 'bg-sidebar-accent text-sidebar-accent-foreground'
-              )}
-              activeClassName="bg-sidebar-accent text-sidebar-accent-foreground"
-              onClick={() => setMobileOpen?.(false)}
-            >
-              <item.icon className="h-5 w-5 flex-shrink-0" />
+            {isLocked(item) ? (
+              <div
+                onClick={(e) => handleNavClick(e, item)}
+                className={cn(
+                  'flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium',
+                  'cursor-pointer opacity-60',
+                  'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
+                )}
+              >
+                <item.icon className="h-5 w-5 flex-shrink-0" />
+                <span className={cn(
+                  "whitespace-nowrap transition-all duration-200 flex items-center gap-1.5",
+                  "max-md:block max-md:opacity-100",
+                  "md:opacity-0 md:max-w-0 md:overflow-hidden",
+                  "md:group-hover:opacity-100 md:group-hover:max-w-[200px]"
+                )}>
+                  {item.label}
+                  <Lock className="h-3 w-3 text-slate-400 dark:text-slate-500 flex-shrink-0" />
+                </span>
+              </div>
+            ) : (
+              <NavLink
+                to={item.to}
+                className={cn(
+                  'flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium overflow-hidden',
+                  'transition-all duration-200',
+                  'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
+                  isActive && 'bg-sidebar-accent text-sidebar-accent-foreground'
+                )}
+                activeClassName="bg-sidebar-accent text-sidebar-accent-foreground"
+                onClick={(e) => handleNavClick(e, item)}
+              >
+                <item.icon className="h-5 w-5 flex-shrink-0" />
 
-              <span className={cn(
-                "whitespace-nowrap transition-all duration-200",
-                // Desktop: hide when sidebar collapsed
-                "max-md:block max-md:opacity-100",
-                "md:opacity-0 md:max-w-0 md:overflow-hidden",
-                "md:group-hover:opacity-100 md:group-hover:max-w-[200px]"
-              )}>
-                {item.label}
-              </span>
-            </NavLink>
+                <span className={cn(
+                  "whitespace-nowrap transition-all duration-200 flex items-center gap-1.5",
+                  "max-md:block max-md:opacity-100",
+                  "md:opacity-0 md:max-w-0 md:overflow-hidden",
+                  "md:group-hover:opacity-100 md:group-hover:max-w-[200px]"
+                )}>
+                  {item.label}
+                  {isLocked(item) && (
+                    <Lock className="h-3 w-3 text-slate-400 dark:text-slate-500 flex-shrink-0" />
+                  )}
+                </span>
+              </NavLink>
+            )}
 
             {/* Tooltip for collapsed state (Desktop Only) */}
             <div className={cn(
@@ -188,6 +273,7 @@ export function Sidebar({
       })}
     </nav>
   );
+  };
 
   return (
     <>
