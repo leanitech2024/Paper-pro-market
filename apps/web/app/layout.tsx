@@ -27,7 +27,7 @@ export const metadata = {
   },
   openGraph: {
     type: 'website',
-    locale: 'en_US',
+    locale: 'en_IN',
     url: 'https://paper-market-pro.com',
     title: 'Paper Market Pro - Paper Trading Platform',
     description: 'Master stock trading with our advanced paper trading platform.',
@@ -38,6 +38,15 @@ export const metadata = {
     title: 'Paper Market Pro - Paper Trading Platform',
     description: 'Master stock trading with our advanced paper trading platform.',
     creator: '@papermarketpro',
+  },
+  icons: {
+    icon: [
+      { url: '/icon.png', type: 'image/png' },
+      { url: '/favicon.ico', sizes: 'any' },
+    ],
+    apple: [
+      { url: '/icon.png', type: 'image/png' },
+    ],
   },
 };
 
