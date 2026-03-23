@@ -1,645 +1,974 @@
-/* =========================================================================
- * FILE: apps/web/jobs/market-tick.job.ts
- * ========================================================================= */
-import { marketSimulation } from "@/services/market/feeds/market-simulation.service";
-import { logger } from "@/lib/logger";
-import { SlTargetEngineService } from "@/services/trading/execution/sl-target-engine.service";
 
-class MarketTickJob {
-    private intervalId: NodeJS.Timeout | null = null;
-    private tickCount: number = 0;
-    private isRunning: boolean = false;
+--- apps/web/app/api/v1/orders/route.ts ---
+import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@/lib/auth";
+import { OrderService } from "@/services/trading/order/order.service";
+import { handleError, ApiError } from "@/lib/errors";
+import { PlaceOrderSchema, OrderQuerySchema } from "@paper-market/core";
+import { requireActiveSubscription } from "@/lib/subscription.guard";
 
-    /**
-     * Start the market tick job.
-     * Idempotent - safe to call multiple times.
-     */
-    async start(): Promise<void> {
-        if (this.isRunning) {
-            logger.warn("MarketTickJob already running");
-            return;
+/**
+ * Place a new order.
+ */
+export async function POST(req: NextRequest) {
+    try {
+        const session = await auth();
+        if (!session?.user?.id) {
+            console.warn("⚠️ Order Route: No Session ID found");
+            throw new ApiError("Unauthorized", 401, "UNAUTHORIZED");
         }
 
-        try {
-            // Initialize the simulation service
-            await marketSimulation.initialize();
-
-            // Start the tick interval
-            this.intervalId = setInterval(() => {
-                void this.executeTick();
-            }, 1000);
-
-            this.isRunning = true;
-            logger.info("MarketTickJob started");
-        } catch (error) {
-            logger.error({ err: error }, "Failed to start MarketTickJob");
-            throw error;
-        }
-    }
-
-    /**
-     * Stop the market tick job.
-     */
-    stop(): void {
-        if (this.intervalId) {
-            clearInterval(this.intervalId);
-            this.intervalId = null;
+        const hasActiveSubscription = await requireActiveSubscription(session.user.id);
+        if (!hasActiveSubscription) {
+            return NextResponse.json(
+                { error: 'Subscription expired', code: 'SUBSCRIPTION_EXPIRED' },
+                { status: 403 }
+            );
         }
 
-        this.isRunning = false;
-        this.tickCount = 0;
-        logger.info("MarketTickJob stopped");
-    }
+        const body = await req.json();
+        const validated = PlaceOrderSchema.parse(body);
 
-    /**
-     * Get the current status of the job.
-     */
-    getStatus(): { isRunning: boolean; tickCount: number; symbolCount: number } {
-        return {
-            isRunning: this.isRunning,
-            tickCount: this.tickCount,
-            symbolCount: marketSimulation.getSymbolCount(),
-        };
-    }
+        const order = await OrderService.placeOrder(session.user.id, validated);
 
-    /**
-     * Execute a single tick.
-     * Logs every 10 ticks.
-     */
-    private async executeTick(): Promise<void> {
-        try {
-            marketSimulation.tick();
-            this.tickCount++;
-
-            // Log every 10 ticks
-            if (this.tickCount % 10 === 0) {
-                logger.info(
-                    {
-                        tickCount: this.tickCount,
-                        symbolCount: marketSimulation.getSymbolCount(),
-                    },
-                    "Market tick checkpoint"
-                );
-            }
-
-            await SlTargetEngineService.checkAndExecute();
-            await SlTargetEngineService.misSquareOff();
-        } catch (error) {
-            logger.error({ err: error, tickCount: this.tickCount }, "Market tick failed");
-        }
+        return NextResponse.json({
+            success: true,
+            data: order,
+        }, { status: 201 });
+    } catch (error) {
+        return handleError(error);
     }
 }
 
-declare global {
-    var __marketTickJob: MarketTickJob | undefined;
+/**
+ * Get orders for the authenticated user.
+ */
+export async function GET(req: NextRequest) {
+    try {
+        const session = await auth();
+        if (!session?.user?.id) {
+            throw new ApiError("Unauthorized", 401, "UNAUTHORIZED");
+        }
+
+        const searchParams = req.nextUrl.searchParams;
+        const filters = OrderQuerySchema.parse({
+            status: searchParams.get("status") || undefined,
+            symbol: searchParams.get("symbol") || undefined,
+            limit: searchParams.get("limit") ? parseInt(searchParams.get("limit")!) : undefined,
+            page: searchParams.get("page") ? parseInt(searchParams.get("page")!) : undefined,
+        });
+
+        const orders = await OrderService.getOrders(session.user.id, filters);
+
+        return NextResponse.json({
+            success: true,
+            data: orders,
+        });
+    } catch (error) {
+        return handleError(error);
+    }
 }
 
-const globalState = globalThis as unknown as {
-    __marketTickJob?: MarketTickJob;
+
+--- apps/web/app/(dashboard)/orders/page.tsx ---
+"use client";
+import { useState, useMemo, useEffect } from 'react';
+import Link from 'next/link';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { useOrdersStore } from '@/stores/trading/orders.store';
+import { cn } from '@/lib/utils';
+import { format } from 'date-fns';
+import { Search, ArrowUpDown, History, TrendingUp, TrendingDown, Download, X } from 'lucide-react';
+import { formatExpiryLabel, daysToExpiry, isExpired } from '@paper-market/core';
+import Spinner from '@/components/ui/spinner';
+
+const OrdersPage = () => {
+  const { trades, isLoading, hasFetched, error, fetchOrders, cancelOrder } = useOrdersStore();
+  const [searchQuery, setSearchQuery] = useState('');
+  const [sortBy, setSortBy] = useState<'date' | 'pnl'>('date');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'OPEN' | 'CLOSED'>('all');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [cancellingOrderId, setCancellingOrderId] = useState<string | null>(null);
+  const itemsPerPage = 10;
+
+  // Fetch orders on mount
+  useEffect(() => {
+    if (!hasFetched) {
+      fetchOrders();
+    }
+  }, [hasFetched, fetchOrders]);
+
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: 'INR',
+      maximumFractionDigits: 2,
+    }).format(value);
+  };
+
+  const filteredAndSortedTrades = useMemo(() => {
+    let result = [...trades];
+
+    // Filter by status
+    if (statusFilter !== 'all') {
+      result = result.filter((trade) => trade.status === statusFilter);
+    }
+
+    // Filter by search
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      result = result.filter(
+        (trade) =>
+          trade.symbol.toLowerCase().includes(query) ||
+          trade.name.toLowerCase().includes(query)
+      );
+    }
+
+    // Sort
+    result.sort((a, b) => {
+      let comparison = 0;
+      if (sortBy === 'date') {
+        const aTime = new Date(a.entryTime).getTime();
+        const bTime = new Date(b.entryTime).getTime();
+        comparison = bTime - aTime;
+      } else if (sortBy === 'pnl') {
+        comparison = (b.pnl || 0) - (a.pnl || 0);
+      }
+      return sortOrder === 'asc' ? -comparison : comparison;
+    });
+
+    return result;
+  }, [trades, searchQuery, sortBy, sortOrder, statusFilter]);
+
+  const paginatedTrades = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    return filteredAndSortedTrades.slice(startIndex, startIndex + itemsPerPage);
+  }, [filteredAndSortedTrades, currentPage]);
+
+  const totalPages = Math.ceil(filteredAndSortedTrades.length / itemsPerPage);
+
+  const handleExport = (format: 'csv' | 'json') => {
+    // Basic export implementation for demonstration
+    if (filteredAndSortedTrades.length === 0) return;
+
+    if (format === 'csv') {
+      const headers = ['id', 'symbol', 'name', 'side', 'quantity', 'orderType', 'status', 'entryPrice', 'exitPrice', 'pnl', 'entryTime'];
+      const csvData = filteredAndSortedTrades.map(trade => 
+        headers.map(header => JSON.stringify(trade[header as keyof typeof trade] || '')).join(',')
+      );
+      const csvString = [headers.join(','), ...csvData].join('\n');
+      
+      const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `orders_export_${new Date().toISOString().split('T')[0]}.csv`;
+      link.click();
+    } else if (format === 'json') {
+      const jsonString = JSON.stringify(filteredAndSortedTrades, null, 2);
+      const blob = new Blob([jsonString], { type: 'application/json' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `orders_export_${new Date().toISOString().split('T')[0]}.json`;
+      link.click();
+    }
+  };
+
+  const toggleSort = (field: 'date' | 'pnl') => {
+    if (sortBy === field) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortBy(field);
+      setSortOrder('desc');
+    }
+  };
+
+  const handleCancelOrder = async (orderId: string) => {
+    setCancellingOrderId(orderId);
+    try {
+      await cancelOrder(orderId);
+    } catch (error) {
+      // Error is handled in the store which triggers a toast notification
+    } finally {
+      setCancellingOrderId(null);
+    }
+  };
+
+  return (
+    <div className="space-y-6 p-4 md:p-6 lg:p-8">
+      {/* Page Header */}
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-950 dark:text-slate-100">Order History</h1>
+          <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mt-1">View and manage your trade executions</p>
+        </div>
+      </div>
+
+      {/* Modern Filter Section */}
+      <div className="grid gap-3 sm:flex sm:items-center sm:gap-3">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500 dark:text-slate-400" />
+          <Input
+            placeholder="Search symbols..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-10 h-11 bg-white/60 backdrop-blur-lg dark:bg-[#0c1322]/60 border-slate-200 dark:border-white/[0.08] rounded-xl focus-visible:ring-primary/20 transition-all shadow-sm"
+          />
+        </div>
+        
+        <div className="flex items-center gap-2">
+          <div className="flex-1 grid grid-cols-2 gap-2 sm:flex sm:w-auto">
+            <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as 'all' | 'OPEN' | 'CLOSED')}>
+              <SelectTrigger className="h-11 bg-white/60 backdrop-blur-lg dark:bg-[#0c1322]/60 border-slate-200 dark:border-white/[0.08] rounded-xl px-3 sm:w-[130px] shadow-sm">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Status</SelectItem>
+                <SelectItem value="OPEN">Open</SelectItem>
+                <SelectItem value="CLOSED">Closed</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Select value={sortBy} onValueChange={(v) => setSortBy(v as 'date' | 'pnl')}>
+              <SelectTrigger className="h-11 bg-white/60 backdrop-blur-lg dark:bg-[#0c1322]/60 border-slate-200 dark:border-white/[0.08] rounded-xl px-3 sm:w-[130px] shadow-sm">
+                <SelectValue placeholder="Sort by" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="date">Latest Date</SelectItem>
+                <SelectItem value="pnl">Highest P&L</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button 
+                variant="outline" 
+                className="h-11 px-3 sm:px-4 border-slate-200 dark:border-white/[0.08] rounded-xl bg-white/60 backdrop-blur-lg dark:bg-[#0c1322]/60 hover:bg-slate-100 dark:hover:bg-white/[0.1] transition-all shrink-0 shadow-sm"
+              >
+                <Download className="h-4 w-4 sm:mr-2" />
+                <span className="hidden sm:inline font-medium">Export</span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-40 rounded-xl bg-white/90 backdrop-blur-xl dark:bg-[#0c1322]/90 border-slate-200 dark:border-white/[0.08]">
+              <DropdownMenuItem onClick={() => handleExport('csv')} className="gap-2 cursor-pointer font-medium hover:bg-slate-100 dark:hover:bg-white/[0.05]">
+                Export as CSV
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleExport('json')} className="gap-2 cursor-pointer font-medium hover:bg-slate-100 dark:hover:bg-white/[0.05]">
+                Export as JSON
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </div>
+
+      {/* Orders Table */}
+      <div className="rounded-[28px] border border-slate-200/80 bg-white dark:border-white/[0.08] dark:bg-[#0c1322] shadow-sm overflow-hidden flex flex-col">
+        <div className="flex items-center justify-between border-b border-slate-200 p-5 dark:border-white/[0.08] bg-slate-50/50 dark:bg-black/10">
+          <h2 className="text-lg font-semibold flex items-center gap-2 text-slate-950 dark:text-slate-100">
+            <History className="h-5 w-5 text-slate-600 dark:text-slate-300" />
+            Executions
+            {trades.length > 0 && (
+              <Badge variant="secondary" className="bg-slate-200/50 text-slate-700 dark:bg-white/[0.08] dark:text-slate-300 border-none px-2 py-0.5 h-6">
+                {trades.length}
+              </Badge>
+            )}
+          </h2>
+        </div>
+        <div className="p-0 flex-1 flex flex-col min-h-0">
+          {/* Loading State */}
+          {!hasFetched ? (
+            <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
+              <Spinner size={48} className="mb-4 text-primary" />
+              <p className="text-lg font-medium">Loading your orders...</p>
+            </div>
+          ) : error ? (
+            /* Error State */
+            <div className="flex flex-col items-center justify-center py-20 text-destructive">
+              <X className="h-12 w-12 mb-4 opacity-50" />
+              <p className="text-lg font-medium">Failed to load orders</p>
+              <p className="text-sm text-muted-foreground mb-4">{error}</p>
+              <Button onClick={() => fetchOrders()} variant="outline" className="rounded-xl px-6">
+                Try Again
+              </Button>
+            </div>
+          ) : trades.length === 0 ? (
+            /* Empty State */
+            <div className="flex flex-col items-center justify-center py-20 text-slate-500 dark:text-slate-400 text-center px-6">
+              <div className="h-20 w-20 bg-slate-100 dark:bg-white/[0.02] rounded-full flex items-center justify-center mb-4">
+                <History className="h-10 w-10 opacity-30" />
+              </div>
+              <p className="text-lg font-semibold text-slate-950 dark:text-slate-100">No Orders Found</p>
+              <p className="text-sm max-w-xs mx-auto mt-1">You haven't placed any trades yet. Head over to the terminal to get started.</p>
+              <Link href="/trade">
+                <Button variant="outline" className="mt-6 rounded-xl border-slate-200 dark:border-white/[0.08] hover:bg-slate-50 dark:hover:bg-white/[0.04]">Go to Terminal</Button>
+              </Link>
+            </div>
+          ) : (
+            <>
+              {/* Mobile Card View */}
+              <div className="block lg:hidden divide-y divide-border/50">
+                {paginatedTrades.map((trade) => (
+                  <div key={trade.id} className="p-5 hover:bg-muted/5 transition-colors">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex flex-col">
+                        <span className="font-bold text-base text-foreground leading-tight">{trade.symbol}</span>
+                        <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium mt-0.5">{trade.name}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Badge
+                          variant="outline"
+                          className={cn(
+                            'text-[10px] uppercase font-bold px-2 py-0 border-none rounded-md',
+                            trade.side === 'BUY'
+                              ? 'bg-success/10 text-success'
+                              : 'bg-destructive/10 text-destructive'
+                          )}
+                        >
+                          {trade.side}
+                        </Badge>
+                        <Badge
+                          className={cn(
+                            'text-[10px] font-bold px-2 py-0 border-none rounded-md',
+                            trade.status === 'OPEN'
+                              ? 'bg-primary/20 text-primary'
+                              : 'bg-muted text-muted-foreground'
+                          )}
+                        >
+                          {trade.status}
+                        </Badge>
+                      </div>
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-y-4 gap-x-6 text-sm">
+                      <div>
+                        <p className="text-muted-foreground text-[11px] uppercase tracking-tight font-semibold mb-1">Quantity</p>
+                        <p className="font-bold text-foreground">{trade.quantity}</p>
+                      </div>
+                      <div>
+                        <p className="text-muted-foreground text-[11px] uppercase tracking-tight font-semibold mb-1">Entry Price</p>
+                        <p className="font-bold text-foreground">
+                          {trade.orderType === 'MARKET' && trade.entryPrice === 0
+                            ? 'Market'
+                            : formatCurrency(trade.entryPrice)}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-muted-foreground text-[11px] uppercase tracking-tight font-semibold mb-1">Exit Price</p>
+                        <p className="font-bold text-foreground">
+                          {trade.status === 'CLOSED' ? formatCurrency(trade.exitPrice || 0) : '-'}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-muted-foreground text-[11px] uppercase tracking-tight font-semibold mb-1">Net P&L</p>
+                        <p className={cn(
+                          'font-bold',
+                          trade.status === 'OPEN' ? 'text-muted-foreground' :
+                            (trade.pnl || 0) >= 0 ? 'text-profit' : 'text-loss'
+                        )}>
+                          {trade.status === 'CLOSED'
+                            ? `${(trade.pnl || 0) >= 0 ? '+' : ''}${formatCurrency(trade.pnl || 0)}`
+                            : '-'
+                          }
+                        </p>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center justify-between mt-5 pt-4 border-t border-border/30">
+                      <p className="text-[11px] text-muted-foreground font-medium bg-muted/20 px-2 py-1 rounded-md">
+                        {format(new Date(trade.entryTime), 'dd MMM yyyy, HH:mm')}
+                      </p>
+                      {(trade.status === 'PENDING' || trade.status === 'OPEN') && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleCancelOrder(trade.id)}
+                          disabled={cancellingOrderId === trade.id}
+                          className="text-destructive hover:text-destructive hover:bg-destructive/10 h-8 rounded-lg px-3"
+                        >
+                          {cancellingOrderId === trade.id ? (
+                            <Spinner size={12} />
+                          ) : (
+                            <>
+                              <X className="h-3.5 w-3.5 mr-1.5" />
+                              <span className="text-xs font-bold uppercase">Cancel</span>
+                            </>
+                          )}
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Desktop Table View */}
+              <div className="hidden lg:block overflow-y-auto max-h-[600px]">
+                <Table className="relative min-w-[800px]">
+                  <TableHeader className="sticky top-0 z-10 border-b border-slate-200 bg-slate-50/95 backdrop-blur shadow-sm dark:border-white/[0.08] dark:bg-[#0c1322]/95">
+                    <TableRow className="border-none hover:bg-transparent">
+                      <TableHead
+                        className="text-xs font-bold text-muted-foreground uppercase tracking-wider pl-6 cursor-pointer hover:text-foreground transition-colors"
+                        onClick={() => toggleSort('date')}
+                      >
+                        <div className="flex items-center gap-1.5">
+                          Date & Time
+                          <ArrowUpDown className="h-3 w-3" />
+                        </div>
+                      </TableHead>
+                      <TableHead className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Instrument</TableHead>
+                      <TableHead className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Side</TableHead>
+                      <TableHead className="text-xs font-bold text-muted-foreground uppercase tracking-wider text-right">Qty</TableHead>
+                      <TableHead className="text-xs font-bold text-muted-foreground uppercase tracking-wider text-right">Avg. Entry</TableHead>
+                      <TableHead className="text-xs font-bold text-muted-foreground uppercase tracking-wider text-right">Avg. Exit</TableHead>
+                      <TableHead
+                        className="text-xs font-bold text-muted-foreground uppercase tracking-wider text-right cursor-pointer hover:text-foreground transition-colors"
+                        onClick={() => toggleSort('pnl')}
+                      >
+                        <div className="flex items-center justify-end gap-1.5">
+                          Realized P&L
+                          <ArrowUpDown className="h-3 w-3" />
+                        </div>
+                      </TableHead>
+                      <TableHead className="text-xs font-bold text-muted-foreground uppercase tracking-wider pr-6">Status</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody className="divide-y divide-slate-100 dark:divide-white/[0.05]">
+                    {paginatedTrades.map((trade) => (
+                      <TableRow key={trade.id} className="border-none hover:bg-slate-50 dark:hover:bg-white/[0.02] transition-colors group">
+                        <TableCell className="pl-6 py-4">
+                          <div>
+                            <p className="font-semibold text-foreground text-sm">
+                              {format(new Date(trade.entryTime), 'dd MMM yyyy')}
+                            </p>
+                            <p className="text-[11px] text-muted-foreground font-medium mt-0.5 opacity-70">
+                              {format(new Date(trade.entryTime), 'HH:mm:ss')}
+                            </p>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div>
+                            <p className="font-bold text-foreground text-sm">{trade.symbol}</p>
+                            <p className="text-[11px] text-muted-foreground font-medium truncate max-w-[150px] opacity-70">
+                              {trade.name}
+                              {trade.expiryDate && (
+                                <span className={cn(
+                                  "ml-2",
+                                  isExpired(trade.expiryDate) ? "text-muted-foreground" :
+                                    daysToExpiry(trade.expiryDate) === 0 ? "text-destructive font-bold" :
+                                      daysToExpiry(trade.expiryDate) <= 2 ? "text-orange-500 font-bold" :
+                                        "text-primary/70 font-semibold"
+                                )}>
+                                  • {formatExpiryLabel(trade.expiryDate)}
+                                </span>
+                              )}
+                            </p>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge
+                            variant="outline"
+                            className={cn(
+                              'font-bold text-[10px] uppercase border-none px-2 py-0.5 rounded-md',
+                              trade.side === 'BUY'
+                                ? 'bg-success/10 text-success'
+                                : 'bg-destructive/10 text-destructive'
+                            )}
+                          >
+                            {trade.side}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-right font-bold text-foreground text-sm">
+                          {trade.quantity}
+                        </TableCell>
+                        <TableCell className="text-right text-foreground font-semibold text-sm">
+                          {trade.orderType === 'MARKET' && trade.entryPrice === 0
+                            ? 'Market'
+                            : formatCurrency(trade.entryPrice)}
+                        </TableCell>
+                        <TableCell className="text-right text-foreground font-semibold text-sm">
+                          {trade.status === 'CLOSED' ? formatCurrency(trade.exitPrice!) : '-'}
+                        </TableCell>
+                        <TableCell className={cn(
+                          'text-right font-bold text-sm',
+                          trade.status === 'OPEN' ? 'text-muted-foreground' :
+                            (trade.pnl || 0) >= 0 ? 'text-profit' : 'text-loss'
+                        )}>
+                          {trade.status === 'CLOSED'
+                            ? `${(trade.pnl || 0) >= 0 ? '+' : ''}${formatCurrency(trade.pnl || 0)}`
+                            : '-'
+                          }
+                        </TableCell>
+                        <TableCell className="pr-6">
+                          <Badge
+                            className={cn(
+                              'font-bold text-[10px] uppercase border-none px-2 py-0.5 rounded-md',
+                              trade.status === 'OPEN'
+                                ? 'bg-primary/20 text-primary'
+                                : 'bg-muted text-muted-foreground'
+                            )}
+                          >
+                            {trade.status}
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+
+              {/* Enhanced Pagination */}
+              {totalPages > 1 && (
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-5 bg-muted/5 border-t border-border/50">
+                  <p className="text-xs text-muted-foreground font-medium">
+                    Showing <span className="text-foreground font-bold">{((currentPage - 1) * itemsPerPage) + 1}</span> to <span className="text-foreground font-bold">{Math.min(currentPage * itemsPerPage, filteredAndSortedTrades.length)}</span> of <span className="text-foreground font-bold">{filteredAndSortedTrades.length}</span> results
+                  </p>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                      disabled={currentPage === 1}
+                      className="rounded-lg border-border h-9 shadow-sm"
+                    >
+                      Previous
+                    </Button>
+                    <div className="flex items-center gap-1 mx-2">
+                        {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+                            const page = i + 1;
+                            return (
+                                <Button
+                                    key={page}
+                                    variant={currentPage === page ? "default" : "ghost"}
+                                    size="sm"
+                                    className={cn("w-9 h-9 rounded-lg p-0", currentPage !== page && "text-muted-foreground")}
+                                    onClick={() => setCurrentPage(page)}
+                                >
+                                    {page}
+                                </Button>
+                            );
+                        })}
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                      disabled={currentPage === totalPages}
+                      className="rounded-lg border-border h-9 shadow-sm"
+                    >
+                      Next
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
 };
 
-export const marketTickJob =
-    globalState.__marketTickJob || new MarketTickJob();
+export default OrdersPage;
 
-globalState.__marketTickJob = marketTickJob;
+--- packages/core/src/db/schema/oms.schema.ts ---
+import { pgTable, text, integer, numeric, timestamp, pgEnum, uuid, index, uniqueIndex, check } from 'drizzle-orm/pg-core';
+import { sql } from 'drizzle-orm';
+import { type InferSelectModel, type InferInsertModel } from 'drizzle-orm';
+import { users } from './users.schema.js';
+import { instruments } from './market.schema.js';
 
+export const OrderSide = pgEnum('order_side', ['BUY', 'SELL']);
+export const OrderType = pgEnum('order_type', ['MARKET', 'LIMIT']);
+export const OrderStatus = pgEnum('order_status', ['PENDING', 'OPEN', 'PROCESSING', 'FILLED', 'CANCELLED', 'REJECTED']);
 
-/* =========================================================================
- * FILE: apps/web/services/trading/execution/sl-target-engine.service.ts
- * ========================================================================= */
-/**
- * SlTargetEngineService
- * ──────────────────────
- * Runs periodically (called from the market-tick job) and checks every OPEN
- * child SL / Target order against the current LTP.
- *
- * Trigger logic:
- *   STOP_LOSS child (SELL for a BUY position):
- *     Triggers when LTP ≤ limitPrice  (price fell to/below SL)
- *
- *   TARGET child (SELL for a BUY position):
- *     Triggers when LTP ≥ limitPrice  (price rose to/above target)
- *
- *   Mirror logic applies for SELL positions:
- *   STOP_LOSS child (BUY to exit short):
- *     Triggers when LTP ≥ limitPrice  (price rose to/above SL)
- *
- *   TARGET child (BUY to exit short):
- *     Triggers when LTP ≤ limitPrice  (price fell to/below target)
- *
- * On trigger:
- *   1. Fills the child order at current LTP via OrderExecutorService.tryExecuteOrder.
- *   2. Cancels the sibling child (OCO) via SlTargetChildOrderService.cancelSibling.
- *
- * MIS auto-square-off:
- *   Also checks all MIS positions at market close (15:15 IST) and closes any
- *   that are still open via a MARKET exit order.
- */
+// ─── ProductType ─────────────────────────────────────────────────────────────
+// CNC  = Cash-and-Carry   (multi-day, no leverage enforcement, no auto-square-off)
+// MIS  = Margin Intraday  (leverage applied, auto-square-off at market close)
+export const ProductType = pgEnum('product_type', ['CNC', 'MIS']);
 
-import { db } from "@/lib/db";
-import { orders, positions } from "@paper-market/core/db";
-import { eq, and, inArray } from "drizzle-orm";
-import { logger } from "@/lib/logger";
-import { OrderExecutorService } from "@/services/trading/execution/order-executor.service";
-import { SlTargetChildOrderService } from "@/services/trading/execution/sl-target-child-order.service";
-import { priceOracle } from "@/services/market/pricing/price-oracle.service";
-import { isTradingEnabled } from "@/lib/system-control";
-import type { Order } from "@paper-market/core/db";
-import { OrderStateMachineService } from "@/services/trading/pipeline/order-state-machine.service";
+// ─── ChildOrderType ───────────────────────────────────────────────────────────
+// Marks whether this order is a SL or Target child spawned by a parent entry order.
+// NULL = normal parent order.
+export const ChildOrderType = pgEnum('child_order_type', ['STOP_LOSS', 'TARGET']);
 
-const IST_TZ = "Asia/Kolkata";
-const MIS_SQUARE_OFF_HOUR_IST = 15;
-const MIS_SQUARE_OFF_MINUTE_IST = 15;
+export const orders = pgTable('orders', {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: text('userId').notNull().references(() => users.id),
+    symbol: text('symbol').notNull(),
+    instrumentToken: text('instrumentToken').notNull().references(() => instruments.instrumentToken),
+    side: OrderSide('side').notNull(),
+    quantity: integer('quantity').notNull(),
+    orderType: OrderType('orderType').notNull(),
+    limitPrice: numeric('limitPrice', { precision: 10, scale: 2 }),
 
-function getNowInIST(): { hour: number; minute: number } {
-    const parts = new Intl.DateTimeFormat("en-US", {
-        timeZone: IST_TZ,
-        hour: "numeric",
-        minute: "numeric",
-        hour12: false,
-    }).formatToParts(new Date());
+    // ── New: product type & leverage ─────────────────────────────────────────
+    productType: text('productType').notNull().default('CNC'),
+    leverage: integer('leverage').notNull().default(1),
+    reservedMargin: numeric('reservedMargin', { precision: 12, scale: 2 }).notNull().default('0'),
 
-    const hour = Number(parts.find((p) => p.type === "hour")?.value ?? 0);
-    const minute = Number(parts.find((p) => p.type === "minute")?.value ?? 0);
-    return { hour, minute };
+    // ── New: stop-loss and target child order links ───────────────────────────
+    // Stored on the *parent* order at placement time.
+    stopLossPrice: numeric('stopLossPrice', { precision: 10, scale: 2 }),
+    targetPrice: numeric('targetPrice', { precision: 10, scale: 2 }),
+
+    // Stored on the *child* SL / Target order itself.
+    childOrderType: text('childOrderType'),   // 'STOP_LOSS' | 'TARGET' | null
+    parentOrderId: uuid('parentOrderId'),      // FK to orders.id (self-referential)
+
+    status: OrderStatus('status').notNull().default('PENDING'),
+    executionPrice: numeric('executionPrice', { precision: 10, scale: 2 }),
+    executedAt: timestamp('executedAt'),
+    createdAt: timestamp('createdAt').defaultNow().notNull(),
+    updatedAt: timestamp('updatedAt').defaultNow().notNull(),
+    rejectionReason: text('rejectionReason'),
+    exitReason: text('exitReason'),
+    idempotencyKey: text('idempotencyKey'),
+    averagePrice: numeric('averagePrice', { precision: 10, scale: 2 }),
+    realizedPnL: numeric('realizedPnL', { precision: 12, scale: 2 }),
+}, (t) => {
+    return {
+        userIdIdx: index('orders_userId_idx').on(t.userId),
+        symbolIdx: index('orders_symbol_idx').on(t.symbol),
+        instrumentTokenIdx: index('orders_instrumentToken_idx').on(t.instrumentToken),
+        statusIdx: index('orders_status_idx').on(t.status),
+        statusCreatedAtIdx: index('orders_status_createdAt_idx').on(t.status, t.createdAt),
+        statusTokenIdx: index('orders_status_token_idx').on(t.status, t.instrumentToken),
+        createdAtIdx: index('orders_createdAt_idx').on(t.createdAt),
+        idempotencyIdx: index('orders_userId_idempotency_idx').on(t.userId, t.idempotencyKey),
+        // Quickly find all child SL/Target orders belonging to a parent
+        parentOrderIdIdx: index('orders_parentOrderId_idx').on(t.parentOrderId),
+        quantityPositive: check('orders_quantity_positive', sql`${t.quantity} > 0`),
+        limitPricePositive: check('orders_limitPrice_positive', sql`${t.limitPrice} IS NULL OR ${t.limitPrice} >= 0`),
+        leverageRange: check('orders_leverage_range', sql`${t.leverage} >= 1 AND ${t.leverage} <= 10`),
+        reservedMarginNonNegative: check('orders_reservedMargin_non_negative', sql`${t.reservedMargin} >= 0`),
+        stopLossPositive: check('orders_stopLossPrice_positive', sql`${t.stopLossPrice} IS NULL OR ${t.stopLossPrice} > 0`),
+        targetPositive: check('orders_targetPrice_positive', sql`${t.targetPrice} IS NULL OR ${t.targetPrice} > 0`),
+    };
+});
+
+export const trades = pgTable('trades', {
+    id: uuid('id').primaryKey().defaultRandom(),
+    orderId: uuid('orderId').notNull().references(() => orders.id),
+    userId: text('userId').notNull().references(() => users.id),
+    symbol: text('symbol').notNull(),
+    instrumentToken: text('instrumentToken').references(() => instruments.instrumentToken),
+    side: OrderSide('side').notNull(),
+    quantity: integer('quantity').notNull(),
+    price: numeric('price', { precision: 10, scale: 2 }).notNull(),
+    executedAt: timestamp('executedAt').notNull(),
+    createdAt: timestamp('createdAt').defaultNow().notNull(),
+}, (t) => {
+    return {
+        userIdIdx: index('trades_userId_idx').on(t.userId),
+        symbolIdx: index('trades_symbol_idx').on(t.symbol),
+        executedAtIdx: index('trades_executedAt_idx').on(t.executedAt),
+        quantityPositive: check('trades_quantity_positive', sql`${t.quantity} > 0`),
+        pricePositive: check('trades_price_positive', sql`${t.price} >= 0`),
+    };
+});
+
+export const positions = pgTable('positions', {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: text('userId').notNull().references(() => users.id),
+    symbol: text('symbol').notNull(),
+    instrumentToken: text('instrumentToken').notNull().references(() => instruments.instrumentToken),
+    quantity: integer('quantity').notNull(),
+    averagePrice: numeric('averagePrice', { precision: 10, scale: 2 }).notNull(),
+    realizedPnL: numeric('realizedPnL', { precision: 12, scale: 2 }).notNull().default('0'),
+
+    // ── New: product type & leverage propagated from the entry order ──────────
+    productType: text('productType').notNull().default('CNC'),
+    leverage: integer('leverage').notNull().default(1),
+
+    createdAt: timestamp('createdAt').defaultNow().notNull(),
+    updatedAt: timestamp('updatedAt').defaultNow().notNull(),
+}, (t) => {
+    return {
+        userTokenUnique: uniqueIndex('positions_userId_instrumentToken_unique').on(t.userId, t.instrumentToken),
+        userIdIdx: index('idx_positions_userId').on(t.userId),
+        userTokenIdx: index('idx_positions_user_token').on(t.userId, t.instrumentToken),
+        instrumentTokenIdx: index('idx_positions_token').on(t.instrumentToken),
+        averagePricePositive: check('positions_averagePrice_positive', sql`${t.averagePrice} > 0`),
+        leverageRange: check('positions_leverage_range', sql`${t.leverage} >= 1 AND ${t.leverage} <= 10`),
+    };
+});
+
+export type Order = InferSelectModel<typeof orders>;
+export type NewOrder = InferInsertModel<typeof orders>;
+
+export type Trade = InferSelectModel<typeof trades>;
+export type NewTrade = InferInsertModel<typeof trades>;
+
+export type Position = InferSelectModel<typeof positions>;
+export type NewPosition = InferInsertModel<typeof positions>;
+
+--- packages/core/src/trading/order.types.ts ---
+import { Side, InstrumentMode, ExitReason, TradeStatus } from '../types/general.types.js';
+
+export type OrderExecutionType = 'MARKET' | 'LIMIT' | 'STOP';
+
+/** CNC = Cash-and-Carry (multi-day). MIS = Margin Intraday (auto-square-off). */
+export type ProductType = 'CNC' | 'MIS';
+
+// ─── TradeParams ──────────────────────────────────────────────────────────────
+// The full payload that flows from the UI form → store.placeOrder → POST /api/v1/orders.
+// All four formerly-missing fields are now first-class members.
+export interface TradeParams {
+  instrumentToken: string;
+  symbol: string;
+  side: Side;
+  quantity: number;
+  entryPrice?: number;
+  orderType?: OrderExecutionType;
+
+  /** CNC (default) or MIS. MIS enables leverage and auto-square-off at close. */
+  productType?: ProductType;
+
+  /** 1–10. Ignored for CNC by the backend (enforced to 1). */
+  leverage?: number;
+
+  /**
+   * Optional stop-loss trigger price.
+   * For BUY  → must be < entryPrice.
+   * For SELL → must be > entryPrice.
+   * When provided the backend spawns a child STOP_LOSS order immediately.
+   */
+  stopLossPrice?: number;
+
+  /**
+   * Optional profit-target trigger price.
+   * For BUY  → must be > entryPrice.
+   * For SELL → must be < entryPrice.
+   * When provided the backend spawns a child TARGET order immediately.
+   */
+  targetPrice?: number;
 }
 
-function isMisSquareOffTime(): boolean {
-    const { hour, minute } = getNowInIST();
-    return hour === MIS_SQUARE_OFF_HOUR_IST && minute >= MIS_SQUARE_OFF_MINUTE_IST;
+// ─── EnrichedTrade ────────────────────────────────────────────────────────────
+export interface EnrichedTrade {
+  id: string;
+  instrumentToken?: string;
+  symbol: string;
+  name: string;
+  side: Side;
+  quantity: number;
+  filledQuantity: number;
+  entryPrice: number;
+  exitPrice: number | null;
+  pnl: number | null;
+  status: TradeStatus;
+  entryTime: Date;
+  exitTime: Date | null;
+  updatedAt: Date;
+  notes?: string;
+  instrument: InstrumentMode;
+  expiryDate?: Date;
+
+  // ── Now wired end-to-end ───────────────────────────────────────────────────
+  productType?: ProductType;
+  leverage?: number;
+  stopLossPrice?: number;
+  targetPrice?: number;
+
+  exitReason?: ExitReason;
+  orderType?: OrderExecutionType;
+  exchangeOrderId?: string;
 }
 
-function shouldTrigger(
-    childOrderType: string,
-    side: "BUY" | "SELL",
-    limitPrice: number,
-    ltp: number
-): boolean {
-    if (childOrderType === "STOP_LOSS") {
-        // BUY position SL fires when price drops to/below SL
-        // SELL position SL fires when price rises to/above SL
-        return side === "SELL" ? ltp <= limitPrice : ltp >= limitPrice;
-    }
-    if (childOrderType === "TARGET") {
-        // BUY position target fires when price rises to/above target
-        // SELL position target fires when price falls to/below target
-        return side === "SELL" ? ltp >= limitPrice : ltp <= limitPrice;
-    }
-    return false;
-}
-
-export class SlTargetEngineService {
-    /**
-     * Check all OPEN SL/Target child orders and fill any that have been triggered.
-     * Returns the number of child orders that were filled.
-     */
-    static async checkAndExecute(): Promise<number> {
-        if (!isTradingEnabled()) return 0;
-
-        // Fetch all OPEN child orders in one query
-        const openChildOrders = await db
-            .select()
-            .from(orders)
-            .where(
-                and(
-                    eq(orders.status, "OPEN"),
-                    // childOrderType IS NOT NULL — we only want SL/Target children
-                    // Drizzle doesn't have isNotNull in all versions, use inArray:
-                    inArray(orders.childOrderType as any, ["STOP_LOSS", "TARGET"])
-                )
-            );
-
-        if (openChildOrders.length === 0) return 0;
-
-        let triggered = 0;
-
-        for (const childOrder of openChildOrders) {
-            try {
-                const limitPrice = Number(childOrder.limitPrice);
-                if (!Number.isFinite(limitPrice) || limitPrice <= 0) continue;
-                if (!childOrder.childOrderType) continue;
-
-                // Resolve current LTP for this instrument
-                const ltp = await priceOracle.getBestPrice(childOrder.instrumentToken, {
-                    symbolHint: childOrder.symbol,
-                });
-
-                if (!Number.isFinite(ltp) || ltp <= 0) continue;
-
-                const shouldFire = shouldTrigger(
-                    childOrder.childOrderType,
-                    childOrder.side,
-                    limitPrice,
-                    ltp
-                );
-
-                if (!shouldFire) continue;
-
-                logger.info(
-                    {
-                        event: "SL_TARGET_TRIGGERED",
-                        childOrderType: childOrder.childOrderType,
-                        orderId: childOrder.id,
-                        parentOrderId: childOrder.parentOrderId,
-                        symbol: childOrder.symbol,
-                        ltp,
-                        limitPrice,
-                        side: childOrder.side,
-                    },
-                    "SL_TARGET_TRIGGERED"
-                );
-
-                // Mark OPEN → PROCESSING atomically so concurrent callers skip it
-                try {
-                    await OrderStateMachineService.transition(childOrder.id, "OPEN", "PROCESSING");
-                } catch (e) {
-                    continue; // another runner grabbed it first
-                }
-
-                // Execute fill via OrderExecutorService (reuses existing ledger/margin logic)
-                const executed = await OrderExecutorService.tryExecuteOrder(childOrder as Order, {
-                    force: true,
-                    leverage: childOrder.leverage ?? 1,
-                });
-
-                if (executed) {
-                    triggered++;
-
-                    // OCO: cancel the sibling
-                    if (childOrder.parentOrderId) {
-                        await SlTargetChildOrderService.cancelSibling(
-                            childOrder.parentOrderId,
-                            childOrder.childOrderType as "STOP_LOSS" | "TARGET"
-                        );
-                    }
-                } else {
-                    // Restore to OPEN if not filled so next tick retries
-                    await OrderStateMachineService.transition(childOrder.id, "PROCESSING", "OPEN");
-                }
-            } catch (err) {
-                logger.error(
-                    { err, orderId: childOrder.id, event: "SL_TARGET_EXECUTION_ERROR" },
-                    "SL_TARGET_EXECUTION_ERROR"
-                );
-                // Restore to OPEN so it gets retried next tick
-                await OrderStateMachineService.transition(childOrder.id, "PROCESSING", "OPEN").catch(() => undefined);
-            }
-        }
-
-        return triggered;
-    }
-
-    /**
-     * MIS auto-square-off.
-     * Called once around 15:15 IST. Closes all MIS positions that are still open
-     * by placing MARKET exit orders.
-     *
-     * Returns the number of positions squared off.
-     */
-    static async misSquareOff(): Promise<number> {
-        if (!isMisSquareOffTime()) return 0;
-
-        // Find all MIS positions with non-zero quantity
-        const misPositions = await db
-            .select()
-            .from(positions)
-            .where(eq(positions.productType, "MIS"));
-
-        const openMisPositions = misPositions.filter(
-            (p) => Number(p.quantity) !== 0
-        );
-
-        if (openMisPositions.length === 0) return 0;
-
-        logger.info(
-            { event: "MIS_SQUARE_OFF_START", count: openMisPositions.length },
-            "MIS_SQUARE_OFF_START"
-        );
-
-        let squaredOff = 0;
-
-        for (const position of openMisPositions) {
-            try {
-                const qty = Number(position.quantity);
-                const exitSide = qty > 0 ? "SELL" : "BUY";
-                const absQty = Math.abs(qty);
-
-                // Place a MARKET exit order
-                const [exitOrder] = await db
-                    .insert(orders)
-                    .values({
-                        userId: position.userId,
-                        symbol: position.symbol,
-                        instrumentToken: position.instrumentToken,
-                        side: exitSide,
-                        quantity: absQty,
-                        orderType: "MARKET",
-                        status: "OPEN",
-                        productType: "MIS",
-                        leverage: position.leverage ?? 1,
-                        exitReason: "MIS_SQUARE_OFF",
-                        rejectionReason: null,
-                    })
-                    .returning();
-
-                // Execute immediately
-                const executed = await OrderExecutorService.tryExecuteOrder(exitOrder, { force: true });
-
-                if (executed) {
-                    squaredOff++;
-                    logger.info(
-                        {
-                            event: "MIS_POSITION_SQUARED_OFF",
-                            positionId: position.id,
-                            symbol: position.symbol,
-                            userId: position.userId,
-                            qty: absQty,
-                            exitSide,
-                        },
-                        "MIS_POSITION_SQUARED_OFF"
-                    );
-                }
-            } catch (err) {
-                logger.error(
-                    { err, positionId: position.id, symbol: position.symbol, event: "MIS_SQUARE_OFF_ERROR" },
-                    "MIS_SQUARE_OFF_ERROR"
-                );
-            }
-        }
-
-        logger.info(
-            { event: "MIS_SQUARE_OFF_COMPLETE", squaredOff, total: openMisPositions.length },
-            "MIS_SQUARE_OFF_COMPLETE"
-        );
-
-        return squaredOff;
-    }
-}
-
-
-/* =========================================================================
- * FILE: apps/web/lib/trading/init-realtime.ts
- * ========================================================================= */
-import { chartRegistry } from '@/lib/trading/chart-registry';
-import { getMarketWebSocket } from '@/lib/market-ws';
-
-// ═══════════════════════════════════════════════════════════
-// 🔌 SUBSCRIBE TO CANDLE UPDATES FROM MARKET-ENGINE
-// ═══════════════════════════════════════════════════════════
-/**
- * Subscribe to candle updates from market-engine WebSocket
- * and update charts directly via ChartRegistry
- * 
- * NOTE: This replaces the old TickBus → CandleEngine → ChartRegistry flow.
- * Now: market-engine → WebSocket → ChartRegistry
- */
-function initializeCandleSubscription() {
-    console.log("🔌 Subscribing to candle updates from market-engine...");
-    
-    const wsUrl = process.env.NEXT_PUBLIC_MARKET_ENGINE_WS_URL || 'ws://localhost:4200';
-    
-    const ws = getMarketWebSocket({
-        url: wsUrl,
-        onCandle: (candleData) => {
-            const { candle, instrumentKey } = candleData;
-            
-            // ═══════════════════════════════════════════════════════════
-            // 🛠️ SINGLE-WRITER PATTERN: Direct chart update
-            // ═══════════════════════════════════════════════════════════
-            // market-engine → WebSocket → ChartRegistry → ChartController
-            // Bypasses React/Zustand entirely for live updates
-            const controller = chartRegistry.get(instrumentKey);
-            if (controller) {
-                controller.updateCandle(candle);
-            }
-        }
-    });
-    
-    // Note: Connection is handled by use-market-stream hook
-    // This just registers the candle handler
-    
-    console.log("✅ Candle subscription initialized");
-}
-
-// ═══════════════════════════════════════════════════════════
-// 🚀 AUTO-INITIALIZE ON MODULE LOAD
-// ═══════════════════════════════════════════════════════════
-declare global {
-    var __candleSubscriptionInitialized: boolean | undefined;
-}
-
-if (!globalThis.__candleSubscriptionInitialized) {
-    globalThis.__candleSubscriptionInitialized = true;
-    initializeCandleSubscription();
-} else {
-    console.log("♻️ Candle subscription already initialized (Skipping re-init)");
-}
-
-// Export for manual control if needed
-export { initializeCandleSubscription };
-
-/* =========================================================================
- * FILE: apps/web/services/trading/execution/sl-target-child-order.service.ts
- * ========================================================================= */
-/**
- * SlTargetChildOrderService
- * ─────────────────────────
- * When a parent entry order is FILLED and it was placed with stopLossPrice
- * and/or targetPrice, this service spawns child OPEN orders for each.
- *
- * Architecture:
- *   - Parent order row: stores stopLossPrice, targetPrice (informational).
- *   - Child STOP_LOSS order: status=OPEN, childOrderType='STOP_LOSS', parentOrderId=parent.id
- *   - Child TARGET order:    status=OPEN, childOrderType='TARGET',    parentOrderId=parent.id
- *
- * The SL/Target monitoring engine (sl-target-monitor.service.ts) watches all
- * OPEN child orders every tick and fills/cancels them when LTP crosses their
- * trigger price.
- *
- * One-cancels-other (OCO) semantics:
- *   When the SL child fires  → TARGET sibling is CANCELLED.
- *   When the TARGET child fires → SL sibling is CANCELLED.
- */
-
+--- apps/web/services/trading/order/order.service.ts ---
 import { db } from "@/lib/db";
 import { orders } from "@paper-market/core/db";
-import { eq, and } from "drizzle-orm";
 import { logger } from "@/lib/logger";
-import type { Order } from "@paper-market/core/db";
+import { ApiError } from "@/lib/errors";
+import { and, eq, lt, sql } from "drizzle-orm";
+import type { PlaceOrder, OrderQuery } from "@paper-market/core";
+import { OrderPipelineService } from "@/services/trading/pipeline/order-pipeline.service";
+import { WalletService } from "@/services/accounting/wallet/wallet.service";
+import { buildLedgerIdempotencyKey, resolveLedgerReferenceType } from "@/services/trading/pipeline/order-ledger-keys";
 import { OrderStateMachineService } from "@/services/trading/pipeline/order-state-machine.service";
 
-type DbTx = Parameters<Parameters<typeof db.transaction>[0]>[0];
+function isApiErrorLike(
+  error: unknown,
+): error is { message: string; statusCode: number; code: string } {
+  if (!error || typeof error !== "object") return false;
+  const maybe = error as {
+    message?: unknown;
+    statusCode?: unknown;
+    code?: unknown;
+  };
+  return (
+    typeof maybe.message === "string" &&
+    typeof maybe.statusCode === "number" &&
+    typeof maybe.code === "string"
+  );
+}
 
-export class SlTargetChildOrderService {
-    /**
-     * Spawn SL and/or TARGET child orders for a just-filled parent.
-     * Must be called *inside* the same DB transaction as the fill.
-     */
-    static async spawnChildOrders(
-        parentOrder: Order,
-        executionPrice: number,
-        tx: DbTx
-    ): Promise<void> {
-        const stopLossPrice = parentOrder.stopLossPrice ? Number(parentOrder.stopLossPrice) : null;
-        const targetPrice = parentOrder.targetPrice ? Number(parentOrder.targetPrice) : null;
+export class OrderService {
+  /**
+   * Place a new order with idempotency support.
+   */
+  static async placeOrder(
+    userId: string,
+    payload: PlaceOrder,
+    options: { force?: boolean; isClosingOrder?: boolean } = {},
+  ) {
+    try {
+      return await OrderPipelineService.placeOrder(userId, payload, options);
+    } catch (error) {
+      if (error instanceof ApiError) throw error;
+      if (isApiErrorLike(error)) {
+        throw new ApiError(error.message, error.statusCode, error.code);
+      }
+      logger.error(
+        { err: error, userId, symbol: payload.symbol },
+        "Failed to place order",
+      );
+      throw new ApiError(
+        "Failed to place order",
+        500,
+        "ORDER_PLACEMENT_FAILED",
+      );
+    }
+  }
 
-        if (!stopLossPrice && !targetPrice) return;
+  /**
+   * Cancel an open order.
+   */
+  static async cancelOrder(userId: string, orderId: string) {
+    try {
+      const [cancelledOrder] = await db.transaction(async (tx) => {
+        const order = await OrderStateMachineService.transition(
+          orderId,
+          "OPEN",
+          "CANCELLED",
+          tx
+        );
 
-        // The child exit side is always opposite to the parent entry side
-        const exitSide = parentOrder.side === "BUY" ? "SELL" : "BUY";
+        if (!order) return [];
 
-        const childBase = {
-            userId: parentOrder.userId,
-            symbol: parentOrder.symbol,
-            instrumentToken: parentOrder.instrumentToken,
-            side: exitSide as "BUY" | "SELL",
-            quantity: parentOrder.quantity,
-            orderType: "LIMIT" as const,
-            status: "OPEN" as const,
-            parentOrderId: parentOrder.id,
-            // Inherit productType and leverage from parent
-            productType: parentOrder.productType ?? "CNC",
-            leverage: parentOrder.leverage ?? 1,
-        };
-
-        const inserts: Array<typeof orders.$inferInsert> = [];
-
-        if (stopLossPrice && stopLossPrice > 0) {
-            inserts.push({
-                ...childBase,
-                limitPrice: stopLossPrice.toString(),
-                childOrderType: "STOP_LOSS",
-                exitReason: "STOP_LOSS",
-            });
-        }
-
-        if (targetPrice && targetPrice > 0) {
-            inserts.push({
-                ...childBase,
-                limitPrice: targetPrice.toString(),
-                childOrderType: "TARGET",
-                exitReason: "TARGET",
-            });
-        }
-
-        if (inserts.length === 0) return;
-
-        await tx.insert(orders).values(inserts);
-
-        logger.info(
+        const reservedMargin = Number(order.reservedMargin ?? 0);
+        if (reservedMargin > 0) {
+          await WalletService.releaseMarginBlock(
+            order.userId,
+            reservedMargin,
+            order.id,
+            tx,
+            `Margin Release (Cancel) ${order.symbol}`,
             {
-                event: "CHILD_ORDERS_SPAWNED",
-                parentOrderId: parentOrder.id,
-                userId: parentOrder.userId,
-                symbol: parentOrder.symbol,
-                exitSide,
-                stopLossPrice,
-                targetPrice,
-                childCount: inserts.length,
-            },
-            "CHILD_ORDERS_SPAWNED"
-        );
-    }
-
-    /**
-     * Cancel the sibling child order (OCO — one-cancels-other).
-     * Called by the monitoring engine after one child is filled.
-     */
-    static async cancelSibling(
-        parentOrderId: string,
-        filledChildOrderType: "STOP_LOSS" | "TARGET"
-    ): Promise<void> {
-        const siblingType = filledChildOrderType === "STOP_LOSS" ? "TARGET" : "STOP_LOSS";
-
-        const siblingIdsQuery = db.select({ id: orders.id })
-            .from(orders)
-            .where(
-                and(
-                    eq(orders.parentOrderId, parentOrderId),
-                    eq(orders.childOrderType, siblingType),
-                    eq(orders.status, "OPEN")
-                )
-            );
-
-        const cancelled = await OrderStateMachineService.batchTransition(
-            siblingIdsQuery,
-            "OPEN",
-            "CANCELLED"
-        );
-
-        if (cancelled.length > 0) {
-            logger.info(
-                {
-                    event: "OCO_SIBLING_CANCELLED",
-                    parentOrderId,
-                    filledType: filledChildOrderType,
-                    cancelledType: siblingType,
-                    cancelledIds: cancelled.map((r) => r.id),
-                },
-                "OCO_SIBLING_CANCELLED"
-            );
+              ledgerReferenceType: resolveLedgerReferenceType(order),
+              idempotencyKey: buildLedgerIdempotencyKey(order, "MARGIN_RELEASE_CANCEL"),
+            }
+          );
         }
+
+        return [order];
+      });
+
+      if (!cancelledOrder) {
+        // Order either doesn't exist, belongs to a different user, or is no longer OPEN.
+        // Check which case to give an accurate error.
+        const [existing] = await db
+          .select({ status: orders.status, userId: orders.userId })
+          .from(orders)
+          .where(eq(orders.id, orderId))
+          .limit(1);
+
+        if (!existing || existing.userId !== userId) {
+          throw new ApiError("Order not found", 404, "NOT_FOUND");
+        }
+        throw new ApiError(
+          `Cannot cancel order in ${existing.status} state`,
+          400,
+          "INVALID_STATE_TRANSITION",
+        );
+      }
+
+      logger.info(
+        { orderId, userId, symbol: cancelledOrder.symbol },
+        "Order cancelled",
+      );
+      return cancelledOrder;
+    } catch (error) {
+      if (error instanceof ApiError) throw error;
+      logger.error({ err: error, userId, orderId }, "Failed to cancel order");
+      throw new ApiError(
+        "Failed to cancel order",
+        500,
+        "ORDER_CANCELLATION_FAILED",
+      );
     }
+  }
+
+  /**
+   * Get orders for a user with optional filters.
+   */
+  static async getOrders(userId: string, filters: OrderQuery = {}) {
+    try {
+      const conditions = [eq(orders.userId, userId)];
+
+      if (filters.status) {
+        conditions.push(eq(orders.status, filters.status));
+      }
+
+      if (filters.symbol) {
+        conditions.push(eq(orders.symbol, filters.symbol));
+      }
+
+      const limit = filters.limit || 20;
+      const cursor = filters.cursor ? new Date(filters.cursor) : null;
+      if (cursor) {
+        conditions.push(lt(orders.createdAt, cursor));
+      }
+
+      let query = db
+        .select()
+        .from(orders)
+        .where(and(...conditions))
+        .orderBy(sql`${orders.createdAt} DESC`)
+        .$dynamic();
+
+      // Apply limit
+      query = query.limit(limit);
+
+      if (!cursor && filters.page && filters.page > 1) {
+        const offset = (filters.page - 1) * limit;
+        query = query.offset(offset);
+      }
+
+      const results = await query;
+
+      return results;
+    } catch (error) {
+      logger.error({ err: error, userId, filters }, "Failed to get orders");
+      throw new ApiError(
+        "Failed to retrieve orders",
+        500,
+        "ORDER_RETRIEVAL_FAILED",
+      );
+    }
+  }
 }
-
-
-/* =========================================================================
- * FILE: apps/web/lib/event-bus.ts
- * ========================================================================= */
-import { EventEmitter } from "events";
-
-export type PriceTickEvent = {
-    instrumentToken: string;
-    price: number;
-    timestampMs: number;
-};
-
-export type OrderExecutedEvent = {
-    orderId: string;
-    userId: string;
-    instrumentToken: string;
-    tradeId?: string;
-    quantity?: number;
-    price?: number;
-};
-
-export type PositionChangedEvent = {
-    userId: string;
-    instrumentToken: string;
-    reason: "ORDER_EXECUTED" | "MANUAL_REFRESH" | "SETTLEMENT";
-};
-
-export type EventBusEvents = {
-    "price.tick": PriceTickEvent;
-    "order.executed": OrderExecutedEvent;
-    "position.changed": PositionChangedEvent;
-};
-
-class TypedEventBus {
-    private readonly emitter = new EventEmitter();
-
-    constructor() {
-        this.emitter.setMaxListeners(256);
-    }
-
-    on<K extends keyof EventBusEvents>(event: K, listener: (payload: EventBusEvents[K]) => void): void {
-        this.emitter.on(event, listener as (...args: any[]) => void);
-    }
-
-    off<K extends keyof EventBusEvents>(event: K, listener: (payload: EventBusEvents[K]) => void): void {
-        this.emitter.off(event, listener as (...args: any[]) => void);
-    }
-
-    emit<K extends keyof EventBusEvents>(event: K, payload: EventBusEvents[K]): void {
-        this.emitter.emit(event, payload);
-    }
-}
-
-declare global {
-    var __engineEventBus: TypedEventBus | undefined;
-}
-
-const globalState = globalThis as unknown as { __engineEventBus?: TypedEventBus };
-
-export const eventBus = globalState.__engineEventBus || new TypedEventBus();
-globalState.__engineEventBus = eventBus;

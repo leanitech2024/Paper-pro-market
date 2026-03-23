@@ -99,28 +99,34 @@ const OrdersPage = () => {
 
   const totalPages = Math.ceil(filteredAndSortedTrades.length / itemsPerPage);
 
-  const handleExport = (format: 'csv' | 'json') => {
-    // Basic export implementation for demonstration
+  const handleExport = async (exportFormat: 'csv' | 'json' | 'pdf') => {
     if (filteredAndSortedTrades.length === 0) return;
 
-    if (format === 'csv') {
+    const dateStamp = new Date().toISOString().split('T')[0];
+
+    if (exportFormat === 'pdf') {
+      const { generateOrdersPDF } = await import('@/lib/utils/export-orders-pdf');
+      generateOrdersPDF(filteredAndSortedTrades, `orders_export_${dateStamp}.pdf`);
+      return;
+    }
+
+    if (exportFormat === 'csv') {
       const headers = ['id', 'symbol', 'name', 'side', 'quantity', 'orderType', 'status', 'entryPrice', 'exitPrice', 'pnl', 'entryTime'];
-      const csvData = filteredAndSortedTrades.map(trade => 
-        headers.map(header => JSON.stringify(trade[header as keyof typeof trade] || '')).join(',')
+      const csvData = filteredAndSortedTrades.map((trade) =>
+        headers.map((header) => JSON.stringify(trade[header as keyof typeof trade] ?? '')).join(',')
       );
       const csvString = [headers.join(','), ...csvData].join('\n');
-      
       const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
       const link = document.createElement('a');
       link.href = URL.createObjectURL(blob);
-      link.download = `orders_export_${new Date().toISOString().split('T')[0]}.csv`;
+      link.download = `orders_export_${dateStamp}.csv`;
       link.click();
-    } else if (format === 'json') {
+    } else if (exportFormat === 'json') {
       const jsonString = JSON.stringify(filteredAndSortedTrades, null, 2);
       const blob = new Blob([jsonString], { type: 'application/json' });
       const link = document.createElement('a');
       link.href = URL.createObjectURL(blob);
-      link.download = `orders_export_${new Date().toISOString().split('T')[0]}.json`;
+      link.download = `orders_export_${dateStamp}.json`;
       link.click();
     }
   };
@@ -207,6 +213,9 @@ const OrdersPage = () => {
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => handleExport('json')} className="gap-2 cursor-pointer font-medium hover:bg-slate-100 dark:hover:bg-white/[0.05]">
                 Export as JSON
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleExport('pdf')} className="gap-2 cursor-pointer font-medium hover:bg-slate-100 dark:hover:bg-white/[0.05]">
+                Export as PDF
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

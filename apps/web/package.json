@@ -60,6 +60,8 @@
     "framer-motion": "^12.23.26",
     "input-otp": "^1.4.2",
     "ioredis": "^5.10.0",
+    "jspdf": "^4.2.1",
+    "jspdf-autotable": "^5.0.7",
     "lightweight-charts": "^5.1.0",
     "lru-cache": "^11.2.5",
     "lucide-react": "^0.462.0",
