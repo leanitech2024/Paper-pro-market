@@ -170,7 +170,7 @@ function MobileFloatingHeader() {
 
         <div className="min-w-0 flex-1">
           <div className="grid grid-cols-2 gap-2">
-            <div className="min-w-0">
+            <Link href="/trade/equity?symbol=NIFTY%2050" className="min-w-0 flex flex-col hover:opacity-80 transition-opacity cursor-pointer">
               <p className="truncate text-[9px] uppercase tracking-[0.08em] text-muted-foreground dark:text-slate-400">NIFTY</p>
               <p className="truncate text-[11px] font-semibold text-foreground dark:text-slate-100">{formatPrice(niftyQuote?.price)}</p>
               <p
@@ -183,8 +183,8 @@ function MobileFloatingHeader() {
               >
                 {formatChange(niftyQuote?.changePercent)}
               </p>
-            </div>
-            <div className="min-w-0 border-l border-border/80 pl-2 dark:border-[#1a2e4f]">
+            </Link>
+            <Link href="/trade/equity?symbol=NIFTY%20BANK" className="min-w-0 border-l border-border/80 pl-2 dark:border-[#1a2e4f] flex flex-col hover:opacity-80 transition-opacity cursor-pointer">
               <p className="truncate text-[9px] uppercase tracking-[0.08em] text-muted-foreground dark:text-slate-400">BANKNIFTY</p>
               <p className="truncate text-[11px] font-semibold text-foreground dark:text-slate-100">{formatPrice(bankNiftyQuote?.price)}</p>
               <p
@@ -197,7 +197,7 @@ function MobileFloatingHeader() {
               >
                 {formatChange(bankNiftyQuote?.changePercent)}
               </p>
-            </div>
+            </Link>
           </div>
         </div>
 

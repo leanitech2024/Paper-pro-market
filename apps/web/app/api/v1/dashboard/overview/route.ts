@@ -13,6 +13,10 @@ export async function GET() {
       throw new ApiError("Unauthorized", 401, "UNAUTHORIZED");
     }
 
+    if (session.user.subscriptionStatus === 'expired' && session.user.role !== 'admin') {
+      throw new ApiError("Subscription expired", 403, "FORBIDDEN");
+    }
+
     const overview = await DashboardService.getOverview(session.user.id);
 
     return NextResponse.json({

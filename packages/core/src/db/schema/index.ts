@@ -9,3 +9,4 @@ export * from './ledger.schema';
 export * from './write_ahead_journal.schema';
 export * from './subscriptions.schema';
 export * from './audit.schema';
+export * from './payments.schema';

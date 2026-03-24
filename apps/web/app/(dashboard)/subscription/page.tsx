@@ -1,22 +1,62 @@
 "use client";
 import { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
 import { useSubscriptionStore } from '@/stores/subscription.store';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { Loader2 } from 'lucide-react';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 const RUPEE = "\u20B9";
 
+
+function loadRazorpayScript(): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (typeof window !== 'undefined' && window.Razorpay) return resolve();
+    const script = document.createElement('script');
+    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+    script.async = true;
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error('Failed to load Razorpay SDK'));
+    document.body.appendChild(script);
+  });
+}
 export default function SubscriptionPage() {
-  const { update } = useSession();
-  const { plan, status, isTrialActive, trialEndDate, fetchSubscription, hasFetched } = useSubscriptionStore();
+  const router = useRouter();
+  const { data: session, update, status: sessionStatus } = useSession();
+
+  const store = useSubscriptionStore();
+  const fetchSubscription = store.fetchSubscription;
+  const hasFetched = store.hasFetched;
+  const isTrialActive = store.isTrialActive;
+  const trialEndDate = store.trialEndDate;
+
+  // Prevent flash by using JWT session data before the API fetch completes
+  const plan = hasFetched ? store.plan : ((session?.user as any)?.plan || store.plan);
+  const status = hasFetched ? store.status : ((session?.user as any)?.subscriptionStatus || store.status);
+
   const [isUpgrading, setIsUpgrading] = useState<null | 'basic' | 'pro'>(null);
+  const [isNavigating, setIsNavigating] = useState(false);
+  const [confirmModal, setConfirmModal] = useState<{ isOpen: boolean; targetPlan: 'basic' | 'pro' | null }>({ isOpen: false, targetPlan: null });
 
   useEffect(() => {
     if (!hasFetched) fetchSubscription();
   }, [hasFetched, fetchSubscription]);
+
+  if (sessionStatus === 'loading' || isNavigating) {
+    return (
+      <div className="min-h-[calc(100vh-4rem)] flex flex-col items-center justify-center font-sans bg-background/50 backdrop-blur-sm">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="h-12 w-12 animate-spin text-primary" strokeWidth={2.5} />
+          <p className="text-sm font-bold text-muted-foreground uppercase tracking-[0.2em] animate-pulse">
+            {isNavigating ? "Redirecting to activation..." : "Loading account details..."}
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   const daysLeft = trialEndDate
     ? Math.max(0, Math.ceil((new Date(trialEndDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
@@ -25,22 +65,85 @@ export default function SubscriptionPage() {
   const isExpired = status === 'expired' || status === 'cancelled';
   const planLabel = plan === 'free_trial' ? 'Free Trial' : plan === 'basic' ? 'Basic' : 'Pro';
 
+  const initiateUpgrade = (targetPlan: 'basic' | 'pro') => {
+    // If user is already on Pro and it's active, prevent downgrade to Basic
+    if (plan === 'pro' && status === 'active' && targetPlan === 'basic') {
+      toast.info("You already have an active Pro Plan, which includes all Basic features. There is no need to switch!", { id: 'upgrade-info' });
+      return;
+    }
+    
+    // If they click on their exact current plan while active, do nothing
+    if (plan === targetPlan && status === 'active') {
+      return;
+    }
+
+    setConfirmModal({ isOpen: true, targetPlan });
+  };
+
   const handleUpgrade = async (nextPlan: 'basic' | 'pro') => {
     if (isUpgrading) return;
     setIsUpgrading(nextPlan);
+
     try {
-      const res = await fetch('/api/v1/subscription/upgrade', {
+      // Step 1 â€” Create Razorpay order server-side
+      const orderRes = await fetch('/api/v1/payments/create-order', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ plan: nextPlan }),
       });
-      if (!res.ok) throw new Error('Upgrade failed');
-      await update({ subscriptionStatus: 'active' });
-      await fetchSubscription();
-      toast.success(`Upgraded to ${nextPlan === 'basic' ? 'Basic' : 'Pro'}`);
-    } catch (error) {
-      toast.error('Upgrade failed. Please try again.');
-    } finally {
+
+      if (!orderRes.ok) throw new Error('Failed to create payment order');
+      const { orderId, amount, currency, keyId } = await orderRes.json() as {
+        orderId: string;
+        amount: number;
+        currency: string;
+        keyId: string;
+      };
+
+      // Step 2 â€” Load Razorpay checkout SDK
+      await loadRazorpayScript();
+
+      // Step 3 â€” Open checkout modal
+      const rzp = new window.Razorpay({
+        key: keyId,
+        amount,
+        currency,
+        order_id: orderId,
+        name: 'Paper Market Pro',
+        description: nextPlan === 'pro' ? 'Pro Plan' : 'Basic Plan',
+        prefill: {
+          email: session?.user?.email ?? 'test@example.com',
+          name: session?.user?.name ?? 'Test User',
+          contact: '9999999999',
+        },
+        method: {
+          card: true,
+          upi: true,
+          netbanking: true,
+          wallet: true,
+        },
+        theme: { color: '#2563eb' },
+        modal: {
+          ondismiss: () => {
+            setIsUpgrading(null);
+            toast.error('Payment cancelled.');
+          },
+        },
+        handler: async (response) => {
+          // Immediately show the navigation guard before pushing
+          setIsNavigating(true);
+          setIsUpgrading(null);
+          router.push(
+            `/subscription/success?plan=${nextPlan}&order_id=${encodeURIComponent(response.razorpay_order_id)}&payment_id=${encodeURIComponent(response.razorpay_payment_id)}&signature=${encodeURIComponent(response.razorpay_signature)}`
+          );
+        },
+      });
+
+      rzp.open();
+      // Close our confirmation modal only AFTER Razorpay has been triggered
+      setConfirmModal({ isOpen: false, targetPlan: null });
+    } catch {
+      toast.error('Failed to initiate payment. Please try again.');
       setIsUpgrading(null);
     }
   };
@@ -127,7 +230,7 @@ export default function SubscriptionPage() {
             <Button
               variant={plan === 'basic' && status === 'active' ? 'outline' : 'secondary'}
               className="w-full rounded-xl py-6 font-semibold mt-auto"
-              onClick={() => handleUpgrade('basic')}
+              onClick={() => initiateUpgrade('basic')}
               disabled={plan === 'basic' && status === 'active' || isUpgrading !== null}
             >
               {isUpgrading === 'basic' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
@@ -167,7 +270,7 @@ export default function SubscriptionPage() {
 
             <Button
               className="w-full bg-primary text-primary-foreground hover:bg-primary/90 rounded-xl py-6 font-semibold mt-auto"
-              onClick={() => handleUpgrade('pro')}
+              onClick={() => initiateUpgrade('pro')}
               disabled={plan === 'pro' && status === 'active' || isUpgrading !== null}
             >
               {isUpgrading === 'pro' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
@@ -176,6 +279,49 @@ export default function SubscriptionPage() {
           </div>
 
         </div>
+
+        <Dialog open={confirmModal.isOpen} onOpenChange={(open) => setConfirmModal({ ...confirmModal, isOpen: open })}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Confirm Plan Change</DialogTitle>
+              <DialogDescription>
+                {confirmModal.targetPlan === 'pro' 
+                  ? "You are about to switch to the Pro Plan. This will grant you full access to advanced analytics, trade journaling, and CSV Data Export."
+                  : "You are about to select the Basic Plan. This includes essential tools for simulated paper trading and watchlists."}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="py-2 text-sm text-foreground border-y border-border/50">
+              {plan === 'free_trial' && (
+                <p>Switching now will immediately end your Free Trial and start your new paid subscription.</p>
+              )}
+              {plan === 'basic' && confirmModal.targetPlan === 'pro' && (
+                <p>You are upgrading from your current Basic tier to the full Pro experience. A new billing cycle will begin.</p>
+              )}
+            </div>
+            <DialogFooter className="sm:justify-end gap-2 mt-4">
+              <Button variant="outline" onClick={() => setConfirmModal({ isOpen: false, targetPlan: null })} disabled={isUpgrading !== null}>
+                Cancel
+              </Button>
+              <Button 
+                disabled={isUpgrading !== null}
+                onClick={() => {
+                  const target = confirmModal.targetPlan;
+                  if (target) handleUpgrade(target);
+                }}
+                className="min-w-[140px]"
+              >
+                {isUpgrading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Connecting...
+                  </>
+                ) : (
+                  "Proceed to Payment"
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         <div className="pt-8 text-center sm:text-left">
           <p className="text-xs text-muted-foreground font-medium">

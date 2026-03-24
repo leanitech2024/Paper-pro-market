@@ -48,6 +48,10 @@ export async function GET(req: NextRequest) {
             throw new ApiError("Unauthorized", 401, "UNAUTHORIZED");
         }
 
+        if (session.user.subscriptionStatus === 'expired' && session.user.role !== 'admin') {
+            throw new ApiError("Subscription expired", 403, "FORBIDDEN");
+        }
+
         const searchParams = req.nextUrl.searchParams;
         const filters = OrderQuerySchema.parse({
             status: searchParams.get("status") || undefined,

@@ -10,7 +10,7 @@ interface SubscriptionState {
     hasFetched: boolean;
     lastFetchedAt: number;
 
-    fetchSubscription: () => Promise<void>;
+    fetchSubscription: (force?: boolean) => Promise<void>;
     seedFromSession: (plan: string, status: string) => void;
     hasAccess: (feature: 'analytics' | 'journal' | 'export') => boolean;
 }
@@ -38,11 +38,11 @@ export const useSubscriptionStore = create<SubscriptionState>((set, get) => ({
     hasFetched: false,
     lastFetchedAt: 0,
 
-    fetchSubscription: async () => {
+    fetchSubscription: async (force = false) => {
         const { hasFetched, lastFetchedAt, isLoading } = get();
 
-        // Data is still fresh — skip
-        if (hasFetched && Date.now() - lastFetchedAt < STALE_MS) return;
+        // Data is still fresh — skip (unless forced)
+        if (!force && hasFetched && Date.now() - lastFetchedAt < STALE_MS) return;
 
         // Already in-flight — skip
         if (isLoading) return;

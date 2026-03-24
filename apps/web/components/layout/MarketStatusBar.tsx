@@ -4,6 +4,7 @@ import { useGlobalStore } from "@/stores/global.store";
 import { useMarketStore } from "@/stores/trading/market.store";
 import { cn } from "@/lib/utils";
 import { symbolToIndexInstrumentKey, toCanonicalSymbol, toInstrumentKey } from "@paper-market/core";
+import Link from "next/link";
 
 const INDEX_CONFIG = [
   {
@@ -54,10 +55,11 @@ export function MarketStatusBar() {
           const hasQuote = Number.isFinite(price) && price > 0;
 
           return (
-            <div
+            <Link
+              href={`/trade/equity?symbol=${encodeURIComponent(cfg.symbol)}`}
               key={cfg.symbol}
               className={cn(
-                "items-center gap-1.5",
+                "items-center gap-1.5 hover:bg-white/5 px-2 py-0.5 rounded-md transition-colors cursor-pointer",
                 cfg.symbol === "NIFTY 50" ? "flex" : "hidden sm:flex",
               )}
             >
@@ -80,7 +82,7 @@ export function MarketStatusBar() {
               >
                 {formatChange(changePercent, hasQuote)}
               </span>
-            </div>
+            </Link>
           );
         })}
       </div>

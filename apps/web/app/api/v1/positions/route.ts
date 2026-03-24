@@ -15,6 +15,10 @@ export async function GET(req: NextRequest) {
             throw new ApiError("Unauthorized", 401, "UNAUTHORIZED");
         }
 
+        if (session.user.subscriptionStatus === 'expired' && session.user.role !== 'admin') {
+            throw new ApiError("Subscription expired", 403, "FORBIDDEN");
+        }
+
         const paperMode =
             String(process.env.PAPER_TRADING_MODE ?? "true").trim().toLowerCase() !== "false";
         if (paperMode && process.env.NODE_ENV !== "production") {

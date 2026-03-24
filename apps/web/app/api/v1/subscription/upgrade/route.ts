@@ -34,15 +34,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
             });
         }
 
-        await SubscriptionService.upgradePlan(session.user.id, parsed.data.plan);
-
-        const effectivePlan = await SubscriptionService.getEffectivePlan(session.user.id);
-
-        return NextResponse.json({
-            message: `Plan upgraded to ${parsed.data.plan}`,
-            plan: effectivePlan.plan,
-            status: effectivePlan.status,
-        });
+        // Paid plans must go through Razorpay — block direct upgrade
+        return NextResponse.json(
+            { error: 'Paid plans require payment via Razorpay', code: 'PAYMENT_REQUIRED' },
+            { status: 402 }
+        );
     } catch (error) {
         logger.error({ err: error }, 'Failed to upgrade subscription');
         return NextResponse.json({ error: 'Internal server error', code: 'INTERNAL_ERROR' }, { status: 500 });

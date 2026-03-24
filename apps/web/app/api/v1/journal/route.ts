@@ -20,6 +20,10 @@ export async function GET(req: Request) {
       return new NextResponse("Unauthorized", { status: 401 });
     }
 
+    if (session.user.subscriptionStatus === 'expired' && session.user.role !== 'admin') {
+      return new NextResponse("Forbidden", { status: 403 });
+    }
+
     const userId = session.user.id;
     const { searchParams } = new URL(req.url);
     const validated = JournalQuerySchema.parse(Object.fromEntries(searchParams));

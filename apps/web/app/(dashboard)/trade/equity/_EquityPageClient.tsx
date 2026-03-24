@@ -56,7 +56,7 @@ const tileClass =
   "rounded-[24px] border border-slate-200/80 bg-white dark:border-white/[0.08] dark:bg-[#0f1728]";
 const headerBorderClass = "border-b border-slate-200/80 dark:border-white/[0.08]";
 
-export default function EquityPage() {
+export default function EquityPage({ initialSymbol }: { initialSymbol?: string }) {
   const { isMobile, isDesktop } = useTradeViewport();
   const router = useRouter();
   const { data: session } = useSession();
@@ -70,8 +70,14 @@ export default function EquityPage() {
   const hasAutoSelectedInitialStockRef = useRef(false);
 
   const currentInstruments = getCurrentInstruments("equity");
-  const [selectedSymbol, setSelectedSymbol] = useState<string | null>(null);
+  const [selectedSymbol, setSelectedSymbol] = useState<string | null>(initialSymbol || null);
   const [selectedFallback, setSelectedFallback] = useState<Stock | null>(null);
+
+  useEffect(() => {
+    if (initialSymbol) {
+      setSelectedSymbol(initialSymbol);
+    }
+  }, [initialSymbol]);
 
   const selectedStock = useMemo(() => {
     if (!selectedSymbol) return null;
