@@ -503,7 +503,7 @@ export function ChartContainer({ symbol, headerSymbol, instrumentKey, onSearchCl
   };
 
   useEffect(() => {
-    if (!analysisV2Enabled || !hotkeysEnabled) return;
+    if (!hotkeysEnabled) return;
 
     const onKeyDown = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement | null;
@@ -584,7 +584,7 @@ export function ChartContainer({ symbol, headerSymbol, instrumentKey, onSearchCl
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [analysisV2Enabled, hotkeysEnabled, setActiveTool, symbol, selectedDrawingIds.length, deleteSelectedDrawings]);
+  }, [hotkeysEnabled, setActiveTool, symbol, selectedDrawingIds.length, deleteSelectedDrawings]);
 
   // Infinite Scroll Handler (Memoized to prevent BaseChart re-creation loop)
   const handleLoadMore = useCallback(async () => {

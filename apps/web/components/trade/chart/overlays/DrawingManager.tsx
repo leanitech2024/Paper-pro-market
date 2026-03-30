@@ -306,7 +306,7 @@ export function DrawingManager({ chart, mainSeries, width, height, data, symbol 
         else if (state.activeTool !== "cursor") state.setActiveTool("cursor");
         return;
       }
-      if (e.defaultPrevented || (analysisV2Enabled && hotkeysEnabled)) return;
+      if (e.defaultPrevented || hotkeysEnabled) return;
 
       if (e.key === "Delete" || e.key === "Backspace") {
         e.preventDefault();
