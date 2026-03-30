@@ -12,8 +12,6 @@ import {
   Undo2,
   Redo2,
   CandlestickChart,
-  Eye,
-  EyeOff
 } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
@@ -373,8 +371,6 @@ export function ChartHeader({
           
           <Separator orientation="vertical" className="h-4 bg-border/50 mx-1" />
 
-          {/* Hide Options Dropdown */}
-          <HideOptionsDropdown symbol={symbol} />
           
            <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100" onClick={onScreenshot}>
               <Camera className="h-4 w-4" />
@@ -384,76 +380,5 @@ export function ChartHeader({
           </Button>
       </div>
     </div>
-  );
-}
-
-function HideOptionsDropdown({ symbol }: { symbol: string }) {
-  const globalHideState = useAnalysisStore((s) => s.globalHideState);
-  const setGlobalHide = useAnalysisStore((s) => s.setGlobalHide);
-  const hideAll = useAnalysisStore((s) => s.hideAll);
-  const showAll = useAnalysisStore((s) => s.showAll);
-
-  const anyHidden = Object.values(globalHideState).some(Boolean);
-  const items = [
-    { key: "drawings" as const, label: "Hide Drawings" },
-    { key: "indicators" as const, label: "Hide Indicators" },
-    { key: "positions" as const, label: "Hide Positions & Orders" },
-  ];
-
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          variant="ghost"
-          size="sm"
-          className={cn(
-            "h-8 gap-1.5 px-2 text-[10px] md:text-xs font-medium border border-transparent",
-            anyHidden
-              ? "text-slate-900 bg-slate-100 border-slate-200 dark:text-white dark:bg-white/[0.08] dark:border-white/[0.08]"
-              : "text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-slate-100 dark:hover:bg-white/[0.06]",
-          )}
-        >
-          {anyHidden ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
-          <span className="hidden md:inline">Hide</span>
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-60 bg-white border-slate-200/80 dark:bg-[#0c1322] dark:border-white/[0.08]">
-        <DropdownMenuLabel className="text-[10px] uppercase tracking-wider text-slate-500/70 dark:text-slate-400/70">
-          Hide Options
-        </DropdownMenuLabel>
-        {items.map((item) => (
-          <DropdownMenuItem
-            key={item.key}
-            onSelect={(event) => event.preventDefault()}
-            onClick={() => setGlobalHide(item.key, !globalHideState[item.key])}
-            className={cn(
-              "text-xs cursor-pointer flex items-center gap-2",
-              globalHideState[item.key] && "bg-slate-100 text-slate-900 dark:bg-white/[0.08] dark:text-white",
-            )}
-          >
-            {globalHideState[item.key] ? (
-              <EyeOff className="h-3.5 w-3.5 text-slate-500" />
-            ) : (
-              <Eye className="h-3.5 w-3.5 text-blue-500" />
-            )}
-            <span className="flex-1">{item.label}</span>
-            <span className="text-[10px] text-slate-400">{globalHideState[item.key] ? "On" : "Off"}</span>
-          </DropdownMenuItem>
-        ))}
-        <DropdownMenuSeparator className="bg-slate-200/70 dark:bg-white/[0.08]" />
-        <DropdownMenuItem
-          onClick={() => hideAll(symbol)}
-          className="text-xs cursor-pointer text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10"
-        >
-          Hide All
-        </DropdownMenuItem>
-        <DropdownMenuItem
-          onClick={() => showAll(symbol)}
-          className="text-xs cursor-pointer text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-500/10"
-        >
-          Show All
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
   );
 }
