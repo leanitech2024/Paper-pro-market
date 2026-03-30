@@ -14,15 +14,21 @@ export interface ActionButtonProps {
 
 export const ActionButton = React.forwardRef<HTMLButtonElement, ActionButtonProps>(
   ({ label, onClick, children, className, suppressTooltip }, ref) => {
+    const buttonRef = useRef<HTMLButtonElement | null>(null);
+    const tooltipRef = useRef<HTMLDivElement | null>(null);
     const [isHovered, setIsHovered] = useState(false);
-    const buttonRef = useRef<HTMLButtonElement>(null);
     const [anchorRect, setAnchorRect] = useState<DOMRect | null>(null);
 
     const setRefs = useCallback((node: HTMLButtonElement | null) => {
       buttonRef.current = node;
       if (!ref) return;
-      if (typeof ref === "function") ref(node);
-      else ref.current = node;
+      if (typeof ref === "function") {
+        ref(node);
+        return;
+      }
+      if (ref && "current" in ref) {
+        (ref as React.MutableRefObject<HTMLButtonElement | null>).current = node;
+      }
     }, [ref]);
 
     const updateAnchor = useCallback(() => {
@@ -51,6 +57,7 @@ export const ActionButton = React.forwardRef<HTMLButtonElement, ActionButtonProp
       canPortal && isHovered && !suppressTooltip && anchorRect
         ? createPortal(
             <div
+              ref={tooltipRef}
               className={TOOLTIP_CLASS}
               style={{
                 left: Math.round(anchorRect.right + 8),
