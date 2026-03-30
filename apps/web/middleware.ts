@@ -35,6 +35,8 @@ export default auth((req) => {
   const { nextUrl } = req;
   const isLoggedIn = !!req.auth;
   const path = nextUrl.pathname;
+  const fetchDest = req.headers.get("sec-fetch-dest");
+  const isDocumentNavigation = !fetchDest || fetchDest === "document";
 
   // 0. Admin auth route handling
   const isAdminAuthRoute = ADMIN_AUTH_ROUTES.some(route => path.startsWith(route));
@@ -53,7 +55,13 @@ export default auth((req) => {
 
   // 1. API Route Protection (Keep existing logic)
   if (path.startsWith("/api/v1")) {
-      if (!isLoggedIn) {
+      // Razorpay callback: browser is redirected here by Razorpay after payment.
+      // redirect:true sends payment params as GET query params (not a form POST).
+      // The browser GET carries no session cookie (cross-origin redirect strips it).
+      // Security is guaranteed by HMAC signature verification in the handler.
+      const isRazorpayCallback = path === "/api/v1/payments/razorpay-callback";
+
+      if (!isLoggedIn && !isRazorpayCallback) {
           return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
       }
 
@@ -108,13 +116,22 @@ export default auth((req) => {
     const onboardingCompleted = req.auth?.user?.onboardingCompleted;
     const isApiRoute = path.startsWith('/api');
     const isOnboardingRoute = path.startsWith('/onboarding');
-    const isOnboardingApi = path.startsWith('/api/v1/onboarding/complete');
-    
-    // Admins bypass onboarding
+    const isSubscriptionRoute = path.startsWith('/subscription');
     const isAdmin = req.auth?.user?.role === 'admin';
 
-    if (onboardingCompleted === false && !isAdmin) {
-      if (!isOnboardingRoute && !isOnboardingApi && !isApiRoute) {
+    // onb_done cookie: set by /api/v1/onboarding/complete after DB write.
+    // Acts as a bypass signal when the httponly JWT cookie hasn't been rotated
+    // yet (session.update() is unreliable across the two NextAuth instances).
+    const onbDoneCookie = req.cookies.get('onb_done')?.value === '1';
+    const isOnboardingDone = onboardingCompleted || onbDoneCookie;
+
+    if (!isOnboardingDone && !isAdmin) {
+      if (
+        isDocumentNavigation &&
+        !isOnboardingRoute &&
+        !isApiRoute &&
+        !isSubscriptionRoute
+      ) {
         return NextResponse.redirect(new URL('/onboarding', nextUrl));
       }
     }

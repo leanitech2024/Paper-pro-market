@@ -23,6 +23,13 @@ function loadRazorpayScript(): Promise<void> {
     document.body.appendChild(script);
   });
 }
+
+function redirectToSuccess(url: string) {
+  const topWindow = window.open(url, "_top");
+  if (!topWindow) {
+    window.location.href = url;
+  }
+}
 export default function SubscriptionPage() {
   const router = useRouter();
   const { data: session, update, status: sessionStatus } = useSession();
@@ -44,6 +51,13 @@ export default function SubscriptionPage() {
   useEffect(() => {
     if (!hasFetched) fetchSubscription();
   }, [hasFetched, fetchSubscription]);
+
+  // Pre-load Razorpay SDK in the background so checkout opens instantly
+  useEffect(() => {
+    loadRazorpayScript().catch(() => {
+      // Non-fatal — will retry on payment initiation
+    });
+  }, []);
 
   if (sessionStatus === 'loading' || isNavigating) {
     return (
@@ -102,19 +116,23 @@ export default function SubscriptionPage() {
 
       // Step 2 â€” Load Razorpay checkout SDK
       await loadRazorpayScript();
+      const successUrl = `${window.location.origin}/api/v1/payments/razorpay-callback?plan=${nextPlan}`;
 
-      // Step 3 â€” Open checkout modal
-      const rzp = new window.Razorpay({
+      // Step 3 — Open checkout modal
+      // NOTE: @types/razorpay is missing callback_url and redirect — cast to bypass stale type defs
+      const rzpOptions: Record<string, unknown> = {
         key: keyId,
         amount,
         currency,
         order_id: orderId,
         name: 'Paper Market Pro',
         description: nextPlan === 'pro' ? 'Pro Plan' : 'Basic Plan',
+        callback_url: successUrl,
+        redirect: true,
         prefill: {
-          email: session?.user?.email ?? 'test@example.com',
-          name: session?.user?.name ?? 'Test User',
-          contact: '9999999999',
+          email: session?.user?.email ?? '',
+          name: session?.user?.name ?? '',
+          contact: '',
         },
         method: {
           card: true,
@@ -129,15 +147,17 @@ export default function SubscriptionPage() {
             toast.error('Payment cancelled.');
           },
         },
-        handler: async (response) => {
+        handler: async (response: { razorpay_order_id: string; razorpay_payment_id: string; razorpay_signature: string }) => {
           // Immediately show the navigation guard before pushing
           setIsNavigating(true);
           setIsUpgrading(null);
-          router.push(
-            `/subscription/success?plan=${nextPlan}&order_id=${encodeURIComponent(response.razorpay_order_id)}&payment_id=${encodeURIComponent(response.razorpay_payment_id)}&signature=${encodeURIComponent(response.razorpay_signature)}`
+          redirectToSuccess(
+            `${successUrl}&order_id=${encodeURIComponent(response.razorpay_order_id)}&payment_id=${encodeURIComponent(response.razorpay_payment_id)}&signature=${encodeURIComponent(response.razorpay_signature)}`
           );
         },
-      });
+      };
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-call
+      const rzp = new window.Razorpay(rzpOptions as unknown as RazorpayOptions);
 
       rzp.open();
       // Close our confirmation modal only AFTER Razorpay has been triggered

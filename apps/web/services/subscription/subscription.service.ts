@@ -3,6 +3,54 @@ import { db } from '@/lib/db';
 import { subscriptions } from '@paper-market/core/db';
 import type { SubscriptionPlan, SubscriptionStatus } from '@paper-market/core/db';
 import { logger } from '@/lib/logger';
+import { getRedis } from '@/lib/redis';
+
+const SUB_CACHE_TTL = 60; // seconds
+
+function subCacheKey(userId: string): string {
+    return `sub:effective:${userId}`;
+}
+
+async function getCachedPlan(userId: string): Promise<EffectivePlan | null> {
+    try {
+        const redis = getRedis();
+        if (!redis) return null;
+        const raw = await redis.get(subCacheKey(userId));
+        if (!raw) return null;
+        return JSON.parse(raw) as EffectivePlan;
+    } catch {
+        return null;
+    }
+}
+
+async function setCachedPlan(userId: string, plan: EffectivePlan): Promise<void> {
+    try {
+        const redis = getRedis();
+        if (!redis) return;
+        await redis.set(subCacheKey(userId), JSON.stringify(plan), { ex: SUB_CACHE_TTL });
+    } catch {
+        // Cache write failure is non-fatal
+    }
+}
+
+async function invalidatePlanCache(userId: string): Promise<void> {
+    try {
+        const redis = getRedis();
+        if (!redis) return;
+        await redis.del(subCacheKey(userId));
+    } catch {
+        // Cache invalidation failure is non-fatal
+    }
+}
+
+/** The shape of the effective plan returned by getEffectivePlan() */
+type EffectivePlan = {
+    plan: SubscriptionPlan;
+    status: SubscriptionStatus;
+    isTrialActive: boolean;
+    isTrialExpired: boolean;
+    trialEndDate: Date | null;
+};
 
 /** Features that can be gated by subscription plan */
 type GatedFeature = 'analytics' | 'journal' | 'export';
@@ -40,6 +88,8 @@ export const SubscriptionService = {
             currentPeriodEnd: trialEnd,
         });
 
+        // Invalidate cache so next read picks up the new trial
+        await invalidatePlanCache(userId);
         logger.info({ userId, trialEnd: trialEnd.toISOString() }, 'Created free trial subscription');
     },
 
@@ -61,24 +111,29 @@ export const SubscriptionService = {
      * - If on free_trial and trial has expired → returns 'expired'
      * - Otherwise returns the plan as stored
      */
-    async getEffectivePlan(userId: string): Promise<{
-        plan: SubscriptionPlan;
-        status: SubscriptionStatus;
-        isTrialActive: boolean;
-        isTrialExpired: boolean;
-        trialEndDate: Date | null;
-    }> {
+    async getEffectivePlan(userId: string): Promise<EffectivePlan> {
+        // Serve from cache if available — avoids DB hit on every JWT refresh
+        const cached = await getCachedPlan(userId);
+        if (cached) {
+            // Rehydrate the Date field (JSON.parse turns it into a string)
+            return {
+                ...cached,
+                trialEndDate: cached.trialEndDate ? new Date(cached.trialEndDate) : null,
+            };
+        }
+
         const subscription = await this.getSubscription(userId);
 
         if (!subscription) {
-            // No subscription record — treat as expired trial
-            return {
+            const result: EffectivePlan = {
                 plan: 'free_trial',
                 status: 'expired',
                 isTrialActive: false,
                 isTrialExpired: true,
                 trialEndDate: null,
             };
+            await setCachedPlan(userId, result);
+            return result;
         }
 
         const now = new Date();
@@ -94,22 +149,26 @@ export const SubscriptionService = {
                 .set({ status: 'expired', updatedAt: now })
                 .where(eq(subscriptions.userId, userId));
 
-            return {
+            const result: EffectivePlan = {
                 plan: 'free_trial',
                 status: 'expired',
                 isTrialActive: false,
                 isTrialExpired: true,
                 trialEndDate: subscription.trialEndDate,
             };
+            await setCachedPlan(userId, result);
+            return result;
         }
 
-        return {
+        const result: EffectivePlan = {
             plan: subscription.plan,
             status: subscription.status,
             isTrialActive: isTrialPlan && subscription.status === 'active',
             isTrialExpired: trialExpired,
             trialEndDate: subscription.trialEndDate,
         };
+        await setCachedPlan(userId, result);
+        return result;
     },
 
     /**
@@ -142,6 +201,8 @@ export const SubscriptionService = {
             });
         }
 
+        // Invalidate cache so the next JWT refresh picks up the new plan immediately
+        await invalidatePlanCache(userId);
         logger.info({ userId, plan, periodEnd: periodEnd.toISOString() }, 'Subscription plan upgraded');
     },
 

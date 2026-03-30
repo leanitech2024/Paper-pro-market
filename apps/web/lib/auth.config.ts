@@ -47,7 +47,7 @@ export const authConfig = {
                 return true;
             }
 
-            const isProtectedRoute = protectedRoutes.some(route => 
+            const isProtectedRoute = protectedRoutes.some(route =>
                 nextUrl.pathname.startsWith(route)
             );
 
@@ -83,7 +83,7 @@ export const authConfig = {
             }
             return session;
         },
-        async jwt({ token, user }) {
+        async jwt({ token, user, trigger, session }) {
             if (user) {
                 if (user.id) {
                     token.sub = user.id;
@@ -105,6 +105,28 @@ export const authConfig = {
             } else if (!token.id && token.sub) {
                 token.id = token.sub;
             }
+
+            // Handle session.update() calls — merge updated fields into the JWT.
+            // This is the critical fix: auth.config.ts is used by the middleware
+            // (Edge runtime). Without this block, update({ onboardingCompleted: true })
+            // never propagates to the JWT cookie the middleware reads, causing an
+            // infinite redirect loop where the middleware always sees stale false.
+            if (trigger === "update" && session) {
+                const patch = (session as any).user ?? session;
+                if (patch?.onboardingCompleted !== undefined) {
+                    token.onboardingCompleted = patch.onboardingCompleted;
+                }
+                if (patch?.subscriptionStatus !== undefined) {
+                    token.subscriptionStatus = patch.subscriptionStatus;
+                }
+                if (patch?.plan !== undefined) {
+                    token.plan = patch.plan;
+                }
+                if (patch?.role !== undefined) {
+                    token.role = patch.role;
+                }
+            }
+
             return token;
         },
     },

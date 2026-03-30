@@ -35,7 +35,24 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const passwordsMatch = await compare(password, user.password);
         if (!passwordsMatch) return null;
 
-        return { ...user, role: user.role ?? 'user', onboardingCompleted: user.onboardingCompleted };
+        // Load subscription ONCE at login — stored in JWT, updated via session.update()
+        let subscriptionStatus: string = "unknown";
+        let plan: string = "free_trial";
+        try {
+          const sub = await SubscriptionService.getEffectivePlan(user.id);
+          subscriptionStatus = sub.status;
+          plan = sub.plan;
+        } catch {
+          // Non-fatal — defaults applied
+        }
+
+        return {
+          ...user,
+          role: user.role ?? "user",
+          onboardingCompleted: user.onboardingCompleted,
+          subscriptionStatus,
+          plan,
+        };
       },
     }),
   ],
@@ -58,10 +75,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           }
 
           if (!existingUser) {
-            // C-10 FIX: All three operations (user row, wallet, ledger accounts)
-            // are now inside the same transaction. Previously INSERT INTO users
-            // was outside, so any failure in wallet/ledger bootstrap left a zombie
-            // user that could authenticate but had no wallet.
             const createdId = await db.transaction(async (tx) => {
               const [created] = await tx
                 .insert(users)
@@ -80,8 +93,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
               return created.id;
             });
 
-            // Watchlist creation is best-effort and intentionally outside the
-            // transaction — a watchlist failure must not roll back the user account.
             try {
               await WatchlistService.ensureDefaultWatchlist(createdId);
             } catch (error) {
@@ -92,12 +103,24 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             }
 
             user.id = createdId;
-            user.role = 'user'; // New users default to 'user' role
+            user.role = "user";
             user.onboardingCompleted = false;
+            user.subscriptionStatus = "active"; // New users get free trial
+            user.plan = "free_trial";
           } else {
             user.id = existingUser.id;
-            user.role = existingUser.role ?? 'user';
+            user.role = existingUser.role ?? "user";
             user.onboardingCompleted = existingUser.onboardingCompleted;
+
+            // Load subscription for returning Google users
+            try {
+              const sub = await SubscriptionService.getEffectivePlan(existingUser.id);
+              user.subscriptionStatus = sub.status;
+              user.plan = sub.plan;
+            } catch {
+              user.subscriptionStatus = "unknown";
+              user.plan = "free_trial";
+            }
           }
         } catch (error) {
           logger.error({ err: error }, "Error in Google signIn callback");
@@ -107,46 +130,36 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       return true;
     },
 
+    // JWT callback: ZERO DB calls. Pure token manipulation.
+    // Subscription + onboarding status set ONCE at sign-in.
+    // Updated only via session.update() calls from the client.
     async jwt({ token, user, trigger, session }) {
       if (user) {
         token.sub = user.id;
         token.id = user.id;
-        if (user.role) token.role = user.role;
+        token.role = user.role;
         token.onboardingCompleted = user.onboardingCompleted ?? false;
+        token.subscriptionStatus = user.subscriptionStatus;
+        token.plan = user.plan;
       }
-      if (trigger === "update" && session) {
-        const sessionUser = (session as any).user ?? session;
-        if (sessionUser?.id) {
-          token.sub = sessionUser.id;
-          token.id = sessionUser.id;
-        }
-        if (sessionUser?.role) token.role = sessionUser.role;
-        if (sessionUser?.onboardingCompleted !== undefined) {
-          token.onboardingCompleted = sessionUser.onboardingCompleted;
-        }
-        if (sessionUser?.subscriptionStatus !== undefined) {
-          token.subscriptionStatus = sessionUser.subscriptionStatus;
-        }
-        if (sessionUser?.plan !== undefined) {
-          token.plan = sessionUser.plan;
-        }
-      }
+
       if (!token.id && token.sub) {
         token.id = token.sub;
       }
 
-      if (token.id) {
-        const tokenAge = Date.now() - ((token.subscriptionCheckedAt as number) ?? 0);
-        if (!token.subscriptionStatus || trigger === "update" || tokenAge > 3600_000) {
-          try {
-            const sub = await SubscriptionService.getEffectivePlan(token.id);
-            token.subscriptionStatus = sub.status;
-            token.plan = sub.plan;
-            token.subscriptionCheckedAt = Date.now();
-          } catch (error) {
-            logger.error({ err: error, userId: token.id }, "Failed to fetch subscription status for JWT");
-            token.subscriptionStatus = token.subscriptionStatus || "unknown";
-          }
+      if (trigger === "update" && session) {
+        const patch = (session as { user?: Record<string, unknown> } & Record<string, unknown>).user ?? session;
+        if (patch?.onboardingCompleted !== undefined) {
+          token.onboardingCompleted = patch.onboardingCompleted as boolean;
+        }
+        if (patch?.subscriptionStatus !== undefined) {
+          token.subscriptionStatus = patch.subscriptionStatus as string;
+        }
+        if (patch?.plan !== undefined) {
+          token.plan = patch.plan as string;
+        }
+        if (patch?.role !== undefined) {
+          token.role = patch.role as string;
         }
       }
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -8,7 +8,7 @@ import { Loader2, Check, X } from "lucide-react";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 
 interface StepSelectPlanProps {
-  onNext: () => void;
+  onNext?: () => void;
 }
 
 const RUPEE = "\u20B9";
@@ -76,30 +76,112 @@ const plans = [
   },
 ] as const;
 
-export function StepSelectPlan({ onNext }: StepSelectPlanProps) {
-  const { update } = useSession();
+function loadRazorpayScript(): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (typeof window !== 'undefined' && (window as any).Razorpay) return resolve();
+    const script = document.createElement('script');
+    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+    script.async = true;
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error('Failed to load Razorpay SDK'));
+    document.body.appendChild(script);
+  });
+}
+
+
+export function StepSelectPlan(_props: StepSelectPlanProps) {
+  const { data: session, update } = useSession();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
 
-  const handleSelectPlan = async (plan: string) => {
-    setSelectedPlan(plan);
+  // Pre-load Razorpay SDK in the background as soon as the plan selection step renders.
+  // This way the checkout modal opens instantly when the user clicks a plan.
+  useEffect(() => {
+    loadRazorpayScript().catch(() => {
+      // Non-fatal — will retry when user clicks a paid plan
+    });
+  }, []);
+
+  const handleSelectPlan = async (planId: string) => {
+    if (isSubmitting) return;
+    setSelectedPlan(planId);
     setIsSubmitting(true);
+
     try {
-      const res = await fetch("/api/v1/subscription/upgrade", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ plan }),
+      // 1. Free Trial Logic (One-click activation)
+      if (planId === 'free_trial') {
+        const res = await fetch("/api/v1/subscription/upgrade", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ plan: planId }),
+        });
+
+        if (!res.ok) throw new Error("Failed to select trial plan");
+
+        await update({ subscriptionStatus: 'active' });
+        window.location.replace("/subscription/success?plan=free_trial&onboarding=true");
+        return;
+      }
+
+      // 2. Paid Plan Logic (Razorpay Integration)
+      // Step A: Create Razorpay order
+      const orderRes = await fetch('/api/v1/payments/create-order', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ plan: planId }),
       });
 
-      if (!res.ok) throw new Error("Failed to select plan");
+      if (!orderRes.ok) throw new Error('Failed to create payment order');
+      const { orderId, amount, currency, keyId } = await orderRes.json() as {
+        orderId: string;
+        amount: number;
+        currency: string;
+        keyId: string;
+      };
 
-      await update({ subscriptionStatus: 'active' });
+      // Step B: Load Razorpay SDK (already pre-loaded on mount)
+      await loadRazorpayScript();
 
-      toast.success(`${plan === "free_trial" ? "Trial" : plan} plan selected`);
-      onNext();
+      // callback_url: Razorpay server-redirects to this URL after payment (via POST)
+      // redirect:true means we do NOT define a handler — using both causes double navigation.
+      const successUrl = `${window.location.origin}/api/v1/payments/razorpay-callback?plan=${planId}&onboarding=true`;
+
+      // Step C: Open Checkout
+      const rzp = new (window as any).Razorpay({
+        key: keyId,
+        amount,
+        currency,
+        order_id: orderId,
+        name: 'Paper Market Pro',
+        description: planId === 'pro' ? 'Pro Plan' : 'Basic Plan',
+        callback_url: successUrl,
+        redirect: true,
+        prefill: {
+          email: session?.user?.email ?? '',
+          name: session?.user?.name ?? '',
+          contact: '',
+        },
+        method: {
+          card: true,
+          upi: true,
+          netbanking: true,
+          wallet: true,
+        },
+        theme: { color: '#2563eb' },
+        modal: {
+          ondismiss: () => {
+            setIsSubmitting(false);
+            setSelectedPlan(null);
+            toast.error('Payment cancelled.');
+          },
+        },
+        // No handler: redirect:true uses callback_url (server redirect).
+        // Defining handler alongside callback_url causes double navigation.
+      });
+
+      rzp.open();
     } catch (error) {
       toast.error("An error occurred. Please try again.");
-    } finally {
       setIsSubmitting(false);
       setSelectedPlan(null);
     }

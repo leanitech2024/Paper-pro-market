@@ -6,6 +6,19 @@ import { getRazorpay, PLAN_AMOUNTS } from '@/lib/razorpay';
 import { z } from 'zod';
 import { logger } from '@/lib/logger';
 
+type RazorpayOrder = { id: string; amount: number | string; currency: string };
+
+const RAZORPAY_TIMEOUT_MS = 8_000;
+
+function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+    return Promise.race([
+        promise,
+        new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms)
+        ),
+    ]);
+}
+
 const schema = z.object({
     plan: z.enum(['basic', 'pro']),
 });
@@ -27,16 +40,30 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         const { plan } = parsed.data;
         const amount = PLAN_AMOUNTS[plan];
 
-        // Create Razorpay order
-        const order = await getRazorpay().orders.create({
-            amount,
-            currency: 'INR',
-            receipt: `rcpt_${session.user.id.slice(0, 8)}_${Date.now()}`,
-            notes: {
-                userId: session.user.id,
-                plan,
-            },
-        });
+        // Create Razorpay order with explicit timeout to prevent indefinite hangs
+        let order: RazorpayOrder;
+        try {
+            order = await withTimeout(
+                getRazorpay().orders.create({
+                    amount,
+                    currency: 'INR',
+                    receipt: `rcpt_${session.user.id.slice(0, 8)}_${Date.now()}`,
+                    notes: {
+                        userId: session.user.id,
+                        plan,
+                    },
+                }),
+                RAZORPAY_TIMEOUT_MS,
+                'Razorpay orders.create'
+            );
+        } catch (err) {
+            const isTimeout = err instanceof Error && err.message.includes('timed out');
+            logger.error({ err, userId: session.user.id, plan }, isTimeout ? 'Razorpay order creation timed out' : 'Razorpay order creation failed');
+            return NextResponse.json(
+                { error: isTimeout ? 'Payment provider is currently slow. Please try again.' : 'Failed to create payment order', code: isTimeout ? 'PAYMENT_TIMEOUT' : 'ORDER_CREATION_FAILED' },
+                { status: isTimeout ? 504 : 502 }
+            );
+        }
 
         // Persist payment record
         await db.insert(payments).values({

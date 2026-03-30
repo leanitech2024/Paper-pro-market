@@ -1,18 +1,21 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 import { useSession } from "next-auth/react";
 
 export function StepComplete() {
-  const router = useRouter();
   const { update } = useSession();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  // Guard against duplicate calls (React Strict Mode, rapid clicks)
+  const hasCalledRef = useRef(false);
+
 
   const handleComplete = async () => {
+    if (hasCalledRef.current) return;
+    hasCalledRef.current = true;
     setIsSubmitting(true);
     try {
       const res = await fetch("/api/v1/onboarding/complete", {
@@ -23,16 +26,18 @@ export function StepComplete() {
         throw new Error("Failed to complete onboarding");
       }
 
-      toast.success("Ready to trade!");
-      await update({ user: { onboardingCompleted: true } });
-      router.replace("/trade/equity");
-      router.refresh();
-    } catch (error) {
+      // Patch JWT: flat object — JWT callback reads session.user ?? session
+      await update({ onboardingCompleted: true });
+      // Full navigation so middleware reads the fresh cookie
+      window.location.href = "/trade/equity";
+    } catch {
       toast.error("An error occurred. Please try again.");
+      hasCalledRef.current = false; // Allow retry on failure
     } finally {
       setIsSubmitting(false);
     }
   };
+
 
   return (
     <div className="flex w-full max-w-md flex-col items-center justify-center space-y-6 text-center mx-auto">
