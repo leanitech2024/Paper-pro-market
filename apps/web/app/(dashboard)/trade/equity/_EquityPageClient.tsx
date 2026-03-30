@@ -307,6 +307,8 @@ export default function EquityPage({ initialSymbol }: { initialSymbol?: string }
       <GlobalSearchModal
         open={searchModalOpen}
         onOpenChange={setSearchModalOpen}
+        searchMode="EQUITY"
+        placeholder="Search equities..."
         onSelectStock={(stock) => {
           handleSelectStock(stock);
           setSearchModalOpen(false);

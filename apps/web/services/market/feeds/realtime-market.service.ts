@@ -34,7 +34,7 @@ interface Quote {
 // 🌐 MARKET ENGINE WS URL
 // ═══════════════════════════════════════════════════════════
 const MARKET_ENGINE_WS_URL =
-  process.env.MARKET_ENGINE_WS_URL || "ws://localhost:4201";
+  process.env.MARKET_ENGINE_WS_URL || "ws://localhost:4200";
 
 const RECONNECT_DELAYS = [1000, 2000, 5000, 10000, 30000];
 

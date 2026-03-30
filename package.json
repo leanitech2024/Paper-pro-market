@@ -2,7 +2,7 @@
   "name": "@paper-market/root",
   "private": true,
   "version": "1.0.0",
-  "packageManager": "pnpm@10.26.1",
+  "packageManager": "pnpm@10.33.0",
   "type": "module",
   "workspaces": [
     "apps/*",

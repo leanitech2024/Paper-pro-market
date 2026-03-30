@@ -66,3 +66,4 @@ temp-dist/
 packages/*/dist/
 packages/*/temp-dist/
 
+seed.admin

@@ -23,6 +23,7 @@ export default function DashboardLayoutClient({ children }: { children: ReactNod
   
 
   useMarketStream();
+  const pathname = usePathname();
 
   const fetchWallet = useWalletStore((state) => state.fetchWallet);
   const fetchPositions = usePositionsStore((state) => state.fetchPositions);
@@ -59,13 +60,25 @@ export default function DashboardLayoutClient({ children }: { children: ReactNod
 
       if ((e.ctrlKey || e.metaKey) && e.key === "k") {
         e.preventDefault();
-        useSearchStore.getState().openSearch();
+        const isEquity = pathname?.startsWith("/trade/equity");
+        const isOptions = pathname?.startsWith("/trade/options");
+        const isFutures = pathname?.startsWith("/trade/futures");
+        const mode = isEquity ? "EQUITY" : isOptions ? "OPTION" : isFutures ? "FUTURE" : "ALL";
+        const placeholder =
+          mode === "EQUITY"
+            ? "Search equities..."
+            : mode === "OPTION"
+            ? "Search option contracts..."
+            : mode === "FUTURE"
+            ? "Search futures contracts..."
+            : "Search stocks, indices, commodities...";
+        useSearchStore.getState().openSearch({ mode, placeholder });
       }
     };
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, []);
+  }, [pathname]);
 
   return (
     <DashboardContentWrapper>

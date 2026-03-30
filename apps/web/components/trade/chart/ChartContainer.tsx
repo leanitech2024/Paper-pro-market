@@ -3,7 +3,6 @@ import { useEffect, useMemo, useState, useCallback, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import { CandlestickData, HistogramData, IChartApi, Time } from 'lightweight-charts';
 import { Drawing, IndicatorConfig, useAnalysisStore } from '@/stores/trading/analysis.store';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useMarketStore } from '@/stores/trading/market.store';
 import { IndicatorsMenu } from './IndicatorsMenu';
 import { ChartHeader } from './ChartHeader';
@@ -14,7 +13,7 @@ import { debounce } from '@/lib/utils/debounce';
 import { symbolToIndexInstrumentKey, toCanonicalSymbol, toInstrumentKey } from '@paper-market/core';
 import { computeIndicators, scheduleIndicatorComputation, type ComputedIndicator } from '@/lib/analysis/indicator-engine';
 import { trackAnalysisEvent } from '@/lib/analysis/telemetry';
-import { Eye, EyeOff, Lock, Unlock, Trash2 } from 'lucide-react';
+import { ChartToolbar } from './toolbar/ChartToolbar';
 import { useTradeViewport } from '@/hooks/use-trade-viewport';
 
 // Dynamic imports to avoid SSR issues with LWC
@@ -77,6 +76,7 @@ export function ChartContainer({ symbol, headerSymbol, instrumentKey, onSearchCl
     hotkeysEnabled,
     setActiveTool,
     selectedDrawingIds,
+    globalHideState,
     setSelectedDrawingsLocked,
     deleteSelectedDrawings,
     setDrawingVisibility,
@@ -156,13 +156,19 @@ export function ChartContainer({ symbol, headerSymbol, instrumentKey, onSearchCl
   );
   const activeRangeKey = useMemo(() => String(range || '').toUpperCase(), [range]);
   const activeTimeframeKey = useMemo(() => String(timeframe || '1m').toLowerCase(), [timeframe]);
+  const visibleIndicators = useMemo(
+    () => (globalHideState.indicators ? [] : indicators),
+    [globalHideState.indicators, indicators],
+  );
   const showVolume = useMemo(
-    () => indicators.some((indicator) => indicator.type === "VOL" && indicator.display?.visible !== false),
-    [indicators],
+    () =>
+      !globalHideState.indicators &&
+      visibleIndicators.some((indicator) => indicator.type === "VOL" && indicator.display?.visible !== false),
+    [globalHideState.indicators, visibleIndicators],
   );
   const overlayIndicators = useMemo(
-    () => indicators.filter((indicator) => indicator.type !== "VOL"),
-    [indicators],
+    () => visibleIndicators.filter((indicator) => indicator.type !== "VOL"),
+    [visibleIndicators],
   );
 
   // Use state from store
@@ -504,9 +510,10 @@ export function ChartContainer({ symbol, headerSymbol, instrumentKey, onSearchCl
       const tag = target?.tagName?.toLowerCase();
       const isTypingTarget =
         tag === "input" || tag === "textarea" || tag === "select" || Boolean(target?.isContentEditable);
-      if (isTypingTarget) return;
+      if (isTypingTarget || event.defaultPrevented) return;
 
       const key = event.key.toLowerCase();
+
       if ((event.ctrlKey || event.metaKey) && key === "z") {
         event.preventDefault();
         if (event.shiftKey) {
@@ -514,12 +521,6 @@ export function ChartContainer({ symbol, headerSymbol, instrumentKey, onSearchCl
         } else {
           useAnalysisStore.getState().undoDrawing(symbol);
         }
-        return;
-      }
-
-      if (event.altKey && key === "t") {
-        event.preventDefault();
-        setActiveTool("text");
         return;
       }
 
@@ -532,6 +533,7 @@ export function ChartContainer({ symbol, headerSymbol, instrumentKey, onSearchCl
       }
 
       if (key === "escape") {
+        event.preventDefault();
         const state = useAnalysisStore.getState();
         if (state.interactionState.status === "drawing") {
           state.cancelDrawing();
@@ -542,12 +544,36 @@ export function ChartContainer({ symbol, headerSymbol, instrumentKey, onSearchCl
         return;
       }
 
+      if (event.altKey) {
+        if (event.shiftKey && key === "r") {
+          event.preventDefault();
+          setActiveTool("polyline");
+          return;
+        }
+        const altMap: Record<string, any> = {
+          t: "trendline",
+          h: "horizontal-line",
+          v: "vertical-line",
+          c: "cross-line",
+          f: "gann-fan",
+        };
+        const altTool = altMap[key];
+        if (altTool) {
+          event.preventDefault();
+          setActiveTool(altTool);
+        }
+        return;
+      }
+
       const toolMap: Record<string, any> = {
         v: "cursor",
         c: "crosshair",
-        t: "trendline",
+        l: "long-position",
+        s: "short-position",
         r: "rectangle",
-        h: "horizontal-line",
+        t: "text",
+        b: "brush",
+        m: "date-price-range",
       };
       const mappedTool = toolMap[key];
       if (mappedTool) {
@@ -583,103 +609,7 @@ export function ChartContainer({ symbol, headerSymbol, instrumentKey, onSearchCl
   const allVisible = hasSelection && selectedDrawings.every((drawing: any) => drawing.visible !== false);
   const allLocked = hasSelection && selectedDrawings.every((drawing: any) => drawing.locked === true);
  
-  const leftToolbar = (
-    <TooltipProvider delayDuration={0}>
-      <div className="hidden md:flex w-10 bg-white/95 border-r border-slate-200/80 flex-col items-center py-4 gap-4 z-20 shrink-0 dark:bg-[#0c1322]/95 dark:border-white/[0.08]">
-        {[
-          { id: 'crosshair', label: 'Crosshair', icon: <><path d="M12 3v18"/><path d="M3 12h18"/></> },
-          { id: 'cursor', label: 'Cursor', icon: <path d="M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z"/> },
-          { id: 'trendline', label: 'Trendline', icon: <line x1="2" y1="2" x2="22" y2="22"/> },
-          { id: 'ray', label: 'Ray', icon: <><circle cx="12" cy="12" r="2"/><path d="M12 12l10-6"/></> },
-          { id: 'horizontal-line', label: 'Horizontal Line', icon: <line x1="3" y1="12" x2="21" y2="12"/> },
-          { id: 'rectangle', label: 'Rectangle', icon: <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/> },
-          { id: 'text', label: 'Text', icon: <><path d="M4 7V4h16v3"/><path d="M9 20h6"/><path d="M12 4v16"/></> }
-        ].map((tool) => (
-          <Tooltip key={tool.id}>
-            <TooltipTrigger asChild>
-              <div
-                onClick={() => setActiveTool(tool.id as any)}
-                className={`p-1.5 rounded-sm cursor-pointer transition-colors ${activeTool === tool.id ? 'bg-primary text-primary-foreground' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-white/[0.06] dark:hover:text-slate-100'}`}
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  {tool.icon}
-                </svg>
-              </div>
-            </TooltipTrigger>
-            <TooltipContent side="right" sideOffset={10} className="bg-popover text-popover-foreground text-xs px-2 py-1">
-              <p>{tool.label}</p>
-            </TooltipContent>
-          </Tooltip>
-        ))}
-
-        <div className="w-6 h-px bg-slate-200/70 dark:bg-white/[0.08]" />
-
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <button
-              type="button"
-              disabled={!hasSelection}
-              onClick={() => {
-                selectedDrawings.forEach((drawing: any) => {
-                  setDrawingVisibility(symbol, drawing.id, !allVisible);
-                });
-              }}
-              className={`p-1.5 rounded-sm transition-colors ${
-                hasSelection
-                  ? 'text-slate-500 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-white/[0.06] dark:hover:text-slate-100'
-                  : 'text-slate-400/60 cursor-not-allowed dark:text-slate-500/40'
-              }`}
-            >
-              {allVisible ? <EyeOff size={16} /> : <Eye size={16} />}
-            </button>
-          </TooltipTrigger>
-          <TooltipContent side="right" sideOffset={10} className="bg-popover text-popover-foreground text-xs px-2 py-1">
-            <p>{allVisible ? "Hide Selected" : "Show Selected"}</p>
-          </TooltipContent>
-        </Tooltip>
-
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <button
-              type="button"
-              disabled={!hasSelection}
-              onClick={() => setSelectedDrawingsLocked(symbol, !allLocked)}
-              className={`p-1.5 rounded-sm transition-colors ${
-                hasSelection
-                  ? 'text-slate-500 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-white/[0.06] dark:hover:text-slate-100'
-                  : 'text-slate-400/60 cursor-not-allowed dark:text-slate-500/40'
-              }`}
-            >
-              {allLocked ? <Unlock size={16} /> : <Lock size={16} />}
-            </button>
-          </TooltipTrigger>
-          <TooltipContent side="right" sideOffset={10} className="bg-popover text-popover-foreground text-xs px-2 py-1">
-            <p>{allLocked ? "Unlock Selected" : "Lock Selected"}</p>
-          </TooltipContent>
-        </Tooltip>
-
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <button
-              type="button"
-              disabled={!hasSelection}
-              onClick={() => deleteSelectedDrawings(symbol)}
-              className={`p-1.5 rounded-sm transition-colors ${
-                hasSelection
-                  ? 'text-slate-500 hover:bg-slate-100 hover:text-destructive dark:text-slate-400 dark:hover:bg-white/[0.06]'
-                  : 'text-slate-400/60 cursor-not-allowed dark:text-slate-500/40'
-              }`}
-            >
-              <Trash2 size={16} />
-            </button>
-          </TooltipTrigger>
-          <TooltipContent side="right" sideOffset={10} className="bg-popover text-popover-foreground text-xs px-2 py-1">
-            <p>Delete Selected</p>
-          </TooltipContent>
-        </Tooltip>
-      </div>
-    </TooltipProvider>
-  );
+  const leftToolbar = <ChartToolbar symbol={symbol} />;
 
   const renderChartArea = () => (
     <div className="relative flex-1 h-full min-w-0 bg-transparent flex flex-col">
@@ -727,7 +657,7 @@ export function ChartContainer({ symbol, headerSymbol, instrumentKey, onSearchCl
               data={legendData}
               upColor={legendUpColor}
               downColor={legendDownColor}
-              indicators={indicators.map((indicator) => ({
+              indicators={visibleIndicators.map((indicator) => ({
                 id: indicator.id,
                 label: indicator.type,
                 color: indicator.display.color,

@@ -173,30 +173,30 @@ export function GlobalSearchModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[92vw] max-w-3xl gap-0 overflow-hidden border border-border bg-background p-0 text-foreground shadow-2xl dark:border-white/10 dark:bg-slate-950 dark:text-slate-100">
-        <DialogHeader className="border-b border-border px-4 pb-4 pt-5 sm:px-6 dark:border-white/10">
-          <DialogTitle className="text-lg font-semibold text-foreground dark:text-white">
+      <DialogContent className="w-[94vw] max-w-3xl max-h-[90vh] gap-0 overflow-hidden rounded-2xl border border-slate-200/80 bg-white/95 p-0 text-foreground shadow-2xl dark:border-white/10 dark:bg-[#0c1322] dark:text-slate-100 sm:w-[92vw] sm:max-h-[85vh] flex flex-col">
+        <DialogHeader className="border-b border-slate-200/80 px-4 pb-3 pt-4 sm:px-6 sm:pb-4 sm:pt-5 dark:border-white/10">
+          <DialogTitle className="text-lg font-semibold text-slate-900 dark:text-white">
             Symbol Search
           </DialogTitle>
         </DialogHeader>
 
         {/* Search */}
-        <div className="px-4 pb-4 sm:px-6">
+        <div className="px-4 pb-3 sm:px-6 sm:pb-4">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground dark:text-slate-400" />
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-slate-400" />
 
             <Input
               ref={inputRef}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder={placeholder}
-              className="h-11 rounded-lg border-border bg-muted/30 pl-10 pr-4 text-foreground placeholder:text-muted-foreground shadow-sm focus-visible:border-primary focus-visible:ring-0 focus-visible:ring-offset-0 dark:border-white/10 dark:bg-slate-900/60 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus-visible:border-[#2d6cff]"
+              className="h-10 sm:h-11 rounded-lg border-slate-200/80 bg-slate-50/70 pl-10 pr-4 text-slate-900 placeholder:text-slate-400 shadow-sm focus-visible:border-blue-500 focus-visible:ring-0 focus-visible:ring-offset-0 dark:border-white/10 dark:bg-[#10192b] dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus-visible:border-blue-400"
             />
           </div>
         </div>
 
         {/* Categories */}
-        <div className="flex flex-wrap gap-2 border-b border-border px-4 pb-3 sm:px-6 dark:border-white/10">
+        <div className="flex flex-wrap gap-2 border-b border-slate-200/80 px-4 pb-3 sm:px-6 dark:border-white/10">
           {categories.map((cat) => (
             <Button
               key={cat}
@@ -204,10 +204,10 @@ export function GlobalSearchModal({
               size="sm"
               onClick={() => setActiveCategory(cat)}
               className={cn(
-                "h-8 rounded-lg border px-3 text-xs font-semibold transition-colors",
+                "h-8 rounded-lg border px-3 text-[11px] font-semibold transition-colors",
                 activeCategory === cat
-                  ? "border-primary/40 bg-primary/15 text-primary hover:bg-primary/20 dark:border-[#2d6cff] dark:bg-[#2d6cff]/20 dark:text-[#9fc1ff] dark:hover:bg-[#2d6cff]/30"
-                  : "border-border bg-card text-muted-foreground hover:border-border hover:bg-muted hover:text-foreground dark:border-white/10 dark:bg-transparent dark:text-slate-300 dark:hover:border-white/20 dark:hover:bg-white/[0.05] dark:hover:text-white"
+                  ? "border-blue-500/40 bg-blue-600/10 text-blue-500 hover:bg-blue-600/15 dark:border-blue-500/40 dark:bg-blue-500/15 dark:text-blue-400 dark:hover:bg-blue-500/20"
+                  : "border-slate-200/80 bg-white text-slate-600 hover:border-slate-200 hover:bg-slate-100 hover:text-slate-900 dark:border-white/10 dark:bg-transparent dark:text-slate-300 dark:hover:border-white/20 dark:hover:bg-white/[0.05] dark:hover:text-white"
               )}
             >
               {cat}
@@ -217,7 +217,7 @@ export function GlobalSearchModal({
 
         {/* RESULTS + SINGLE TOOLTIP PROVIDER */}
         <TooltipProvider delayDuration={80} skipDelayDuration={200}>
-          <ScrollArea className="h-[52vh] max-h-[520px] sm:h-[440px]">
+          <ScrollArea className="flex-1 min-h-0 h-[52vh] max-h-[520px] sm:h-[440px]">
             {query.length <= 1 ? (
               <div className="flex flex-col items-center justify-center h-full text-center p-8">
                 <TrendingUp className="mb-4 h-12 w-12 text-muted-foreground/45 dark:text-slate-500/40" />
@@ -239,9 +239,9 @@ export function GlobalSearchModal({
                 </p>
               </div>
             ) : (
-              <div className="divide-y divide-border dark:divide-white/10">
+              <div className="divide-y divide-slate-200/70 dark:divide-white/10">
                 {/* Header */}
-                <div className="hidden sm:grid grid-cols-12 gap-4 bg-muted/40 px-6 py-2 text-xs font-semibold tracking-wide text-muted-foreground dark:bg-white/[0.03] dark:text-slate-400">
+                <div className="hidden sm:grid grid-cols-12 gap-4 bg-slate-50/70 px-6 py-2 text-xs font-semibold tracking-wide text-slate-500 dark:bg-white/[0.03] dark:text-slate-400">
                   <div className="col-span-4">SYMBOL</div>
                   <div className="col-span-5">DESCRIPTION</div>
                   <div className="col-span-2 text-right">EXCHANGE</div>
@@ -261,13 +261,13 @@ export function GlobalSearchModal({
                       className={cn(
                         "flex cursor-pointer flex-col gap-2 border-l-2 px-4 py-3 transition-colors sm:grid sm:grid-cols-12 sm:gap-4 sm:px-6",
                         selectedIndex === idx
-                          ? "border-primary bg-primary/10 dark:border-[#2d6cff] dark:bg-[#2d6cff]/12"
-                          : "border-transparent hover:bg-muted/50 dark:hover:bg-white/[0.04]"
+                          ? "border-blue-500 bg-blue-600/10 dark:border-blue-500 dark:bg-blue-500/15"
+                          : "border-transparent hover:bg-slate-100/60 dark:hover:bg-white/[0.04]"
                       )}
                     >
                       <div className="flex items-center justify-between sm:block sm:col-span-4 text-sm font-semibold text-foreground dark:text-white">
                         <span>{stock.symbol}</span>
-                        <span className="inline-flex items-center rounded border border-border bg-muted/45 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground sm:hidden dark:border-white/15 dark:bg-white/[0.04] dark:text-slate-300">
+                        <span className="inline-flex items-center rounded border border-slate-200/80 bg-slate-50/80 px-1.5 py-0.5 text-[10px] font-medium text-slate-500 sm:hidden dark:border-white/15 dark:bg-white/[0.04] dark:text-slate-300">
                           NSE
                         </span>
                       </div>
@@ -277,7 +277,7 @@ export function GlobalSearchModal({
                       </div>
 
                       <div className="hidden sm:flex sm:col-span-2 sm:justify-end">
-                        <span className="inline-flex items-center rounded border border-border bg-muted/45 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground dark:border-white/15 dark:bg-white/[0.04] dark:text-slate-300">
+                        <span className="inline-flex items-center rounded border border-slate-200/80 bg-slate-50/80 px-1.5 py-0.5 text-[10px] font-medium text-slate-500 dark:border-white/15 dark:bg-white/[0.04] dark:text-slate-300">
                           NSE
                         </span>
                       </div>
@@ -298,7 +298,7 @@ export function GlobalSearchModal({
                               }
                               className={cn(
                                 "h-7 w-7 border border-transparent text-muted-foreground opacity-80 hover:border-border hover:bg-muted hover:text-foreground hover:opacity-100 dark:text-slate-400 dark:hover:border-white/15 dark:hover:bg-white/[0.06] dark:hover:text-white",
-                                isAdded && "border-primary/40 bg-primary/15 text-primary dark:border-[#2d6cff]/40 dark:bg-[#2d6cff]/15 dark:text-[#9fc1ff]"
+                                isAdded && "border-blue-500/40 bg-blue-600/10 text-blue-500 dark:border-blue-500/40 dark:bg-blue-500/15 dark:text-blue-400"
                               )}
                             >
                               <Bookmark

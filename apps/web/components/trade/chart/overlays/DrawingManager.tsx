@@ -1,704 +1,783 @@
 // components/trade/chart/overlays/DrawingManager.tsx
 "use client";
-import { useEffect, useRef, useState, useCallback } from 'react';
-import { IChartApi, ISeriesApi, Time, Coordinate, Logical } from 'lightweight-charts';
-import { useAnalysisStore, Point, TwoPointDrawing } from '@/stores/trading/analysis.store';
-import { CandlestickData } from 'lightweight-charts';
+import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
+import type { IChartApi, ISeriesApi, Time, Coordinate, Logical, CandlestickData } from 'lightweight-charts';
+import {
+  useAnalysisStore,
+  type Point,
+  type TwoPointDrawing,
+  type Drawing,
+  type DrawingType,
+  type ToolType,
+  type SinglePointLineDrawing,
+  type ThreePointDrawing,
+  type MultiPointDrawing,
+  type PositionDrawing,
+  type BrushDrawing,
+  type ArrowDrawing,
+  type TextDrawing as TextDrawingType,
+} from '@/stores/trading/analysis.store';
 
 import {
-    Dialog,
-    DialogContent,
-    DialogHeader,
-    DialogTitle,
-    DialogFooter,
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
+// Import all renderers
+import * as LineR from './renderers/LineRenderers';
+import * as ChannelR from './renderers/ChannelRenderers';
+import * as PitchforkR from './renderers/PitchforkRenderers';
+import * as FibR from './renderers/FibRenderers';
+import * as GannR from './renderers/GannRenderers';
+import * as PatternR from './renderers/PatternRenderers';
+import * as ElliottR from './renderers/ElliottRenderers';
+import * as ProjectionR from './renderers/ProjectionRenderers';
+import * as MeasurerR from './renderers/MeasurerRenderers';
+import * as ShapeR from './renderers/ShapeRenderers';
+import * as AnnotationR from './renderers/AnnotationRenderers';
+import * as BrushR from './renderers/BrushRenderers';
+import type { DrawingRendererProps } from './renderers/types';
+import { REQUIRED_POINTS, ELLIOTT_LABELS, PATTERN_LABELS } from './renderers/types';
+import { MeasurerOverlay } from './MeasurerOverlay';
+
+// ─── Renderer Dispatch Map ─────────────────────────────────────
+type RenderFn = (props: DrawingRendererProps) => React.ReactNode;
+
+const RENDERER_MAP: Record<string, RenderFn> = {
+  // Lines
+  trendline: LineR.renderTrendline,
+  ray: LineR.renderRay,
+  "extended-line": LineR.renderExtendedLine,
+  "info-line": LineR.renderInfoLine,
+  "trend-angle": LineR.renderTrendAngle,
+  "horizontal-line": LineR.renderHorizontalLine,
+  "horizontal-ray": LineR.renderHorizontalRay,
+  "vertical-line": LineR.renderVerticalLine,
+  "cross-line": LineR.renderCrossLine,
+  // Channels
+  "parallel-channel": ChannelR.renderParallelChannel,
+  "regression-trend": ChannelR.renderRegressionTrend,
+  "flat-top-bottom": ChannelR.renderFlatTopBottom,
+  "disjoint-channel": ChannelR.renderDisjointChannel,
+  // Pitchforks
+  pitchfork: PitchforkR.renderPitchfork,
+  "schiff-pitchfork": PitchforkR.renderSchiffPitchfork,
+  "modified-schiff-pitchfork": PitchforkR.renderModifiedSchiffPitchfork,
+  "inside-pitchfork": PitchforkR.renderInsidePitchfork,
+  // Fibonacci
+  "fib-retracement": FibR.renderFibRetracement,
+  "fib-extension": FibR.renderFibExtension,
+  "fib-channel": FibR.renderFibChannel,
+  "fib-time-zone": FibR.renderFibTimeZone,
+  "fib-speed-fan": FibR.renderFibSpeedFan,
+  "fib-time-extension": FibR.renderFibTimeExtension,
+  "fib-circles": FibR.renderFibCircles,
+  "fib-spiral": FibR.renderFibSpiral,
+  "fib-speed-arcs": FibR.renderFibSpeedArcs,
+  "fib-wedge": FibR.renderFibWedge,
+  pitchfan: FibR.renderPitchfan,
+  // Gann
+  "gann-box": GannR.renderGannBox,
+  "gann-square-fixed": GannR.renderGannSquareFixed,
+  "gann-square": GannR.renderGannSquare,
+  "gann-fan": GannR.renderGannFan,
+  // Patterns
+  "xabcd-pattern": PatternR.renderXabcdPattern,
+  "cypher-pattern": PatternR.renderCypherPattern,
+  "head-shoulders": PatternR.renderHeadShoulders,
+  "abcd-pattern": PatternR.renderAbcdPattern,
+  "triangle-pattern": PatternR.renderTrianglePattern,
+  "three-drives-pattern": PatternR.renderThreeDrivesPattern,
+  // Elliott
+  "elliott-impulse": ElliottR.renderElliottImpulse,
+  "elliott-correction": ElliottR.renderElliottCorrection,
+  "elliott-triangle": ElliottR.renderElliottTriangle,
+  "elliott-double-combo": ElliottR.renderElliottDoubleCombo,
+  "elliott-triple-combo": ElliottR.renderElliottTripleCombo,
+  // Projection
+  "long-position": ProjectionR.renderLongPosition,
+  "short-position": ProjectionR.renderShortPosition,
+  forecast: ProjectionR.renderForecast,
+  "bars-pattern": ProjectionR.renderBarsPattern,
+  "ghost-feed": ProjectionR.renderGhostFeed,
+  // Measurer
+  "price-range": MeasurerR.renderPriceRange,
+  "date-range": MeasurerR.renderDateRange,
+  "date-price-range": MeasurerR.renderDatePriceRange,
+  // Shapes
+  rectangle: ShapeR.renderRectangle,
+  "rotated-rectangle": ShapeR.renderRotatedRectangle,
+  circle: ShapeR.renderCircle,
+  ellipse: ShapeR.renderEllipse,
+  polyline: ShapeR.renderPolyline,
+  path: ShapeR.renderPath,
+  "triangle-shape": ShapeR.renderTriangleShape,
+  curve: ShapeR.renderCurve,
+  "double-curve": ShapeR.renderDoubleCurve,
+  // Annotations
+  text: AnnotationR.renderText,
+  "anchored-text": AnnotationR.renderAnchoredText,
+  note: AnnotationR.renderNote,
+  "anchored-note": AnnotationR.renderAnchoredNote,
+  callout: AnnotationR.renderCallout,
+  comment: AnnotationR.renderComment,
+  "price-label": AnnotationR.renderPriceLabel,
+  signpost: AnnotationR.renderSignpost,
+  "flag-mark": AnnotationR.renderFlagMark,
+  "arrow-marker": AnnotationR.renderArrowMarker,
+  "arrow-up": AnnotationR.renderArrowUp,
+  "arrow-down": AnnotationR.renderArrowDown,
+  "arrow-left": AnnotationR.renderArrowLeft,
+  "arrow-right": AnnotationR.renderArrowRight,
+  // Brushes / Cycles
+  brush: BrushR.renderBrush,
+  highlighter: BrushR.renderHighlighter,
+  "cyclic-lines": BrushR.renderCyclicLines,
+  "time-cycles": BrushR.renderTimeCycles,
+};
+
+// ─── Tool Category Helpers ─────────────────────────────────────
+const SINGLE_CLICK_TOOLS = new Set<string>([
+  "horizontal-line", "vertical-line", "cross-line", "horizontal-ray",
+  "arrow-marker", "arrow-up", "arrow-down", "arrow-left", "arrow-right",
+  "flag-mark", "signpost", "price-label", "comment",
+]);
+
+const TEXT_TOOLS = new Set<string>([
+  "text", "anchored-text", "note", "anchored-note", "callout",
+]);
+
+const POSITION_TOOLS = new Set<string>(["long-position", "short-position"]);
+
+const THREE_POINT_TOOLS = new Set<string>([
+  "pitchfork", "schiff-pitchfork", "modified-schiff-pitchfork", "inside-pitchfork",
+  "parallel-channel", "triangle-shape",
+]);
+
+const MULTI_POINT_TOOLS = new Set<string>([
+  "xabcd-pattern", "cypher-pattern", "head-shoulders", "abcd-pattern",
+  "triangle-pattern", "three-drives-pattern",
+  "elliott-impulse", "elliott-correction", "elliott-triangle",
+  "elliott-double-combo", "elliott-triple-combo",
+  "polyline", "path",
+]);
+
+const FREEHAND_TOOLS = new Set<string>(["brush", "highlighter"]);
+
+const TWO_POINT_TOOLS = new Set<string>([
+  "trendline", "ray", "rectangle", "extended-line", "info-line", "trend-angle",
+  "fib-retracement", "fib-extension", "fib-channel", "fib-time-zone",
+  "fib-speed-fan", "fib-time-extension", "fib-circles", "fib-spiral",
+  "fib-speed-arcs", "fib-wedge", "pitchfan",
+  "gann-box", "gann-square-fixed", "gann-square", "gann-fan",
+  "regression-trend", "flat-top-bottom", "disjoint-channel",
+  "rotated-rectangle", "ellipse", "circle", "curve", "double-curve",
+  "price-range", "date-range", "date-price-range",
+  "cyclic-lines", "time-cycles",
+  "forecast", "bars-pattern", "ghost-feed",
+]);
+
+const isDrawingTool = (tool: ToolType): boolean =>
+  tool !== "cursor" && tool !== "crosshair" && tool !== "select" && tool !== "eraser";
+
+// ─── Component ──────────────────────────────────────────────────
 interface DrawingManagerProps {
-    chart: IChartApi;
-    mainSeries: ISeriesApi<'Candlestick'>;
-    width: number;
-    height: number;
-    data: CandlestickData[];
-    symbol: string;
+  chart: IChartApi;
+  mainSeries: ISeriesApi<'Candlestick'>;
+  width: number;
+  height: number;
+  data: CandlestickData[];
+  symbol: string;
 }
 
 export function DrawingManager({ chart, mainSeries, width, height, data, symbol }: DrawingManagerProps) {
-    const {
-        activeTool,
-        addDrawing
-    } = useAnalysisStore();
-    const selectedDrawingIds = useAnalysisStore((state) => state.selectedDrawingIds);
-    const setSelectedDrawings = useAnalysisStore((state) => state.setSelectedDrawings);
-    const toggleDrawingSelection = useAnalysisStore((state) => state.toggleDrawingSelection);
-    const deleteSelectedDrawings = useAnalysisStore((state) => state.deleteSelectedDrawings);
-
-    // Selector for drawings specific to this symbol
-    // Fix: Select specific symbol state directly to avoid new reference loops from getDrawings() helper
-    const symbolDrawings = useAnalysisStore(state => state.symbolState[symbol]?.drawings);
-    const drawings = symbolDrawings || [];
-
-    const [_, setForceUpdate] = useState(0); // Trigger render on zoom
-    const svgRef = useRef<SVGSVGElement>(null);
-
-    // --- State for Text Tool Dialog ---
-    const [isTextDialogOpen, setIsTextDialogOpen] = useState(false);
-    const [textDialogPoint, setTextDialogPoint] = useState<Point | null>(null);
-    const [textValue, setTextValue] = useState("");
-
-    const handleTextSubmit = () => {
-        if (textValue && textDialogPoint) {
-            addDrawing(symbol, {
-                type: 'text',
-                point: textDialogPoint,
-                text: textValue,
-                visible: true
-            } as Omit<import('@/stores/trading/analysis.store').TextDrawing, 'id'>);
-        }
-        setIsTextDialogOpen(false);
-        setTextValue("");
-        setTextDialogPoint(null);
-        // Optional: Switch back to cursor after adding text?
-        // useAnalysisStore.getState().setActiveTool('cursor');
-    };
-
-    // --- 1. Coordinate Helpers ---
-
-    const pointToCoords = useCallback((p: Point) => {
-        if (!chart || !mainSeries) return null;
-
-        const timeScale = chart.timeScale();
-        const y = mainSeries.priceToCoordinate(p.price);
-
-        // 1. Try Native Conversion
-        const x = timeScale.timeToCoordinate(p.time as Time);
-
-        if (x !== null && y !== null) {
-            return { x, y };
-        }
-
-        // 2. Fallback: Future/Past Projection
-        // If native failed, it might be because the time is not in the series (future/whitespace)
-        if (y !== null && data && data.length > 0) {
-            const lastIndex = data.length - 1;
-            const lastCandle = data[lastIndex];
-            const firstCandle = data[0];
-            const interval = data.length > 1
-                ? (data[1].time as number) - (data[0].time as number)
-                : 300;
-
-            let logical: number | null = null;
-
-            // Future?
-            if ((p.time as number) > (lastCandle.time as number)) {
-                const diff = (p.time as number) - (lastCandle.time as number);
-                const steps = diff / interval;
-                logical = lastIndex + steps;
-            }
-            // Past?
-            else if ((p.time as number) < (firstCandle.time as number)) {
-                const diff = (p.time as number) - (firstCandle.time as number);
-                const steps = diff / interval; // negative
-                logical = 0 + steps;
-            }
-
-            if (logical !== null) {
-                const projectedX = timeScale.logicalToCoordinate(logical as Logical);
-                if (projectedX !== null) {
-                    return { x: projectedX, y };
-                }
-            }
-        }
-
-        return null; // Truly invalid
-    }, [chart, mainSeries, data]);
-
-    const coordsToPoint = useCallback((x: number, y: number): Point | null => {
-        if (!chart || !mainSeries) return null;
-
-        const timeScale = chart.timeScale();
-        const price = mainSeries.coordinateToPrice(y);
-
-        if (price === null) return null;
-
-        // 1. Try Native Conversion
-        const time = timeScale.coordinateToTime(x);
-        if (time !== null) {
-            return { time: time as number, price };
-        }
-
-        // 2. Fallback: Logical Index Projection
-        const logical = timeScale.coordinateToLogical(x);
-        if (logical === null) return null;
-
-        // We need data to project
-        if (!data || data.length === 0) return null;
-
-        const lastIndex = data.length - 1;
-        const lastCandle = data[lastIndex];
-        const firstCandle = data[0];
-
-        // Valid range?
-        if (logical >= 0 && logical <= lastIndex) {
-            // Should have been caught by native, but finding nearest if float
-            const idx = Math.round(logical);
-            const pt = data[idx];
-            if (pt) return { time: pt.time as number, price };
-        }
-
-        // Future Projection
-        if (logical > lastIndex) {
-            // Estimate interval
-            const interval = data.length > 1
-                ? (data[1].time as number) - (data[0].time as number)
-                : 300; // Default 5m
-
-            const dist = logical - lastIndex;
-            const projectedTime = (lastCandle.time as number) + (Math.round(dist) * interval);
-
-            return { time: projectedTime, price };
-        }
-
-        // Past Projection (if needed, rarely)
-        if (logical < 0) {
-            const interval = data.length > 1
-                ? (data[1].time as number) - (data[0].time as number)
-                : 300;
-            const dist = logical; // negative
-            const projectedTime = (firstCandle.time as number) + (Math.round(dist) * interval);
-            return { time: projectedTime, price };
-        }
-
-        return null;
-    }, [chart, mainSeries, data]);
-
-
-    // --- 2. Subscribe to Scroll/Zoom & Global Keys ---
-    useEffect(() => {
-        if (!chart) return;
-
-        const handleTimeChange = () => {
-            setForceUpdate(n => n + 1);
-        };
-
-        const handleKeyDown = (e: KeyboardEvent) => {
-            // Escape: Cancel drawing or Deselect or Switch to Cursor
-            if (e.key === 'Escape') {
-                const state = useAnalysisStore.getState();
-                if (state.interactionState.status === 'drawing') {
-                    state.cancelDrawing();
-                } else if (state.selectedDrawingId) {
-                    state.setSelectedDrawing(null);
-                } else if (state.activeTool !== 'cursor') {
-                    state.setActiveTool('cursor');
-                }
-            }
-
-            // Delete / Backspace: Remove selected
-            if (e.key === 'Delete' || e.key === 'Backspace') {
-                const state = useAnalysisStore.getState();
-                if (state.selectedDrawingIds.length > 0) {
-                    deleteSelectedDrawings(symbol);
-                } else if (state.selectedDrawingId) {
-                    state.deleteDrawing(symbol, state.selectedDrawingId);
-                }
-            }
-
-            // Ctrl+Z: Undo
-            if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
-                e.preventDefault();
-                useAnalysisStore.getState().undoDrawing(symbol);
-            }
-        };
-
-        chart.timeScale().subscribeVisibleTimeRangeChange(handleTimeChange);
-        window.addEventListener('keydown', handleKeyDown);
-
-        return () => {
-            chart.timeScale().unsubscribeVisibleTimeRangeChange(handleTimeChange);
-            window.removeEventListener('keydown', handleKeyDown);
-        };
-    }, [chart, symbol, deleteSelectedDrawings]); // Removed interactionState.status dependency as we use getState()
-
-
-    // --- 3. Interaction Handlers ---
-
-    // --- Local Interaction State (Performance Optimization) ---
-    // Moving high-frequency updates out of Zustand to avoid persist middleware overhead
-    const [localInteraction, setLocalInteraction] = useState<{
-        status: 'idle' | 'drawing' | 'dragging' | 'box-selecting';
-        startPoint: Point | null; // P1 or Drag Origin
-        currentPoint: Point | null; // P2 or Current Pos
-        activeDrawingIds: string[]; // For dragging
-        originalDrawings: Record<string, import('@/stores/trading/analysis.store').Drawing>; // Snapshot
-    }>({
-        status: 'idle',
-        startPoint: null,
-        currentPoint: null,
-        activeDrawingIds: [],
-        originalDrawings: {}
-    });
-
-    const handleMouseDown = (e: React.MouseEvent) => {
-        const rect = svgRef.current?.getBoundingClientRect();
-        if (!rect) return;
-
-        const x = e.clientX - rect.left;
-        const y = e.clientY - rect.top;
-
-        const point = coordsToPoint(x, y);
-        if (!point) return;
-
-        // Check for existing drawing click
-        const target = e.target as SVGElement;
-        const drawingId = target.getAttribute('data-id');
-
-        // Logic:
-        // 1. If Select Tool active:
-        //    - Click on drawing -> Select it (Exclusive? Ctrl for Multi?)
-        //    - Click on empty -> Start Box Selection
-        // 2. If Drawing Tool active:
-        //    - Start Drawing
-        // 3. If Cursor/Crosshair:
-        //    - Ignore or Drag? (Usually Cursor allows drag)
-
-        // For now, adhering to user request: "Select Tool" for group actions.
-
-        // --- Dragging Logic (Moved from Store) ---
-        if (drawingId && activeTool !== 'trendline' && activeTool !== 'ray' && activeTool !== 'rectangle' && activeTool !== 'horizontal-line' && activeTool !== 'text') {
-            e.preventDefault();
-            e.stopPropagation();
-
-            const drawing = drawings.find(d => d.id === drawingId);
-            const additiveSelect = e.ctrlKey || e.metaKey;
-
-            if (drawing && activeTool === 'select') {
-                if (additiveSelect) {
-                    toggleDrawingSelection(drawingId, true);
-                } else if (!selectedDrawingIds.includes(drawingId)) {
-                    setSelectedDrawings([drawingId]);
-                }
-            }
-
-            // Allow dragging if tool is Cursor or Select and drawing is not locked
-            if (
-                drawing &&
-                !drawing.locked &&
-                activeTool === 'select'
-            ) {
-                const targetIds =
-                    selectedDrawingIds.includes(drawingId) && selectedDrawingIds.length > 0
-                        ? selectedDrawingIds
-                        : [drawingId];
-
-                const draggableIds = targetIds.filter((id) => {
-                    const item = drawings.find((drawingItem) => drawingItem.id === id);
-                    return item && !item.locked;
-                });
-                if (draggableIds.length === 0) return;
-
-                const originals: Record<string, import('@/stores/trading/analysis.store').Drawing> = {};
-                draggableIds.forEach((id) => {
-                    const item = drawings.find((drawingItem) => drawingItem.id === id);
-                    if (item) originals[id] = item;
-                });
-
-                setLocalInteraction({
-                    status: 'dragging',
-                    startPoint: point,
-                    currentPoint: point,
-                    activeDrawingIds: draggableIds,
-                    originalDrawings: originals
-                });
-                setSelectedDrawings(draggableIds);
-                return;
-            }
-        }
-
-        // Background Click
-        if (activeTool === 'select' && !drawingId) {
-            if (!(e.ctrlKey || e.metaKey)) {
-                setSelectedDrawings([]);
-            }
-            // Start Box Selection
-            setLocalInteraction({
-                status: 'box-selecting',
-                startPoint: point,
-                currentPoint: point,
-                activeDrawingIds: [],
-                originalDrawings: {}
-            });
-            return;
-        }
-
-        // --- Drawing Logic ---
-        if (Object.keys(localInteraction.originalDrawings).length > 0) return; // Busy?
-
-        if (activeTool === 'horizontal-line') {
-            addDrawing(symbol, {
-                type: 'horizontal-line',
-                price: point.price,
-                visible: true
-            } as any);
-        } else if (activeTool === 'text') {
-            setTextDialogPoint(point);
-            setTextValue("Note");
-            setIsTextDialogOpen(true);
-        } else if (activeTool === 'trendline' || activeTool === 'ray' || activeTool === 'rectangle') {
-            setLocalInteraction({
-                status: 'drawing',
-                startPoint: point,
-                currentPoint: point,
-                activeDrawingIds: [],
-                originalDrawings: {}
-            });
-        }
-    };
-
-    const handleMouseMove = (e: React.MouseEvent) => {
-        if (localInteraction.status === 'idle') return;
-
-        const rect = svgRef.current?.getBoundingClientRect();
-        if (!rect) return;
-
-        const point = coordsToPoint(e.clientX - rect.left, e.clientY - rect.top);
-        if (!point) return;
-
-        setLocalInteraction(prev => ({
-            ...prev,
-            currentPoint: point
-        }));
-
-        // Real-time Visual Updates via Local State (for Drafts)
-        // Note: For dragging, we DO need to update the store if we want to see the drawing move on the chart (since it renders from store).
-        // BUT, updating store is laggy.
-        // OPTION B: Render the "Being Dragged" drawing from LOCAL state, and hide the generic store one?
-        // That's more complex.
-
-        // Let's try throttling the store update for drag?
-        // Or just trust that removing 'updateDraft' (which was 90% of use) fixes the lag.
-
-        if (localInteraction.status === 'dragging' && localInteraction.activeDrawingIds.length > 0) {
-            const start = localInteraction.startPoint;
-            if (!start) return;
-
-            const dxTime = (point.time as number) - (start.time as number);
-            const dyPrice = point.price - start.price;
-
-            localInteraction.activeDrawingIds.forEach(id => {
-                const original = localInteraction.originalDrawings[id];
-                if (!original) return;
-
-                let newDrawing = { ...original };
-                // Apply Delta
-                if (original.type === 'trendline' || original.type === 'ray' || original.type === 'rectangle') {
-                    const twoPoint = original as TwoPointDrawing;
-                    newDrawing = {
-                        ...newDrawing,
-                        p1: { time: (twoPoint.p1.time as number) + dxTime, price: twoPoint.p1.price + dyPrice },
-                        p2: { time: (twoPoint.p2.time as number) + dxTime, price: twoPoint.p2.price + dyPrice }
-                    } as any;
-                } else if (original.type === 'text') {
-                    const dl = original as any; // Cast to any to bypass union checks during spread
-                    newDrawing = { ...dl, point: { time: (dl.point.time as number) + dxTime, price: dl.point.price + dyPrice } };
-                } else if (original.type === 'horizontal-line') {
-                    const dl = original as any;
-                    newDrawing = { ...dl, price: dl.price + dyPrice };
-                }
-
-                // We MUST update the store to visualize the move because 'drawings' map renders from store.
-                // Unless we temporarily override rendering in the map?
-                // Let's UPDATE STORE but maybe check performance?
-                // If lag persists, we must implement "Optimistic Rendering" (Render from local state, ignore store for this ID).
-                useAnalysisStore.getState().updateDrawing(symbol, newDrawing as any);
-            });
-        }
-    };
-
-    const handleMouseUp = () => {
-        if (localInteraction.status === 'drawing' && localInteraction.startPoint && localInteraction.currentPoint) {
-            // Commit Drawing
-            const newDrawing = {
-                type: activeTool,
-                visible: true,
-                p1: localInteraction.startPoint,
-                p2: localInteraction.currentPoint
-            };
-            addDrawing(symbol, newDrawing as any);
-        } else if (localInteraction.status === 'box-selecting' && localInteraction.startPoint && localInteraction.currentPoint) {
-            // Finalize Box Selection
-            const p1 = localInteraction.startPoint;
-            const p2 = localInteraction.currentPoint;
-
-            // Normalize time range
-            const tMin = Math.min(p1.time as number, p2.time as number);
-            const tMax = Math.max(p1.time as number, p2.time as number);
-            const priceMin = Math.min(p1.price, p2.price);
-            const priceMax = Math.max(p1.price, p2.price);
-
-            const selectedIds: string[] = [];
-
-            drawings.forEach(d => {
-                if (d.type === 'ray') return; // User requested: Exclude Rays from box selection
-
-                let inside = false;
-                if (d.type === 'trendline' || d.type === 'rectangle') {
-                    const twoPoint = d as TwoPointDrawing;
-                    // Check if either point is inside box (Simple)
-                    // Or if bounding box intersects? Let's strictly check if Points are inside for now.
-                    // Better: Check if Bounding Box overlaps.
-                    const dp1 = twoPoint.p1;
-                    const dp2 = twoPoint.p2;
-
-                    const dMinTime = Math.min(dp1.time as number, dp2.time as number);
-                    const dMaxTime = Math.max(dp1.time as number, dp2.time as number);
-                    const dMinPrice = Math.min(dp1.price, dp2.price);
-                    const dMaxPrice = Math.max(dp1.price, dp2.price);
-
-                    // Intersection Check
-                    const overlapTime = (dMinTime <= tMax) && (dMaxTime >= tMin);
-                    const overlapPrice = (dMinPrice <= priceMax) && (dMaxPrice >= priceMin);
-
-                    inside = overlapTime && overlapPrice;
-                } else if (d.type === 'text') {
-                    const pt = (d as any).point;
-                    inside = (pt.time as number >= tMin && pt.time as number <= tMax && pt.price >= priceMin && pt.price <= priceMax);
-                } else if (d.type === 'horizontal-line') {
-                    const linePrice = Number((d as any).price);
-                    inside = linePrice >= priceMin && linePrice <= priceMax;
-                }
-
-                if (inside) {
-                    selectedIds.push(d.id);
-                }
-            });
-
-            setSelectedDrawings(selectedIds);
-        }
-
-        setLocalInteraction({
-            status: 'idle',
-            startPoint: null,
-            currentPoint: null,
-            activeDrawingIds: [],
-            originalDrawings: {}
-        });
-    };
-
-
-    // --- 4. Renderers ---
-
-    const renderLine = (p1: Point, p2: Point, type: 'trendline' | 'ray', isDraft = false, id?: string, selected = false) => {
-        const c1 = pointToCoords(p1);
-        const c2 = pointToCoords(p2);
-
-        if (!c1 || !c2) return null;
-
-        let x2 = c2.x;
-        let y2 = c2.y;
-
-        if (type === 'ray') {
-            const dx = c2.x - c1.x;
-            const dy = c2.y - c1.y;
-
-            if (Math.abs(dx) < 0.1) {
-                // Vertical Line Logic
-                x2 = c1.x;
-                y2 = (dy > 0 ? height : 0) as Coordinate;
-            } else {
-                // Normal Ray Logic
-                const m = dy / dx;
-
-                // If x2 > x1, extend to width. Else extend to 0.
-                const targetX = dx > 0 ? width : 0;
-                const targetY = c1.y + m * (targetX - c1.x);
-
-                x2 = targetX as Coordinate;
-                y2 = targetY as Coordinate;
-            }
-        }
-
-        if (!Number.isFinite(x2) || !Number.isFinite(y2)) return null;
-
-        return (
-            <line
-                data-id={id}
-                x1={c1.x} y1={c1.y}
-                x2={x2} y2={y2}
-                stroke={selected ? "#F59E0B" : (isDraft ? "#3B82F6" : "#2962FF")} // Orange if selected
-                strokeWidth={selected ? 3 : 2}
-                strokeDasharray={isDraft ? "4 4" : undefined}
-                pointerEvents="all" // Allow clicking
-                className="cursor-pointer hover:stroke-orange-400 transition-colors"
-            />
-        );
-    };
-
-    const renderRectangle = (p1: Point, p2: Point, isDraft = false, id?: string, selected = false) => {
-        const c1 = pointToCoords(p1);
-        const c2 = pointToCoords(p2);
-        if (!c1 || !c2) return null;
-
-        const x = Math.min(c1.x, c2.x);
-        const y = Math.min(c1.y, c2.y);
-        const w = Math.abs(c2.x - c1.x);
-        const h = Math.abs(c2.y - c1.y);
-
-        return (
-            <rect
-                data-id={id}
-                x={x} y={y} width={w} height={h}
-                fill={selected ? "rgba(245, 158, 11, 0.2)" : (isDraft ? "rgba(59, 130, 246, 0.1)" : "rgba(41, 98, 255, 0.1)")}
-                stroke={selected ? "#F59E0B" : (isDraft ? "#3B82F6" : "#2962FF")}
-                strokeWidth={selected ? 2 : 1}
-                strokeDasharray={isDraft ? "4 4" : undefined}
-                pointerEvents="all"
-                className="cursor-pointer hover:stroke-orange-400 transition-colors"
-            />
-        );
-    };
-
-    const renderText = (p: Point, text: string, id?: string, selected = false) => {
-        const c = pointToCoords(p);
-        if (!c) return null;
-
-        return (
-            <text
-                data-id={id}
-                x={c.x} y={c.y}
-                fill={selected ? "#F59E0B" : "#FFFFFF"}
-                fontSize={12}
-                pointerEvents="all"
-                className="cursor-pointer font-sans select-none"
-            >
-                {text}
-            </text>
-        );
-    };
-
-    const renderHorizontalLine = (price: number, id?: string, selected = false) => {
-        if (!mainSeries) return null;
-        const y = mainSeries.priceToCoordinate(price);
-        if (y === null) return null;
-
-        return (
-            <line
-                data-id={id}
-                x1={0} y1={y}
-                x2={width} y2={y}
-                stroke={selected ? "#F59E0B" : "#A855F7"}
-                strokeWidth={selected ? 2 : 1}
-                pointerEvents="all"
-                className="cursor-pointer hover:stroke-orange-400 transition-colors"
-            />
-        );
+  const { activeTool, addDrawing } = useAnalysisStore();
+  const selectedDrawingIds = useAnalysisStore((s) => s.selectedDrawingIds);
+  const setSelectedDrawings = useAnalysisStore((s) => s.setSelectedDrawings);
+  const toggleDrawingSelection = useAnalysisStore((s) => s.toggleDrawingSelection);
+  const deleteSelectedDrawings = useAnalysisStore((s) => s.deleteSelectedDrawings);
+  const globalHideState = useAnalysisStore((s) => s.globalHideState);
+  const hotkeysEnabled = useAnalysisStore((s) => s.hotkeysEnabled);
+  const analysisV2Enabled = process.env.NEXT_PUBLIC_ANALYSIS_V2 === "true";
+
+  const symbolDrawings = useAnalysisStore((s) => s.symbolState[symbol]?.drawings);
+  const drawings = symbolDrawings || [];
+
+  const [_, setForceRender] = useState(0);
+  const svgRef = useRef<SVGSVGElement>(null);
+
+  // Text tool dialog
+  const [isTextDialogOpen, setIsTextDialogOpen] = useState(false);
+  const [textDialogPoint, setTextDialogPoint] = useState<Point | null>(null);
+  const [textDialogType, setTextDialogType] = useState<string>("text");
+  const [textValue, setTextValue] = useState("");
+
+  const handleTextSubmit = () => {
+    if (textValue && textDialogPoint) {
+      addDrawing(symbol, {
+        type: textDialogType as DrawingType,
+        point: textDialogPoint,
+        text: textValue,
+        visible: true,
+      } as Omit<TextDrawingType, "id">);
+    }
+    setIsTextDialogOpen(false);
+    setTextValue("");
+    setTextDialogPoint(null);
+  };
+
+  // ─── Coordinate Helpers ─────────────────────────────────────
+  const pointToCoords = useCallback((p: Point) => {
+    if (!chart || !mainSeries) return null;
+    const timeScale = chart.timeScale();
+    const y = mainSeries.priceToCoordinate(p.price);
+    const x = timeScale.timeToCoordinate(p.time as Time);
+
+    if (x !== null && y !== null) return { x, y };
+
+    if (y !== null && data && data.length > 0) {
+      const lastIndex = data.length - 1;
+      const lastCandle = data[lastIndex];
+      const firstCandle = data[0];
+      const interval = data.length > 1
+        ? (data[1].time as number) - (data[0].time as number) : 300;
+
+      let logical: number | null = null;
+      if ((p.time as number) > (lastCandle.time as number)) {
+        logical = lastIndex + ((p.time as number) - (lastCandle.time as number)) / interval;
+      } else if ((p.time as number) < (firstCandle.time as number)) {
+        logical = ((p.time as number) - (firstCandle.time as number)) / interval;
+      }
+
+      if (logical !== null) {
+        const projectedX = timeScale.logicalToCoordinate(logical as Logical);
+        if (projectedX !== null) return { x: projectedX, y };
+      }
+    }
+    return null;
+  }, [chart, mainSeries, data]);
+
+  const coordsToPoint = useCallback((x: number, y: number): Point | null => {
+    if (!chart || !mainSeries) return null;
+    const timeScale = chart.timeScale();
+    const price = mainSeries.coordinateToPrice(y);
+    if (price === null) return null;
+
+    const time = timeScale.coordinateToTime(x);
+    if (time !== null) return { time: time as number, price };
+
+    const logical = timeScale.coordinateToLogical(x);
+    if (logical === null || !data || data.length === 0) return null;
+
+    const lastIndex = data.length - 1;
+    if (logical >= 0 && logical <= lastIndex) {
+      const idx = Math.round(logical);
+      const pt = data[idx];
+      if (pt) return { time: pt.time as number, price };
     }
 
-    const isDrawingTool = activeTool === 'trendline' || activeTool === 'ray' || activeTool === 'horizontal-line' || activeTool === 'rectangle' || activeTool === 'text';
-    const isInteractiveTool = isDrawingTool || activeTool === 'select';
+    const interval = data.length > 1
+      ? (data[1].time as number) - (data[0].time as number) : 300;
 
-    return (
-        <>
-            <div
-                className={`absolute inset-0 z-50 ${isInteractiveTool ? 'pointer-events-auto' : 'pointer-events-none'}`}
-                onMouseDown={handleMouseDown}
-                onMouseMove={handleMouseMove}
-                onMouseUp={handleMouseUp}
-                style={{
-                    cursor: isDrawingTool ? 'crosshair' : (activeTool === 'select' ? 'default' : 'auto')
-                }}
-            >
-                <svg
-                    ref={svgRef}
-                    width={width}
-                    height={height}
-                    className="absolute inset-0" // pointer-events-none removed to allow svg children interactions? No, parent div captures drawing.
-                // We need children to capture clicks if "Cursor" tool.
-                // If "Drawing" tool, parent captures.
-                // Currently parent captures ALL mousedown.
-                // Logic in handleMouseDown checks e.target attributes.
-                >
-                    {/* Render Committed Drawings */}
-                    {drawings.map(d => {
-                        if (d.visible === false) return null;
-                        const isSelected = selectedDrawingIds.includes(d.id);
+    if (logical > lastIndex) {
+      return { time: (data[lastIndex].time as number) + Math.round(logical - lastIndex) * interval, price };
+    }
+    if (logical < 0) {
+      return { time: (data[0].time as number) + Math.round(logical) * interval, price };
+    }
+    return null;
+  }, [chart, mainSeries, data]);
 
-                        if (d.type === 'trendline' || d.type === 'ray') {
-                            const twoPoint = d as TwoPointDrawing;
-                            return <g key={d.id}>{renderLine(twoPoint.p1, twoPoint.p2, twoPoint.type as 'trendline' | 'ray', false, d.id, isSelected)}</g>;
-                        }
-                        if (d.type === 'rectangle') {
-                            const twoPoint = d as TwoPointDrawing;
-                            return <g key={d.id}>{renderRectangle(twoPoint.p1, twoPoint.p2, false, d.id, isSelected)}</g>;
-                        }
-                        if (d.type === 'text') {
-                            const textDrawing = d as import('@/stores/trading/analysis.store').TextDrawing;
-                            return <g key={d.id}>{renderText(textDrawing.point, textDrawing.text, d.id, isSelected)}</g>;
-                        }
-                        if (d.type === 'horizontal-line') {
-                            return <g key={d.id}>{renderHorizontalLine((d as any).price, d.id, isSelected)}</g>;
-                        }
-                        return null;
-                    })}
+  // ─── Zoom/Key subscriptions ─────────────────────────────────
+  useEffect(() => {
+    if (!chart) return;
+    const handleTimeChange = () => setForceRender((n) => n + 1);
 
-                    {/* Box Selection Visualization */}
-                    {localInteraction.status === 'box-selecting' && localInteraction.startPoint && localInteraction.currentPoint && (
-                        <rect
-                            x={Math.min(pointToCoords(localInteraction.startPoint)?.x || 0, pointToCoords(localInteraction.currentPoint)?.x || 0)}
-                            y={Math.min(pointToCoords(localInteraction.startPoint)?.y || 0, pointToCoords(localInteraction.currentPoint)?.y || 0)}
-                            width={Math.abs((pointToCoords(localInteraction.currentPoint)?.x || 0) - (pointToCoords(localInteraction.startPoint)?.x || 0))}
-                            height={Math.abs((pointToCoords(localInteraction.currentPoint)?.y || 0) - (pointToCoords(localInteraction.startPoint)?.y || 0))}
-                            fill="rgba(33, 150, 243, 0.1)"
-                            stroke="#2196F3"
-                            strokeWidth={1}
-                            strokeDasharray="4 4"
-                        />
-                    )}
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        const state = useAnalysisStore.getState();
+        if (state.interactionState.status === "drawing") state.cancelDrawing();
+        else if (localInteraction.status !== "idle") {
+          setLocalInteraction({ status: "idle", startPoint: null, currentPoint: null, activeDrawingIds: [], originalDrawings: {}, collectedPoints: [] });
+        }
+        else if (state.selectedDrawingId) state.setSelectedDrawing(null);
+        else if (state.activeTool !== "cursor") state.setActiveTool("cursor");
+        return;
+      }
+      if (e.defaultPrevented || (analysisV2Enabled && hotkeysEnabled)) return;
 
-                    {/* Render Draft (Drawing in Progress) */}
-                    {localInteraction.status === 'drawing' && localInteraction.startPoint && localInteraction.currentPoint && (
-                        <>
-                            {(activeTool === 'trendline' || activeTool === 'ray') && renderLine(
-                                localInteraction.startPoint,
-                                localInteraction.currentPoint,
-                                activeTool as 'trendline' | 'ray',
-                                true
-                            )}
-                            {activeTool === 'rectangle' && renderRectangle(
-                                localInteraction.startPoint,
-                                localInteraction.currentPoint,
-                                true
-                            )}
-                        </>
-                    )}
-                </svg>
-            </div>
+      if (e.key === "Delete" || e.key === "Backspace") {
+        e.preventDefault();
+        const state = useAnalysisStore.getState();
+        if (state.selectedDrawingIds.length > 0) deleteSelectedDrawings(symbol);
+        else if (state.selectedDrawingId) state.deleteDrawing(symbol, state.selectedDrawingId);
+        return;
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key === "z") {
+        e.preventDefault();
+        if (e.shiftKey) useAnalysisStore.getState().redoDrawing(symbol);
+        else useAnalysisStore.getState().undoDrawing(symbol);
+      }
+    };
 
-            {/* Text Entry Dialog */}
-            <Dialog open={isTextDialogOpen} onOpenChange={setIsTextDialogOpen}>
-                <DialogContent className="sm:max-w-[425px]">
-                    <DialogHeader>
-                        <DialogTitle>Add Text Annotation</DialogTitle>
-                    </DialogHeader>
-                    <div className="grid gap-4 py-4">
-                        <Input
-                            id="text-annotation"
-                            value={textValue}
-                            onChange={(e) => setTextValue(e.target.value)}
-                            placeholder="Enter text..."
-                            onKeyDown={(e) => {
-                                if (e.key === 'Enter') handleTextSubmit();
-                            }}
-                            autoFocus
-                        />
-                    </div>
-                    <DialogFooter>
-                        <Button variant="outline" onClick={() => setIsTextDialogOpen(false)}>Cancel</Button>
-                        <Button onClick={handleTextSubmit}>Add Note</Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
-        </>
-    );
+    chart.timeScale().subscribeVisibleTimeRangeChange(handleTimeChange);
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      chart.timeScale().unsubscribeVisibleTimeRangeChange(handleTimeChange);
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [chart, symbol, deleteSelectedDrawings]);
+
+  // ─── Local Interaction State ────────────────────────────────
+  const [localInteraction, setLocalInteraction] = useState<{
+    status: "idle" | "drawing" | "dragging" | "box-selecting" | "freehand";
+    startPoint: Point | null;
+    currentPoint: Point | null;
+    activeDrawingIds: string[];
+    originalDrawings: Record<string, Drawing>;
+    collectedPoints: Point[];
+  }>({
+    status: "idle", startPoint: null, currentPoint: null,
+    activeDrawingIds: [], originalDrawings: {}, collectedPoints: [],
+  });
+
+  // ─── Mouse Handlers ─────────────────────────────────────────
+  const handleMouseDown = (e: React.MouseEvent) => {
+    const rect = svgRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    const point = coordsToPoint(x, y);
+    if (!point) return;
+
+    const target = e.target as SVGElement;
+    const drawingId = target.getAttribute("data-id");
+
+    // ─── Eraser click ─────
+    if (activeTool === "eraser" && drawingId) {
+      useAnalysisStore.getState().deleteDrawing(symbol, drawingId);
+      return;
+    }
+
+    // ─── Dragging / Select tool ─────
+    if (drawingId && !isDrawingTool(activeTool)) {
+      e.preventDefault();
+      e.stopPropagation();
+      const drawing = drawings.find((d) => d.id === drawingId);
+      const additive = e.ctrlKey || e.metaKey;
+
+      if (drawing && activeTool === "select") {
+        if (additive) toggleDrawingSelection(drawingId, true);
+        else if (!selectedDrawingIds.includes(drawingId)) setSelectedDrawings([drawingId]);
+      }
+
+      if (drawing && !drawing.locked && activeTool === "select") {
+        const targetIds = (selectedDrawingIds.includes(drawingId) && selectedDrawingIds.length > 0)
+          ? selectedDrawingIds : [drawingId];
+        const draggableIds = targetIds.filter((id) => {
+          const item = drawings.find((d) => d.id === id);
+          return item && !item.locked;
+        });
+        if (draggableIds.length === 0) return;
+
+        const originals: Record<string, Drawing> = {};
+        draggableIds.forEach((id) => {
+          const item = drawings.find((d) => d.id === id);
+          if (item) originals[id] = item;
+        });
+
+        setLocalInteraction({
+          status: "dragging", startPoint: point, currentPoint: point,
+          activeDrawingIds: draggableIds, originalDrawings: originals, collectedPoints: [],
+        });
+        setSelectedDrawings(draggableIds);
+        return;
+      }
+    }
+
+    // Background click with select tool
+    if (activeTool === "select" && !drawingId) {
+      if (!(e.ctrlKey || e.metaKey)) setSelectedDrawings([]);
+      setLocalInteraction({
+        status: "box-selecting", startPoint: point, currentPoint: point,
+        activeDrawingIds: [], originalDrawings: {}, collectedPoints: [],
+      });
+      return;
+    }
+
+    // ─── Single-click tools (instant commit) ─────
+    if (SINGLE_CLICK_TOOLS.has(activeTool)) {
+      if (activeTool === "horizontal-line") {
+        addDrawing(symbol, { type: "horizontal-line", price: point.price, visible: true } as any);
+      } else if (activeTool === "vertical-line" || activeTool === "cross-line" || activeTool === "horizontal-ray") {
+        addDrawing(symbol, { type: activeTool as DrawingType, point, visible: true } as any);
+      } else {
+        // Arrow and annotation single-click tools
+        addDrawing(symbol, { type: activeTool as DrawingType, point, visible: true, text: "" } as any);
+      }
+      return;
+    }
+
+    // ─── Text tools (open dialog) ─────
+    if (TEXT_TOOLS.has(activeTool)) {
+      setTextDialogPoint(point);
+      setTextDialogType(activeTool);
+      setTextValue("Note");
+      setIsTextDialogOpen(true);
+      return;
+    }
+
+    // ─── Position tools (instant with defaults) ─────
+    if (POSITION_TOOLS.has(activeTool)) {
+      const isLong = activeTool === "long-position";
+      const pct = 0.03;
+      addDrawing(symbol, {
+        type: activeTool as DrawingType,
+        entryPrice: point.price,
+        targetPrice: isLong ? point.price * (1 + pct) : point.price * (1 - pct),
+        stopPrice: isLong ? point.price * (1 - pct * 0.67) : point.price * (1 + pct * 0.67),
+        entryTime: point.time,
+        visible: true,
+      } as any);
+      return;
+    }
+
+    // ─── Freehand tools ─────
+    if (FREEHAND_TOOLS.has(activeTool)) {
+      setLocalInteraction({
+        status: "freehand", startPoint: point, currentPoint: point,
+        activeDrawingIds: [], originalDrawings: {}, collectedPoints: [point],
+      });
+      return;
+    }
+
+    // ─── Multi-point tools (3-point and multi-click) ─────
+    if (THREE_POINT_TOOLS.has(activeTool) || MULTI_POINT_TOOLS.has(activeTool)) {
+      const prev = localInteraction.collectedPoints;
+      const updated = [...prev, point];
+      const required = REQUIRED_POINTS[activeTool] ?? 0;
+
+      // Tool finished?
+      if (required > 0 && updated.length >= required) {
+        // Commit
+        if (THREE_POINT_TOOLS.has(activeTool)) {
+          addDrawing(symbol, {
+            type: activeTool as DrawingType,
+            p1: updated[0], p2: updated[1], p3: updated[2],
+            visible: true,
+          } as any);
+        } else {
+          const labels = ELLIOTT_LABELS[activeTool] ?? PATTERN_LABELS[activeTool];
+          addDrawing(symbol, {
+            type: activeTool as DrawingType,
+            points: updated,
+            labels,
+            visible: true,
+          } as any);
+        }
+        setLocalInteraction({ status: "idle", startPoint: null, currentPoint: null, activeDrawingIds: [], originalDrawings: {}, collectedPoints: [] });
+      } else {
+        // Collect more points
+        setLocalInteraction({
+          ...localInteraction,
+          status: "drawing",
+          startPoint: localInteraction.startPoint ?? point,
+          currentPoint: point,
+          collectedPoints: updated,
+        });
+      }
+      return;
+    }
+
+    // ─── Two-point tools (start drawing) ─────
+    if (TWO_POINT_TOOLS.has(activeTool)) {
+      setLocalInteraction({
+        status: "drawing", startPoint: point, currentPoint: point,
+        activeDrawingIds: [], originalDrawings: {}, collectedPoints: [],
+      });
+      return;
+    }
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (localInteraction.status === "idle") return;
+    const rect = svgRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    const point = coordsToPoint(e.clientX - rect.left, e.clientY - rect.top);
+    if (!point) return;
+
+    if (localInteraction.status === "freehand") {
+      setLocalInteraction((prev) => ({
+        ...prev, currentPoint: point,
+        collectedPoints: [...prev.collectedPoints, point],
+      }));
+      return;
+    }
+
+    setLocalInteraction((prev) => ({ ...prev, currentPoint: point }));
+
+    // Drag update
+    if (localInteraction.status === "dragging" && localInteraction.activeDrawingIds.length > 0) {
+      const start = localInteraction.startPoint;
+      if (!start) return;
+      const dxTime = (point.time as number) - (start.time as number);
+      const dyPrice = point.price - start.price;
+
+      localInteraction.activeDrawingIds.forEach((id) => {
+        const original = localInteraction.originalDrawings[id];
+        if (!original) return;
+        let newDrawing = { ...original };
+        if ("p1" in original && "p2" in original) {
+          const tp = original as TwoPointDrawing;
+          newDrawing = {
+            ...newDrawing,
+            p1: { time: tp.p1.time + dxTime, price: tp.p1.price + dyPrice },
+            p2: { time: tp.p2.time + dxTime, price: tp.p2.price + dyPrice },
+          } as any;
+        } else if ("point" in original) {
+          const sp = original as any;
+          newDrawing = { ...sp, point: { time: sp.point.time + dxTime, price: sp.point.price + dyPrice } };
+        } else if ("price" in original) {
+          const hp = original as any;
+          newDrawing = { ...hp, price: hp.price + dyPrice };
+        } else if ("entryPrice" in original) {
+          const pos = original as PositionDrawing;
+          newDrawing = {
+            ...pos,
+            entryPrice: pos.entryPrice + dyPrice,
+            targetPrice: pos.targetPrice + dyPrice,
+            stopPrice: pos.stopPrice + dyPrice,
+            entryTime: pos.entryTime + dxTime,
+          } as any;
+        }
+        useAnalysisStore.getState().updateDrawing(symbol, newDrawing as Drawing);
+      });
+    }
+  };
+
+  const handleMouseUp = () => {
+    if (localInteraction.status === "drawing" && localInteraction.startPoint && localInteraction.currentPoint) {
+      if (TWO_POINT_TOOLS.has(activeTool)) {
+        addDrawing(symbol, {
+          type: activeTool as DrawingType,
+          visible: true,
+          p1: localInteraction.startPoint,
+          p2: localInteraction.currentPoint,
+        } as any);
+      }
+      // Multi-point drawing-in-progress doesn't commit on mouseUp (they commit on click count)
+      if (!THREE_POINT_TOOLS.has(activeTool) && !MULTI_POINT_TOOLS.has(activeTool)) {
+        setLocalInteraction({ status: "idle", startPoint: null, currentPoint: null, activeDrawingIds: [], originalDrawings: {}, collectedPoints: [] });
+      }
+    } else if (localInteraction.status === "freehand" && localInteraction.collectedPoints.length >= 2) {
+      addDrawing(symbol, {
+        type: activeTool as DrawingType,
+        points: localInteraction.collectedPoints,
+        strokeWidth: activeTool === "highlighter" ? 12 : 2,
+        opacity: activeTool === "highlighter" ? 0.3 : 1,
+        visible: true,
+      } as any);
+      setLocalInteraction({ status: "idle", startPoint: null, currentPoint: null, activeDrawingIds: [], originalDrawings: {}, collectedPoints: [] });
+    } else if (localInteraction.status === "box-selecting" && localInteraction.startPoint && localInteraction.currentPoint) {
+      const p1 = localInteraction.startPoint;
+      const p2 = localInteraction.currentPoint;
+      const tMin = Math.min(p1.time, p2.time);
+      const tMax = Math.max(p1.time, p2.time);
+      const priceMin = Math.min(p1.price, p2.price);
+      const priceMax = Math.max(p1.price, p2.price);
+
+      const selectedIds: string[] = [];
+      drawings.forEach((d) => {
+        let inside = false;
+        if ("p1" in d && "p2" in d) {
+          const tp = d as TwoPointDrawing;
+          const overlapTime = Math.min(tp.p1.time, tp.p2.time) <= tMax && Math.max(tp.p1.time, tp.p2.time) >= tMin;
+          const overlapPrice = Math.min(tp.p1.price, tp.p2.price) <= priceMax && Math.max(tp.p1.price, tp.p2.price) >= priceMin;
+          inside = overlapTime && overlapPrice;
+        } else if ("point" in d) {
+          const sp = d as any;
+          inside = sp.point.time >= tMin && sp.point.time <= tMax && sp.point.price >= priceMin && sp.point.price <= priceMax;
+        } else if ("price" in d) {
+          inside = (d as any).price >= priceMin && (d as any).price <= priceMax;
+        }
+        if (inside) selectedIds.push(d.id);
+      });
+      setSelectedDrawings(selectedIds);
+      setLocalInteraction({ status: "idle", startPoint: null, currentPoint: null, activeDrawingIds: [], originalDrawings: {}, collectedPoints: [] });
+    } else if (localInteraction.status === "dragging") {
+      setLocalInteraction({ status: "idle", startPoint: null, currentPoint: null, activeDrawingIds: [], originalDrawings: {}, collectedPoints: [] });
+    }
+  };
+
+  // ─── Render helpers ─────────────────────────────────────────
+  const rendererProps = useCallback(
+    (drawing: Drawing, selected: boolean, isDraft = false): DrawingRendererProps => ({
+      drawing,
+      pointToCoords,
+      coordsToPoint,
+      width,
+      height,
+      selected,
+      mainSeries,
+      data,
+      isDraft,
+    }),
+    [pointToCoords, coordsToPoint, width, height, mainSeries, data],
+  );
+
+  const renderDrawing = useCallback(
+    (drawing: Drawing, selected: boolean, isDraft = false): React.ReactNode => {
+      const renderer = RENDERER_MAP[drawing.type];
+      if (!renderer) return null;
+      return renderer(rendererProps(drawing, selected, isDraft));
+    },
+    [rendererProps],
+  );
+
+  const isActive = isDrawingTool(activeTool) || activeTool === "select" || activeTool === "eraser";
+  const isMeasurerTool =
+    activeTool === "price-range" || activeTool === "date-range" || activeTool === "date-price-range";
+  const measurerMode =
+    activeTool === "price-range"
+      ? "price"
+      : activeTool === "date-range"
+      ? "date"
+      : activeTool === "date-price-range"
+      ? "date-price"
+      : null;
+  const measurerAnchor =
+    localInteraction.status !== "idle" && localInteraction.currentPoint
+      ? pointToCoords(localInteraction.currentPoint)
+      : null;
+
+  return (
+    <>
+      <div
+        className={`absolute inset-0 z-50 ${isActive ? "pointer-events-auto" : "pointer-events-none"}`}
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        style={{
+          cursor: isDrawingTool(activeTool) ? "crosshair" : activeTool === "eraser" ? "not-allowed" : activeTool === "select" ? "default" : "auto",
+        }}
+      >
+        <svg ref={svgRef} width={width} height={height} className="absolute inset-0">
+          {/* Committed drawings (skip hidden) */}
+          {drawings.map((d) => {
+            if (!d.visible) return null;
+            const isPosition = d.type === "long-position" || d.type === "short-position";
+            if (globalHideState.drawings && !isPosition) return null;
+            if (globalHideState.positions && isPosition) return null;
+            const isSelected = selectedDrawingIds.includes(d.id);
+            return <g key={d.id}>{renderDrawing(d, isSelected)}</g>;
+          })}
+
+          {/* Box selection preview */}
+          {localInteraction.status === "box-selecting" && localInteraction.startPoint && localInteraction.currentPoint && (() => {
+            const sc = pointToCoords(localInteraction.startPoint);
+            const ec = pointToCoords(localInteraction.currentPoint);
+            if (!sc || !ec) return null;
+            return (
+              <rect
+                x={Math.min(sc.x, ec.x)} y={Math.min(sc.y, ec.y)}
+                width={Math.abs(ec.x - sc.x)} height={Math.abs(ec.y - sc.y)}
+                fill="rgba(33,150,243,0.1)" stroke="#2196F3" strokeWidth={1} strokeDasharray="4 4"
+              />
+            );
+          })()}
+
+          {/* Draft preview for two-point tools */}
+          {localInteraction.status === "drawing" && localInteraction.startPoint && localInteraction.currentPoint
+            && TWO_POINT_TOOLS.has(activeTool) && (() => {
+              const draftDrawing: TwoPointDrawing = {
+                id: "__draft__",
+                type: activeTool as any,
+                visible: true,
+                p1: localInteraction.startPoint!,
+                p2: localInteraction.currentPoint!,
+              };
+              return renderDrawing(draftDrawing, false, true);
+            })()}
+
+          {/* Draft preview for multi-point tools (shows collected points + current cursor) */}
+          {localInteraction.status === "drawing" && localInteraction.collectedPoints.length > 0
+            && (THREE_POINT_TOOLS.has(activeTool) || MULTI_POINT_TOOLS.has(activeTool)) && (() => {
+              const allPts = [...localInteraction.collectedPoints];
+              if (localInteraction.currentPoint) allPts.push(localInteraction.currentPoint);
+              // Preview as connected lines
+              const coords = allPts
+                .map(pointToCoords)
+                .filter((c): c is { x: Coordinate; y: Coordinate } => Boolean(c));
+              if (coords.length < 2) return null;
+              return (
+                <polyline
+                  points={coords.map((c) => `${c.x},${c.y}`).join(" ")}
+                  fill="none" stroke="#3B82F6" strokeWidth={2} strokeDasharray="4 4"
+                />
+              );
+            })()}
+
+          {/* Freehand preview */}
+          {localInteraction.status === "freehand" && localInteraction.collectedPoints.length >= 2 && (() => {
+            const coords = localInteraction.collectedPoints
+              .map(pointToCoords)
+              .filter((c): c is { x: Coordinate; y: Coordinate } => Boolean(c));
+            if (coords.length < 2) return null;
+            return (
+              <polyline
+                points={coords.map((c) => `${c.x},${c.y}`).join(" ")}
+                fill="none"
+                stroke={activeTool === "highlighter" ? "rgba(255,235,59,0.4)" : "#3B82F6"}
+                strokeWidth={activeTool === "highlighter" ? 12 : 2}
+                strokeLinecap="round" strokeLinejoin="round"
+              />
+            );
+          })()}
+        </svg>
+
+        {/* Measurer overlay stats while drawing */}
+        {isMeasurerTool &&
+          measurerMode &&
+          localInteraction.status === "drawing" &&
+          localInteraction.startPoint &&
+          localInteraction.currentPoint &&
+          measurerAnchor && (
+            <MeasurerOverlay
+              p1={localInteraction.startPoint}
+              p2={localInteraction.currentPoint}
+              data={data}
+              anchor={measurerAnchor}
+              width={width}
+              height={height}
+              mode={measurerMode}
+            />
+          )}
+      </div>
+
+      {/* Text Entry Dialog */}
+      <Dialog open={isTextDialogOpen} onOpenChange={setIsTextDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Add Text Annotation</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <Input
+              id="text-annotation"
+              value={textValue}
+              onChange={(e) => setTextValue(e.target.value)}
+              placeholder="Enter text..."
+              onKeyDown={(e) => { if (e.key === "Enter") handleTextSubmit(); }}
+              autoFocus
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsTextDialogOpen(false)}>Cancel</Button>
+            <Button onClick={handleTextSubmit}>Add Note</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
 }

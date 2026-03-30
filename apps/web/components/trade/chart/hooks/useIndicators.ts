@@ -24,6 +24,23 @@ export const useIndicators = ({ chart, indicators, indicatorSeriesRefs, rawToRen
   useEffect(() => {
     if (!chart) return;
 
+    const SUBPANE_TYPES = new Set([
+      'RSI',
+      'STOCH',
+      'STOCHRSI',
+      'CCI',
+      'WILLR',
+      'ROC',
+      'AO',
+      'MFI',
+      'TRIX',
+      'KST',
+      'ADX',
+      'ATR',
+      'OBV',
+      'FORCE',
+    ]);
+
     const currentIds = new Set(indicators.map((i) => i.config.id));
 
     indicatorSeriesRefs.current.forEach((seriesArray, id) => {
@@ -113,15 +130,18 @@ export const useIndicators = ({ chart, indicators, indicatorSeriesRefs, rawToRen
       } else {
         const mappedData = mapToRenderTime(Array.isArray(data) ? data : [], rawToRenderTimeRef);
         if (!existing) {
+          const isSubpane = SUBPANE_TYPES.has(config.type);
+          const priceScaleId = config.type === 'RSI' ? 'RSI' : isSubpane ? 'OSC' : 'right';
+
           const s = chart.addSeries(LineSeries, {
             color: config.display.color,
             lineWidth: Math.max(1, Math.min(4, Number(config.display.lineWidth || 2))) as any,
-            priceScaleId: config.type === 'RSI' ? 'RSI' : 'right',
+            priceScaleId,
             title: `${config.type} ${config.params?.period || ''}`.trim(),
           });
 
-          if (config.type === 'RSI') {
-            chart.priceScale('RSI').applyOptions({
+          if (priceScaleId !== 'right') {
+            chart.priceScale(priceScaleId).applyOptions({
               scaleMargins: { top: 0.8, bottom: 0.05 },
             });
           }
