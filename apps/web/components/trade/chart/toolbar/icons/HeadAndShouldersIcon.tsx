@@ -1,4 +1,4 @@
-﻿import type { IconProps } from "./iconTypes";
+import type { IconProps } from "./iconTypes";
 export function HeadAndShouldersIcon({ size = 24, strokeWidth = 1.5, ...props }: IconProps) {
   return (
     <svg
@@ -12,8 +12,13 @@ export function HeadAndShouldersIcon({ size = 24, strokeWidth = 1.5, ...props }:
       height={props.height ?? size}
       {...props}
     >
-      <polyline points="1,18 4,18 6,13 8,18 10,18 12,5 14,18 16,18 18,11 20,18 23,18"/>
-      <line x1="1" y1="18" x2="23" y2="18"/>
+                <line x1="2" y1="18" x2="22" y2="18" strokeDasharray="2 1.5" strokeWidth="1"/>
+
+                <polyline points="2,18 5,13 8,18"/>
+
+                <polyline points="8,18 12,4 16,18"/>
+
+                <polyline points="16,18 19,13 22,18"/>
     </svg>
   );
 }

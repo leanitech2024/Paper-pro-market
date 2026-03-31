@@ -1,4 +1,4 @@
-﻿import type { IconProps } from "./iconTypes";
+import type { IconProps } from "./iconTypes";
 export function ElliottTriangleIcon({ size = 24, strokeWidth = 1.5, ...props }: IconProps) {
   return (
     <svg
@@ -12,14 +12,32 @@ export function ElliottTriangleIcon({ size = 24, strokeWidth = 1.5, ...props }: 
       height={props.height ?? size}
       {...props}
     >
-      <polyline points="2,4 7,16 11,9 15,15 18,11"/>
-      <line x1="2" y1="19" x2="22" y2="13" strokeDasharray="2 1.5"/>
-      <line x1="2" y1="9" x2="22" y2="13" strokeDasharray="2 1.5"/>
-      <text x="1" y="3.5" fontSize="3.2" fill="currentColor" stroke="none" fontFamily="sans-serif">A</text>
-      <text x="7" y="21" fontSize="3.2" fill="currentColor" stroke="none" fontFamily="sans-serif">B</text>
-      <text x="10" y="8" fontSize="3.2" fill="currentColor" stroke="none" fontFamily="sans-serif">C</text>
-      <text x="14.5" y="21" fontSize="3.2" fill="currentColor" stroke="none" fontFamily="sans-serif">D</text>
-      <text x="18" y="10" fontSize="3.2" fill="currentColor" stroke="none" fontFamily="sans-serif">E</text>
+                <line x1="2" y1="5" x2="7" y2="17"/>
+
+                <line x1="7" y1="17" x2="12" y2="8"/>
+
+                <line x1="12" y1="8" x2="16" y2="15"/>
+
+                <line x1="16" y1="15" x2="19" y2="10"/>
+
+                <line x1="19" y1="10" x2="22" y2="13"/>
+
+                <line x1="2" y1="5" x2="22" y2="10" strokeDasharray="2 1.5" strokeWidth="0.8"/>
+
+                <line x1="7" y1="17" x2="22" y2="13" strokeDasharray="2 1.5" strokeWidth="0.8"/>
+
+                <circle cx="2"  cy="5"  r="1.2" fill="currentColor" stroke="none"/>
+                <circle cx="7"  cy="17" r="1.2" fill="currentColor" stroke="none"/>
+                <circle cx="12" cy="8"  r="1.2" fill="currentColor" stroke="none"/>
+                <circle cx="16" cy="15" r="1.2" fill="currentColor" stroke="none"/>
+                <circle cx="19" cy="10" r="1.2" fill="currentColor" stroke="none"/>
+                <circle cx="22" cy="13" r="1.2" fill="currentColor" stroke="none"/>
+
+                <text x="1"  y="4"   fontSize="3.5" fill="currentColor" fontFamily="sans-serif" font-weight="700">A</text>
+                <text x="6"  y="22"  fontSize="3.5" fill="currentColor" fontFamily="sans-serif" font-weight="700">B</text>
+                <text x="11" y="7"   fontSize="3.5" fill="currentColor" fontFamily="sans-serif" font-weight="700">C</text>
+                <text x="15" y="20"  fontSize="3.5" fill="currentColor" fontFamily="sans-serif" font-weight="700">D</text>
+                <text x="19" y="9"   fontSize="3.5" fill="currentColor" fontFamily="sans-serif" font-weight="700">E</text>
     </svg>
   );
 }

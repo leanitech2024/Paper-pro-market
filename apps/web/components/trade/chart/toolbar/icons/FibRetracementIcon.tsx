@@ -1,4 +1,4 @@
-﻿import type { IconProps } from "./iconTypes";
+import type { IconProps } from "./iconTypes";
 export function FibRetracementIcon({ size = 24, strokeWidth = 1.5, ...props }: IconProps) {
   return (
     <svg
@@ -12,12 +12,14 @@ export function FibRetracementIcon({ size = 24, strokeWidth = 1.5, ...props }: I
       height={props.height ?? size}
       {...props}
     >
-      <line x1="3" y1="21" x2="21" y2="3"/>
-      <line x1="3" y1="18" x2="13" y2="18" strokeDasharray="1.5 1.5"/>
-      <line x1="3" y1="14.5" x2="10" y2="14.5" strokeDasharray="1.5 1.5"/>
-      <line x1="3" y1="11" x2="7" y2="11" strokeDasharray="1.5 1.5"/>
-      <line x1="3" y1="7.5" x2="17" y2="7.5" strokeDasharray="1.5 1.5"/>
-      <line x1="3" y1="3" x2="21" y2="3" strokeDasharray="1.5 1.5"/>
+                <line x1="3" y1="21" x2="21" y2="3"/>
+
+                <line x1="3" y1="21" x2="21" y2="21" strokeDasharray="1.5 1.5" strokeWidth="1"/>
+                <line x1="3" y1="17" x2="21" y2="17" strokeDasharray="1.5 1.5" strokeWidth="1"/>
+                <line x1="3" y1="13" x2="21" y2="13" strokeDasharray="1.5 1.5" strokeWidth="1"/>
+                <line x1="3" y1="9"  x2="21" y2="9"  strokeDasharray="1.5 1.5" strokeWidth="1"/>
+                <line x1="3" y1="5"  x2="21" y2="5"  strokeDasharray="1.5 1.5" strokeWidth="1"/>
+                <line x1="3" y1="3"  x2="21" y2="3"  strokeDasharray="1.5 1.5" strokeWidth="1"/>
     </svg>
   );
 }

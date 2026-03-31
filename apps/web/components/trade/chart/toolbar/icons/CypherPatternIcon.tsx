@@ -1,4 +1,4 @@
-﻿import type { IconProps } from "./iconTypes";
+import type { IconProps } from "./iconTypes";
 export function CypherPatternIcon({ size = 24, strokeWidth = 1.5, ...props }: IconProps) {
   return (
     <svg
@@ -12,12 +12,21 @@ export function CypherPatternIcon({ size = 24, strokeWidth = 1.5, ...props }: Ic
       height={props.height ?? size}
       {...props}
     >
-      <polyline points="2,18 6,9 11,16 17,3 21,14"/>
-      <text x="1" y="23" fontSize="3.5" fill="currentColor" stroke="none" fontFamily="sans-serif">X</text>
-      <text x="5" y="7.5" fontSize="3.5" fill="currentColor" stroke="none" fontFamily="sans-serif">A</text>
-      <text x="10" y="21" fontSize="3.5" fill="currentColor" stroke="none" fontFamily="sans-serif">B</text>
-      <text x="16.5" y="2" fontSize="3.5" fill="currentColor" stroke="none" fontFamily="sans-serif">C</text>
-      <text x="20" y="20" fontSize="3.5" fill="currentColor" stroke="none" fontFamily="sans-serif">D</text>
+                <polyline points="2,19 7,8 11,14 16,2 21,13"/>
+
+                <circle cx="2"  cy="19" r="1.2" fill="currentColor" stroke="none"/>
+                <circle cx="7"  cy="8"  r="1.2" fill="currentColor" stroke="none"/>
+                <circle cx="11" cy="14" r="1.2" fill="currentColor" stroke="none"/>
+                <circle cx="16" cy="2"  r="1.2" fill="currentColor" stroke="none"/>
+                <circle cx="21" cy="13" r="1.2" fill="currentColor" stroke="none"/>
+
+                <text x="0"  y="22"  fontSize="4" fill="currentColor" fontFamily="sans-serif" font-weight="600">X</text>
+                <text x="6"  y="7"   fontSize="4" fill="currentColor" fontFamily="sans-serif" font-weight="600">A</text>
+                <text x="10" cy="19" y="20" fontSize="4" fill="currentColor" fontFamily="sans-serif" font-weight="600">B</text>
+                <text x="15" y="2"   fontSize="4" fill="currentColor" fontFamily="sans-serif" font-weight="600">C</text>
+                <text x="20" y="17"  fontSize="4" fill="currentColor" fontFamily="sans-serif" font-weight="600">D</text>
+
+                <line x1="2" y1="19" x2="16" y2="2" strokeDasharray="1.5 1" strokeWidth="0.8"/>
     </svg>
   );
 }

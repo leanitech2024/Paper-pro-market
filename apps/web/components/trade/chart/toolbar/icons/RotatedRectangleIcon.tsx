@@ -1,4 +1,4 @@
-﻿import type { IconProps } from "./iconTypes";
+import type { IconProps } from "./iconTypes";
 export function RotatedRectangleIcon({ size = 24, strokeWidth = 1.5, ...props }: IconProps) {
   return (
     <svg
@@ -12,7 +12,7 @@ export function RotatedRectangleIcon({ size = 24, strokeWidth = 1.5, ...props }:
       height={props.height ?? size}
       {...props}
     >
-      <rect x="4" y="7" width="16" height="10" rx="1" transform="rotate(-28 12 12)"/>
+                <polygon points="5,16 8,4 19,8 16,20"/>
     </svg>
   );
 }

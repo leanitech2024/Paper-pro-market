@@ -18,11 +18,6 @@ import {
   type TextDrawing as TextDrawingType,
 } from '@/stores/trading/analysis.store';
 
-import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
 
 // Import all renderers
 import * as LineR from './renderers/LineRenderers';
@@ -212,8 +207,15 @@ export function DrawingManager({ chart, mainSeries, width, height, data, symbol 
   const [textDialogPoint, setTextDialogPoint] = useState<Point | null>(null);
   const [textDialogType, setTextDialogType] = useState<string>("text");
   const [textValue, setTextValue] = useState("");
+  const textPopoverRef = useRef<HTMLDivElement>(null);
 
-  const handleTextSubmit = () => {
+  const closeTextPopover = useCallback(() => {
+    setIsTextDialogOpen(false);
+    setTextValue("");
+    setTextDialogPoint(null);
+  }, []);
+
+  const handleTextSubmit = useCallback(() => {
     if (textValue && textDialogPoint) {
       addDrawing(symbol, {
         type: textDialogType as DrawingType,
@@ -222,10 +224,31 @@ export function DrawingManager({ chart, mainSeries, width, height, data, symbol 
         visible: true,
       } as Omit<TextDrawingType, "id">);
     }
-    setIsTextDialogOpen(false);
-    setTextValue("");
-    setTextDialogPoint(null);
-  };
+    closeTextPopover();
+  }, [addDrawing, closeTextPopover, symbol, textDialogPoint, textDialogType, textValue]);
+
+  useEffect(() => {
+    if (!isTextDialogOpen) return;
+    const onMouseDown = (e: MouseEvent) => {
+      const target = e.target as Node;
+      if (textPopoverRef.current?.contains(target)) return;
+      if (svgRef.current?.contains(target)) return;
+      closeTextPopover();
+    };
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        e.stopPropagation();
+        closeTextPopover();
+      }
+    };
+    window.addEventListener("mousedown", onMouseDown);
+    window.addEventListener("keydown", onKeyDown, true);
+    return () => {
+      window.removeEventListener("mousedown", onMouseDown);
+      window.removeEventListener("keydown", onKeyDown, true);
+    };
+  }, [closeTextPopover, isTextDialogOpen]);
 
   // ─── Coordinate Helpers ─────────────────────────────────────
   const pointToCoords = useCallback((p: Point) => {
@@ -306,7 +329,7 @@ export function DrawingManager({ chart, mainSeries, width, height, data, symbol 
         else if (state.activeTool !== "cursor") state.setActiveTool("cursor");
         return;
       }
-      if (e.defaultPrevented || hotkeysEnabled) return;
+      if (e.defaultPrevented || !hotkeysEnabled) return;
 
       if (e.key === "Delete" || e.key === "Backspace") {
         e.preventDefault();
@@ -345,6 +368,11 @@ export function DrawingManager({ chart, mainSeries, width, height, data, symbol 
 
   // ─── Mouse Handlers ─────────────────────────────────────────
   const handleMouseDown = (e: React.MouseEvent) => {
+    const targetNode = e.target as Node;
+    if (isTextDialogOpen && textPopoverRef.current?.contains(targetNode)) {
+      e.stopPropagation();
+      return;
+    }
     const rect = svgRef.current?.getBoundingClientRect();
     if (!rect) return;
     const x = e.clientX - rect.left;
@@ -651,6 +679,20 @@ export function DrawingManager({ chart, mainSeries, width, height, data, symbol 
     localInteraction.status !== "idle" && localInteraction.currentPoint
       ? pointToCoords(localInteraction.currentPoint)
       : null;
+  const textPopoverAnchor = textDialogPoint ? pointToCoords(textDialogPoint) : null;
+  const textPopoverStyle = useMemo(() => {
+    if (!textPopoverAnchor) return null;
+    const popoverWidth = 210;
+    const popoverHeight = 34;
+    const pad = 6;
+    let left = textPopoverAnchor.x + 8;
+    let top = textPopoverAnchor.y + 8;
+    if (left + popoverWidth > width - pad) left = width - popoverWidth - pad;
+    if (left < pad) left = pad;
+    if (top + popoverHeight > height - pad) top = height - popoverHeight - pad;
+    if (top < pad) top = pad;
+    return { left, top };
+  }, [height, textPopoverAnchor, width]);
 
   return (
     <>
@@ -737,6 +779,45 @@ export function DrawingManager({ chart, mainSeries, width, height, data, symbol 
           })()}
         </svg>
 
+        {isTextDialogOpen && textPopoverAnchor && textPopoverStyle && (
+          <div
+            ref={textPopoverRef}
+            className="absolute z-[60]"
+            style={{ left: textPopoverStyle.left, top: textPopoverStyle.top }}
+          >
+            <div className="rounded-md border border-slate-200/80 bg-white/95 px-1.5 py-1 shadow-lg backdrop-blur-md dark:border-white/[0.08] dark:bg-[#0c1322]/95">
+              <div className="flex items-center gap-1.5">
+                <input
+                  id="text-annotation"
+                  value={textValue}
+                  onChange={(e) => setTextValue(e.target.value)}
+                  placeholder="Enter text..."
+                  onKeyDown={(e) => { if (e.key === "Enter") handleTextSubmit(); }}
+                  autoFocus
+                  className="h-7 w-32 rounded border border-slate-200/80 bg-transparent px-2 text-xs text-slate-900 outline-none placeholder:text-slate-400 focus:border-slate-300 dark:border-white/[0.08] dark:text-slate-100 dark:placeholder:text-slate-500"
+                />
+                <button
+                  type="button"
+                  onClick={handleTextSubmit}
+                  className="h-7 w-7 rounded text-[12px] font-semibold text-white"
+                  style={{ backgroundColor: "#14338a" }}
+                  title="Add"
+                >
+                  ✓
+                </button>
+                <button
+                  type="button"
+                  onClick={closeTextPopover}
+                  className="h-7 w-7 rounded border border-slate-200/80 text-[12px] text-slate-500 hover:text-slate-900 dark:border-white/[0.08] dark:text-slate-400 dark:hover:text-slate-100"
+                  title="Cancel"
+                >
+                  ×
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Measurer overlay stats while drawing */}
         {isMeasurerTool &&
           measurerMode &&
@@ -756,28 +837,6 @@ export function DrawingManager({ chart, mainSeries, width, height, data, symbol 
           )}
       </div>
 
-      {/* Text Entry Dialog */}
-      <Dialog open={isTextDialogOpen} onOpenChange={setIsTextDialogOpen}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>Add Text Annotation</DialogTitle>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <Input
-              id="text-annotation"
-              value={textValue}
-              onChange={(e) => setTextValue(e.target.value)}
-              placeholder="Enter text..."
-              onKeyDown={(e) => { if (e.key === "Enter") handleTextSubmit(); }}
-              autoFocus
-            />
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsTextDialogOpen(false)}>Cancel</Button>
-            <Button onClick={handleTextSubmit}>Add Note</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </>
   );
 }

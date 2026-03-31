@@ -1,4 +1,4 @@
-﻿import type { IconProps } from "./iconTypes";
+import type { IconProps } from "./iconTypes";
 export function FibSpeedArcsIcon({ size = 24, strokeWidth = 1.5, ...props }: IconProps) {
   return (
     <svg
@@ -12,10 +12,15 @@ export function FibSpeedArcsIcon({ size = 24, strokeWidth = 1.5, ...props }: Ico
       height={props.height ?? size}
       {...props}
     >
-      <path d="M3 21 Q3 15 9 15"/>
-      <path d="M3 21 Q3 10 14 10"/>
-      <path d="M3 21 Q3 5 19 5"/>
-      <path d="M3 21 Q6 3 21 3"/>
+                <circle cx="3" cy="21" r="1" fill="currentColor" stroke="none"/>
+
+                <path d="M 3 15 Q 6 15 9 21" fill="none"/>
+
+                <path d="M 3 11 Q 9 11 14 21" fill="none"/>
+
+                <path d="M 3 7 Q 12 7 19 21" fill="none"/>
+
+                <path d="M 3 3 Q 15 3 22 21" fill="none"/>
     </svg>
   );
 }

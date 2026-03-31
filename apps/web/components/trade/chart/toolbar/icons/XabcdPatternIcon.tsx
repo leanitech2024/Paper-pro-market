@@ -1,4 +1,4 @@
-﻿import type { IconProps } from "./iconTypes";
+import type { IconProps } from "./iconTypes";
 export function XabcdPatternIcon({ size = 24, strokeWidth = 1.5, ...props }: IconProps) {
   return (
     <svg
@@ -12,12 +12,19 @@ export function XabcdPatternIcon({ size = 24, strokeWidth = 1.5, ...props }: Ico
       height={props.height ?? size}
       {...props}
     >
-      <polyline points="2,18 6,7 11,15 16,5 20,14"/>
-      <text x="1" y="23" fontSize="3.5" fill="currentColor" stroke="none" fontFamily="sans-serif">X</text>
-      <text x="5" y="6" fontSize="3.5" fill="currentColor" stroke="none" fontFamily="sans-serif">A</text>
-      <text x="10" y="20" fontSize="3.5" fill="currentColor" stroke="none" fontFamily="sans-serif">B</text>
-      <text x="15" y="4" fontSize="3.5" fill="currentColor" stroke="none" fontFamily="sans-serif">C</text>
-      <text x="19.5" y="20" fontSize="3.5" fill="currentColor" stroke="none" fontFamily="sans-serif">D</text>
+                <polyline points="2,19 6,5 10,15 15,4 20,12"/>
+
+                <circle cx="2"  cy="19" r="1.2" fill="currentColor" stroke="none"/>
+                <circle cx="6"  cy="5"  r="1.2" fill="currentColor" stroke="none"/>
+                <circle cx="10" cy="15" r="1.2" fill="currentColor" stroke="none"/>
+                <circle cx="15" cy="4"  r="1.2" fill="currentColor" stroke="none"/>
+                <circle cx="20" cy="12" r="1.2" fill="currentColor" stroke="none"/>
+
+                <text x="0"  y="22"  fontSize="4" fill="currentColor" fontFamily="sans-serif" font-weight="600">X</text>
+                <text x="5"  y="4"   fontSize="4" fill="currentColor" fontFamily="sans-serif" font-weight="600">A</text>
+                <text x="9"  y="21"  fontSize="4" fill="currentColor" fontFamily="sans-serif" font-weight="600">B</text>
+                <text x="14" y="3"   fontSize="4" fill="currentColor" fontFamily="sans-serif" font-weight="600">C</text>
+                <text x="19" y="16"  fontSize="4" fill="currentColor" fontFamily="sans-serif" font-weight="600">D</text>
     </svg>
   );
 }

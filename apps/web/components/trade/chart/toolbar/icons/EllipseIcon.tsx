@@ -1,4 +1,4 @@
-﻿import type { IconProps } from "./iconTypes";
+import type { IconProps } from "./iconTypes";
 export function EllipseIcon({ size = 24, strokeWidth = 1.5, ...props }: IconProps) {
   return (
     <svg
@@ -12,7 +12,7 @@ export function EllipseIcon({ size = 24, strokeWidth = 1.5, ...props }: IconProp
       height={props.height ?? size}
       {...props}
     >
-      <ellipse cx="12" cy="12" rx="10" ry="5.5"/>
+                <ellipse cx="12" cy="12" rx="10" ry="5"/>
     </svg>
   );
 }

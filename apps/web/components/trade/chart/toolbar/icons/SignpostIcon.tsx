@@ -1,4 +1,4 @@
-﻿import type { IconProps } from "./iconTypes";
+import type { IconProps } from "./iconTypes";
 export function SignpostIcon({ size = 24, strokeWidth = 1.5, ...props }: IconProps) {
   return (
     <svg
@@ -12,8 +12,11 @@ export function SignpostIcon({ size = 24, strokeWidth = 1.5, ...props }: IconPro
       height={props.height ?? size}
       {...props}
     >
-      <line x1="12" y1="8" x2="12" y2="22"/>
-      <path d="M4 5 L4 11 L16 11 L20 8 L16 5 Z"/>
+                <line x1="12" y1="4" x2="12" y2="21"/>
+
+                <polygon points="4,8 18,8 22,12 18,16 4,16"/>
+
+                <line x1="7" y1="12" x2="15" y2="12" strokeWidth="0.8"/>
     </svg>
   );
 }

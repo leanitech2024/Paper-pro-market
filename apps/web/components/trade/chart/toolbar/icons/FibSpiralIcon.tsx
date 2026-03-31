@@ -1,4 +1,4 @@
-﻿import type { IconProps } from "./iconTypes";
+import type { IconProps } from "./iconTypes";
 export function FibSpiralIcon({ size = 24, strokeWidth = 1.5, ...props }: IconProps) {
   return (
     <svg
@@ -12,7 +12,19 @@ export function FibSpiralIcon({ size = 24, strokeWidth = 1.5, ...props }: IconPr
       height={props.height ?? size}
       {...props}
     >
-      <path d="M12 12 Q12 9.5 14.5 9.5 Q18.5 9.5 18.5 12 Q18.5 17 12 17 Q6 17 6 11.5 Q6 5.5 12.5 5.5 Q20 5.5 20.5 13"/>
+                <path d="M 12 12 Q 14 12 14 10" fill="none"/>
+
+                <path d="M 14 10 Q 14 7 11 7" fill="none"/>
+
+                <path d="M 11 7 Q 6 7 6 12" fill="none"/>
+
+                <path d="M 6 12 Q 6 18 13 18" fill="none"/>
+
+                <path d="M 13 18 Q 21 18 21 10" fill="none"/>
+
+                <path d="M 21 10 Q 21 3 12 3" fill="none"/>
+
+                <circle cx="12" cy="12" r="1" fill="currentColor" stroke="none"/>
     </svg>
   );
 }

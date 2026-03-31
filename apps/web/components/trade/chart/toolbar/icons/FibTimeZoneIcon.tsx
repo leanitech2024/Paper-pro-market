@@ -1,4 +1,4 @@
-﻿import type { IconProps } from "./iconTypes";
+import type { IconProps } from "./iconTypes";
 export function FibTimeZoneIcon({ size = 24, strokeWidth = 1.5, ...props }: IconProps) {
   return (
     <svg
@@ -12,12 +12,13 @@ export function FibTimeZoneIcon({ size = 24, strokeWidth = 1.5, ...props }: Icon
       height={props.height ?? size}
       {...props}
     >
-      <line x1="3" y1="20" x2="21" y2="20"/>
-      <line x1="4" y1="4" x2="4" y2="20" strokeDasharray="2 1.5"/>
-      <line x1="7" y1="4" x2="7" y2="20" strokeDasharray="2 1.5"/>
-      <line x1="11" y1="4" x2="11" y2="20" strokeDasharray="2 1.5"/>
-      <line x1="16" y1="4" x2="16" y2="20" strokeDasharray="2 1.5"/>
-      <line x1="22" y1="4" x2="22" y2="20" strokeDasharray="2 1.5"/>
+                <line x1="2" y1="20" x2="22" y2="20" strokeWidth="1"/>
+
+                <line x1="3"  y1="5" x2="3"  y2="20" strokeDasharray="2 1.5" strokeWidth="1"/>
+                <line x1="6"  y1="5" x2="6"  y2="20" strokeDasharray="2 1.5" strokeWidth="1"/>
+                <line x1="10" y1="5" x2="10" y2="20" strokeDasharray="2 1.5" strokeWidth="1"/>
+                <line x1="15" y1="5" x2="15" y2="20" strokeDasharray="2 1.5" strokeWidth="1"/>
+                <line x1="21" y1="5" x2="21" y2="20" strokeDasharray="2 1.5" strokeWidth="1"/>
     </svg>
   );
 }

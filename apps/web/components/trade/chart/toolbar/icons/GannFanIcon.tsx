@@ -1,4 +1,4 @@
-﻿import type { IconProps } from "./iconTypes";
+import type { IconProps } from "./iconTypes";
 export function GannFanIcon({ size = 24, strokeWidth = 1.5, ...props }: IconProps) {
   return (
     <svg
@@ -12,12 +12,21 @@ export function GannFanIcon({ size = 24, strokeWidth = 1.5, ...props }: IconProp
       height={props.height ?? size}
       {...props}
     >
-      <line x1="3" y1="21" x2="21" y2="3"/>
-      <line x1="3" y1="21" x2="21" y2="7"/>
-      <line x1="3" y1="21" x2="21" y2="12"/>
-      <line x1="3" y1="21" x2="21" y2="17"/>
-      <line x1="3" y1="21" x2="13" y2="3"/>
-      <line x1="3" y1="21" x2="8" y2="3"/>
+                <circle cx="3" cy="21" r="1" fill="currentColor" stroke="none"/>
+
+                <line x1="3" y1="21" x2="21" y2="3" strokeWidth="2"/>
+
+                <line x1="3" y1="21" x2="21" y2="9"/>
+
+                <line x1="3" y1="21" x2="21" y2="13"/>
+
+                <line x1="3" y1="21" x2="21" y2="17"/>
+
+                <line x1="3" y1="21" x2="21" y2="20"/>
+
+                <line x1="3" y1="21" x2="9"  y2="3"/>
+
+                <line x1="3" y1="21" x2="6"  y2="3"/>
     </svg>
   );
 }

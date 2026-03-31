@@ -1,4 +1,4 @@
-﻿import type { IconProps } from "./iconTypes";
+import type { IconProps } from "./iconTypes";
 export function SchiffPitchforkIcon({ size = 24, strokeWidth = 1.5, ...props }: IconProps) {
   return (
     <svg
@@ -12,11 +12,21 @@ export function SchiffPitchforkIcon({ size = 24, strokeWidth = 1.5, ...props }: 
       height={props.height ?? size}
       {...props}
     >
-      <line x1="7" y1="16" x2="20" y2="4"/>
-      <line x1="7" y1="16" x2="16" y2="2"/>
-      <line x1="7" y1="16" x2="22" y2="8"/>
-      <line x1="4" y1="13" x2="10" y2="19"/>
-      <line x1="5" y1="16" x2="9" y2="16"/>
+                <line x1="6" y1="14" x2="10" y2="14" strokeWidth="1.5"/>
+
+                <line x1="8" y1="14" x2="20" y2="4"/>
+
+                <line x1="14" y1="9" x2="20" y2="6"/>
+
+                <line x1="14" y1="9" x2="20" y2="12"/>
+
+                <circle cx="4" cy="20" r="1" fill="currentColor" stroke="none"/>
+
+                <circle cx="12" cy="8" r="1" fill="currentColor" stroke="none"/>
+
+                <circle cx="8" cy="14" r="1" fill="currentColor" stroke="none"/>
+
+                <line x1="4" y1="20" x2="12" y2="8" strokeDasharray="2 1.5" strokeWidth="1"/>
     </svg>
   );
 }

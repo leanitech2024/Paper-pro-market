@@ -1,4 +1,4 @@
-﻿import type { IconProps } from "./iconTypes";
+import type { IconProps } from "./iconTypes";
 export function FibExtensionIcon({ size = 24, strokeWidth = 1.5, ...props }: IconProps) {
   return (
     <svg
@@ -12,12 +12,17 @@ export function FibExtensionIcon({ size = 24, strokeWidth = 1.5, ...props }: Ico
       height={props.height ?? size}
       {...props}
     >
-      <line x1="3" y1="19" x2="17" y2="5"/>
-      <line x1="3" y1="16" x2="13" y2="16" strokeDasharray="1.5 1.5"/>
-      <line x1="3" y1="11" x2="9" y2="11" strokeDasharray="1.5 1.5"/>
-      <line x1="3" y1="6" x2="16" y2="6" strokeDasharray="1.5 1.5"/>
-      <line x1="3" y1="3" x2="21" y2="3" strokeDasharray="1.5 1.5"/>
-      <line x1="3" y1="1" x2="21" y2="1" strokeDasharray="1.5 1.5"/>
+                <line x1="3" y1="21" x2="18" y2="6"/>
+
+                <line x1="3" y1="21" x2="18" y2="21" strokeDasharray="1.5 1.5" strokeWidth="1"/>
+                <line x1="3" y1="15" x2="18" y2="15" strokeDasharray="1.5 1.5" strokeWidth="1"/>
+                <line x1="3" y1="10" x2="18" y2="10" strokeDasharray="1.5 1.5" strokeWidth="1"/>
+                <line x1="3" y1="6"  x2="18" y2="6"  strokeDasharray="1.5 1.5" strokeWidth="1"/>
+
+                <line x1="3" y1="3"  x2="21" y2="3"  strokeWidth="1.2"/>
+                <line x1="3" y1="1"  x2="21" y2="1"  strokeWidth="1.2"/>
+
+                <polyline points="19,5 21,3 19,1" strokeWidth="1.2"/>
     </svg>
   );
 }

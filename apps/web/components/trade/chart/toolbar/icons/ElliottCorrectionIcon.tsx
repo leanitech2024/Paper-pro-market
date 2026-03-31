@@ -1,4 +1,4 @@
-﻿import type { IconProps } from "./iconTypes";
+import type { IconProps } from "./iconTypes";
 export function ElliottCorrectionIcon({ size = 24, strokeWidth = 1.5, ...props }: IconProps) {
   return (
     <svg
@@ -12,10 +12,20 @@ export function ElliottCorrectionIcon({ size = 24, strokeWidth = 1.5, ...props }
       height={props.height ?? size}
       {...props}
     >
-      <polyline points="2,4 9,18 14,10 22,21"/>
-      <text x="2" y="3.5" fontSize="3.5" fill="currentColor" stroke="none" fontFamily="sans-serif">A</text>
-      <text x="9.5" y="23" fontSize="3.5" fill="currentColor" stroke="none" fontFamily="sans-serif">B</text>
-      <text x="18.5" y="23" fontSize="3.5" fill="currentColor" stroke="none" fontFamily="sans-serif">C</text>
+                <line x1="2" y1="5" x2="9" y2="15"/>
+
+                <line x1="9" y1="15" x2="14" y2="10"/>
+
+                <line x1="14" y1="10" x2="21" y2="20"/>
+
+                <circle cx="2"  cy="5"  r="1.2" fill="currentColor" stroke="none"/>
+                <circle cx="9"  cy="15" r="1.2" fill="currentColor" stroke="none"/>
+                <circle cx="14" cy="10" r="1.2" fill="currentColor" stroke="none"/>
+                <circle cx="21" cy="20" r="1.2" fill="currentColor" stroke="none"/>
+
+                <text x="4"  y="9"   fontSize="4" fill="currentColor" fontFamily="sans-serif" font-weight="700">A</text>
+                <text x="10" y="11"  fontSize="4" fill="currentColor" fontFamily="sans-serif" font-weight="700">B</text>
+                <text x="16" y="14"  fontSize="4" fill="currentColor" fontFamily="sans-serif" font-weight="700">C</text>
     </svg>
   );
 }

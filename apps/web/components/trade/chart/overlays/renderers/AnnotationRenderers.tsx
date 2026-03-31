@@ -125,20 +125,25 @@ export function renderSignpost({ drawing, pointToCoords, selected }: DrawingRend
   const d = drawing as TextDrawing;
   const c = pointToCoords(d.point);
   if (!c) return null;
-  const displayText = d.text || "📌";
+  const color = "#14338a";
 
   return (
     <g data-id={d.id}>
-      <line x1={c.x} y1={c.y} x2={c.x} y2={c.y - 30}
-        stroke={selected ? SEL_COLOR : "#888"} strokeWidth={1.5} pointerEvents="none" />
-      <rect x={c.x - 4} y={c.y - 46} width={Math.max(24, displayText.length * 7 + 10)} height={18} rx={3}
-        fill={selected ? "rgba(245,158,11,0.85)" : "rgba(0,0,0,0.85)"}
-        stroke={selected ? SEL_COLOR : "#555"} strokeWidth={1}
-        pointerEvents="all" className="cursor-pointer" />
-      <text x={c.x + 2} y={c.y - 33} fill="#E0E0E0"
-        fontSize={10} fontFamily="Inter, sans-serif" pointerEvents="none">
-        {displayText}
-      </text>
+      <g
+        transform={`translate(${c.x - 10} ${c.y - 22})`}
+        stroke={color}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        fill="none"
+        pointerEvents="all"
+        className="cursor-pointer"
+      >
+        <line x1="10" y1="4" x2="10" y2="22" strokeWidth={1.5} />
+        <line x1="8" y1="21" x2="12" y2="21" strokeWidth={1.5} />
+        <path d="M 10 5 L 20 5 L 23 10 L 20 15 L 10 15 Z" strokeWidth={1.5} />
+        <line x1="12" y1="8.5" x2="19" y2="8.5" strokeWidth={1} />
+        <line x1="12" y1="11.5" x2="17" y2="11.5" strokeWidth={1} />
+      </g>
     </g>
   );
 }

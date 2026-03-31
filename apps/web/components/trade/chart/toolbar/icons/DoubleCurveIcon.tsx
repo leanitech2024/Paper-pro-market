@@ -1,4 +1,4 @@
-﻿import type { IconProps } from "./iconTypes";
+import type { IconProps } from "./iconTypes";
 export function DoubleCurveIcon({ size = 24, strokeWidth = 1.5, ...props }: IconProps) {
   return (
     <svg
@@ -12,8 +12,14 @@ export function DoubleCurveIcon({ size = 24, strokeWidth = 1.5, ...props }: Icon
       height={props.height ?? size}
       {...props}
     >
-      <path d="M3 8 C7 8 9 16 12 16"/>
-      <path d="M12 16 C15 16 17 8 21 8"/>
+                <path d="M 3 15 C 7 15 9 6 13 6" fill="none"/>
+
+                <path d="M 11 18 C 15 18 17 9 21 9" fill="none"/>
+
+                <circle cx="3"  cy="15" r="1.2" fill="currentColor" stroke="none"/>
+                <circle cx="13" cy="6"  r="1.2" fill="currentColor" stroke="none"/>
+                <circle cx="11" cy="18" r="1.2" fill="currentColor" stroke="none"/>
+                <circle cx="21" cy="9"  r="1.2" fill="currentColor" stroke="none"/>
     </svg>
   );
 }

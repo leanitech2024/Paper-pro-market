@@ -1,4 +1,4 @@
-﻿import type { IconProps } from "./iconTypes";
+import type { IconProps } from "./iconTypes";
 export function InsidePitchforkIcon({ size = 24, strokeWidth = 1.5, ...props }: IconProps) {
   return (
     <svg
@@ -12,9 +12,19 @@ export function InsidePitchforkIcon({ size = 24, strokeWidth = 1.5, ...props }: 
       height={props.height ?? size}
       {...props}
     >
-      <line x1="4" y1="20" x2="20" y2="4"/>
-      <line x1="4" y1="20" x2="18" y2="6"/>
-      <line x1="4" y1="20" x2="20" y2="10"/>
+                <circle cx="4" cy="20" r="1" fill="currentColor" stroke="none"/>
+
+                <line x1="4" y1="20" x2="20" y2="6"/>
+
+                <line x1="4" y1="20" x2="20" y2="2" strokeWidth="0.8" strokeDasharray="2 1.5"/>
+
+                <line x1="4" y1="20" x2="20" y2="10" strokeWidth="0.8" strokeDasharray="2 1.5"/>
+
+                <line x1="12" y1="13" x2="20" y2="5"/>
+
+                <line x1="12" y1="13" x2="20" y2="7"/>
+
+                <circle cx="12" cy="13" r="1" fill="currentColor" stroke="none"/>
     </svg>
   );
 }
