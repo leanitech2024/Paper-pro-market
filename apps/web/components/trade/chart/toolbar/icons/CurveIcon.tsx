@@ -18,7 +18,7 @@ export function CurveIcon({ size = 24, strokeWidth = 1.5, ...props }: IconProps)
                 <circle cx="21" cy="6"  r="1.2" fill="currentColor" stroke="none"/>
 
                 <line x1="3"  y1="18" x2="8"  y2="18" strokeDasharray="1.5 1" strokeWidth="0.8"/>
-                <line x1="21" cy="6"  x1="21" y1="6" x2="10" y2="4" strokeDasharray="1.5 1" strokeWidth="0.8"/>
+                <line x1="21" y1="6" x2="10" y2="4" strokeDasharray="1.5 1" strokeWidth="0.8"/>
     </svg>
   );
 }
