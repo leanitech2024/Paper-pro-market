@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { IChartApi, ISeriesApi, CandlestickData } from 'lightweight-charts';
 import { useAnalysisStore } from '@/stores/trading/analysis.store';
 
@@ -65,40 +65,67 @@ export function DrawingManager({ chart, mainSeries, width, height, data, symbol 
     const handleTimeChange = () => setForceRender((n) => n + 1);
 
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        e.preventDefault();
-        const state = useAnalysisStore.getState();
-        if (state.interactionState.status === "drawing") state.cancelDrawing();
-        else if (localInteraction.status !== "idle") {
-          setLocalInteraction({ status: "idle", startPoint: null, currentPoint: null, activeDrawingIds: [], originalDrawings: {}, collectedPoints: [] });
-        }
-        else if (state.selectedDrawingId) state.setSelectedDrawing(null);
-        else if (state.activeTool !== "cursor") state.setActiveTool("cursor");
-        return;
-      }
-      if (e.defaultPrevented || !hotkeysEnabled) return;
+      const key = e.key.toLowerCase();
+      
+      const target = e.target as HTMLElement | null;
+      const tag = target?.tagName?.toLowerCase();
+      // Handle the strict boolean evaluation of isContentEditable safely
+      const isTyping = tag === "input" || tag === "textarea" || tag === "select" || target?.isContentEditable === true;
 
-      if (e.key === "Delete" || e.key === "Backspace") {
-        e.preventDefault();
+      if (key === "escape") {
         const state = useAnalysisStore.getState();
-        if (state.selectedDrawingIds.length > 0) deleteSelectedDrawings(symbol);
-        else if (state.selectedDrawingId) state.deleteDrawing(symbol, state.selectedDrawingId);
+        if (state.interactionState.status === "drawing" || localInteraction.status !== "idle") {
+          e.preventDefault();
+          e.stopPropagation();
+          if (state.interactionState.status === "drawing") state.cancelDrawing();
+          if (localInteraction.status !== "idle") {
+            setLocalInteraction({ status: "idle", startPoint: null, currentPoint: null, activeDrawingIds: [], originalDrawings: {}, collectedPoints: [] });
+          }
+        } else if (!isTyping) {
+          e.preventDefault();
+          e.stopPropagation();
+          state.setActiveTool("cursor");
+          state.setSelectedDrawings([]);
+        }
         return;
       }
-      if ((e.ctrlKey || e.metaKey) && e.key === "z") {
+
+      if (isTyping) return;
+
+      if (key === "delete" || key === "backspace") {
+        const state = useAnalysisStore.getState();
+        if (state.selectedDrawingIds.length > 0 || state.selectedDrawingId) {
+          e.preventDefault();
+          e.stopPropagation();
+          if (state.selectedDrawingIds.length > 0) {
+            state.deleteSelectedDrawings(symbol);
+          } else if (state.selectedDrawingId) {
+            state.deleteDrawing(symbol, state.selectedDrawingId);
+          }
+        }
+        return;
+      }
+
+      if ((e.ctrlKey || e.metaKey) && key === "z") {
         e.preventDefault();
-        if (e.shiftKey) useAnalysisStore.getState().redoDrawing(symbol);
-        else useAnalysisStore.getState().undoDrawing(symbol);
+        e.stopPropagation();
+        if (e.shiftKey) {
+          useAnalysisStore.getState().redoDrawing(symbol);
+        } else {
+          useAnalysisStore.getState().undoDrawing(symbol);
+        }
+        return;
       }
     };
 
     chart.timeScale().subscribeVisibleTimeRangeChange(handleTimeChange);
-    window.addEventListener("keydown", handleKeyDown);
+    // Use capture phase to intercept keys before they get swallowed by child element traps
+    window.addEventListener("keydown", handleKeyDown, true);
     return () => {
       chart.timeScale().unsubscribeVisibleTimeRangeChange(handleTimeChange);
-      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("keydown", handleKeyDown, true);
     };
-  }, [chart, symbol, deleteSelectedDrawings, localInteraction.status, setLocalInteraction, hotkeysEnabled]);
+  }, [chart, symbol, localInteraction.status, setLocalInteraction]);
 
   const isMeasurerTool = activeTool === "price-range" || activeTool === "date-range" || activeTool === "date-price-range";
   const measurerMode = activeTool === "price-range" ? "price" : activeTool === "date-range" ? "date" : activeTool === "date-price-range" ? "date-price" : null;

@@ -147,7 +147,9 @@ function IndicatorSettingsRow({
 
 // ─── Main Menu ───────────────────────────────────────────────
 export function IndicatorsMenu({ symbol }: IndicatorsMenuProps) {
-  const indicators = useAnalysisStore((s) => s.symbolState[symbol]?.indicators) ?? [];
+  const storedIndicators = useAnalysisStore((s) => s.symbolState[symbol]?.indicators);
+  const indicators = useMemo(() => storedIndicators ?? [], [storedIndicators]);
+  
   const addIndicator = useAnalysisStore((s) => s.addIndicator);
   const removeIndicator = useAnalysisStore((s) => s.removeIndicator);
   const [search, setSearch] = useState("");
