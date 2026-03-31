@@ -14,6 +14,7 @@
  */
 import { logger } from "@/lib/logger";
 import { instrumentStore } from "@/stores/instrument.store";
+import { instrumentRepository } from "@/lib/instruments/repository";
 import { realTimeMarketService } from "@/services/market/feeds/realtime-market.service";
 import { mtmEngineService } from "@/services/trading/valuation/mtm-engine.service";
 
@@ -30,6 +31,17 @@ function resolvePrewarmSymbols(): string[] {
         .split(",")
         .map((item) => item.trim())
         .filter(Boolean);
+}
+
+export async function prewarm() {
+    try {
+        logger.info('Prewarming instrument repository...');
+        await instrumentRepository.initialize();
+        logger.info('Instrument repository prewarmed successfully');
+    } catch (error) {
+        logger.error({ error }, 'Failed to prewarm instrument repository');
+        // Don't throw — app should still start even if prewarm fails
+    }
 }
 
 export async function prewarmCore(): Promise<void> {

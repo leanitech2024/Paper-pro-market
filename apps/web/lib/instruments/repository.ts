@@ -51,16 +51,19 @@ const UNDERLYING_ALIAS: Record<string, string> = {
 
 export class InstrumentRepository {
     private initializePromise: Promise<void> | null = null;
-    
+
     // O(1) Lookup by Instrument Token (Critical for Orders)
     private byToken = new Map<string, Instrument>();
-    
+
     // O(1) Lookup by Trading Symbol (Critical for Ticks)
     private bySymbol = new Map<string, Instrument>();
-    
+
     // Grouped by Underlying Name (Optimization for Search/Chains)
     // Key: Name (e.g., 'NIFTY') -> Value: { futures: [], options: [] }
     private byName = new Map<string, DerivativeGroup>();
+
+    // Word-level name index for company name search (e.g. 'TECH' -> Tech Mahindra instruments)
+    private byNameSearch = new Map<string, Instrument[]>();
 
     // Sorted keys for Search (Prefix/Binary Search)
     private searchKeys: string[] = [];
@@ -98,7 +101,6 @@ export class InstrumentRepository {
 
             try {
                 // Load ONLY active instruments
-                // Using raw SQL or Query Builder efficiently
                 const allInstruments = await db
                     .select()
                     .from(instruments)
@@ -133,9 +135,22 @@ export class InstrumentRepository {
                     } else if (inst.instrumentType === 'OPTION') {
                         group.options.push(inst);
                     }
+
+                    // 4. Word-level name search index (for company name lookup)
+                    // Splits "Tech Mahindra Ltd" -> ["Tech", "Mahindra", "Ltd"]
+                    const words = inst.name
+                        .toUpperCase()
+                        .split(/[\s\-&/,.]+/)
+                        .filter((w) => w.length >= 2);
+                    for (const word of words) {
+                        if (!this.byNameSearch.has(word)) {
+                            this.byNameSearch.set(word, []);
+                        }
+                        this.byNameSearch.get(word)!.push(inst);
+                    }
                 }
 
-                // sort derivatives by expiry (optimization for chain building)
+                // Sort derivatives by expiry (optimization for chain building)
                 for (const group of this.byName.values()) {
                     const sortByExpiry = (a: Instrument, b: Instrument) => {
                         if (!a.expiry || !b.expiry) return 0;
@@ -144,12 +159,12 @@ export class InstrumentRepository {
                     group.futures.sort(sortByExpiry);
                     group.options.sort(sortByExpiry);
                 }
-                
+
                 // Build Search Index
                 this.searchKeys = keys.sort();
 
                 const futuresLoaded = allInstruments.filter(
-                    i => i.instrumentType === 'FUTURE'
+                    (i) => i.instrumentType === 'FUTURE'
                 ).length;
 
                 logger.info({ futuresLoaded }, 'Futures instruments loaded into repository');
@@ -160,14 +175,18 @@ export class InstrumentRepository {
                 const memoryUsage = process.memoryUsage().heapUsed / 1024 / 1024;
                 const duration = Date.now() - startTime;
 
-                logger.info({
-                    count: allInstruments.length,
-                    tokens: this.byToken.size,
-                    groups: this.byName.size,
-                    memoryMB: Math.round(memoryUsage),
-                    duration: `${duration}ms`
-                }, 'InstrumentRepository loaded successfully');
-
+                logger.info(
+                    {
+                        count: allInstruments.length,
+                        tokens: this.byToken.size,
+                        groups: this.byName.size,
+                        nameWords: this.byNameSearch.size,
+                        nameEntries: [...this.byNameSearch.values()].reduce((s, a) => s + a.length, 0),
+                        memoryMB: Math.round(memoryUsage),
+                        duration: `${duration}ms`,
+                    },
+                    'InstrumentRepository loaded successfully'
+                );
             } catch (error) {
                 logger.error({ error }, 'Failed to initialize InstrumentRepository');
                 this.initializationError = error as Error;
@@ -184,6 +203,7 @@ export class InstrumentRepository {
         this.byToken.clear();
         this.bySymbol.clear();
         this.byName.clear();
+        this.byNameSearch.clear();
         this.searchKeys = [];
     }
 
@@ -193,16 +213,20 @@ export class InstrumentRepository {
         const compact = raw.replace(/\s+/g, '');
         return UNDERLYING_ALIAS[raw] || UNDERLYING_ALIAS[compact] || raw;
     }
-    
-    async ensureInitialized() {
+
+    async ensureInitialized(timeoutMs = 10_000) {
         if (this.isInitialized) return;
         if (this.initializationError) throw this.initializationError;
-        await this.initialize();
+        
+        const timeout = new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error('InstrumentRepository init timeout')), timeoutMs)
+        );
+        await Promise.race([this.initialize(), timeout]);
     }
 
     /**
-     * Search instruments by prefix (High Performance)
-     * e.g. "NIFTY" -> ["NIFTY 50", "NIFTY24FEB..."]
+     * Search instruments by symbol prefix AND company name (High Performance)
+     * e.g. "TECH" -> TECHM (symbol prefix) + Tech Mahindra (name match)
      */
     async search(query: string, limit = 20): Promise<Instrument[]> {
         await this.ensureInitialized();
@@ -211,14 +235,16 @@ export class InstrumentRepository {
 
         const q = query.toUpperCase();
         const results: Instrument[] = [];
+        const seen = new Set<string>();
 
-        // 1. Exact Match First (Priority)
+        // 1. Exact symbol match (highest priority)
         const exact = this.bySymbol.get(q);
         if (exact) {
-             results.push(exact);
+            results.push(exact);
+            seen.add(exact.instrumentToken);
         }
 
-        // 2. Binary Search for Prefix Start
+        // 2. Binary search for symbol prefix start
         let start = 0;
         let end = this.searchKeys.length - 1;
         let index = -1;
@@ -228,7 +254,7 @@ export class InstrumentRepository {
             const val = this.searchKeys[mid];
             if (val.startsWith(q)) {
                 index = mid;
-                end = mid - 1; // Try to find earlier match
+                end = mid - 1; // find leftmost match
             } else if (val < q) {
                 start = mid + 1;
             } else {
@@ -236,24 +262,32 @@ export class InstrumentRepository {
             }
         }
 
-        // 3. Collect Matches
+        // 3. Collect symbol prefix matches
         if (index !== -1) {
-            for (let i = index; i < this.searchKeys.length; i++) {
-                if (results.length >= limit) break;
-
+            for (let i = index; i < this.searchKeys.length && results.length < limit; i++) {
                 const key = this.searchKeys[i];
-                if (!key.startsWith(q)) break; // End of prefix block
-
-                if (key !== q) { // Avoid duplicate exact match
-                     const inst = this.bySymbol.get(key);
-                     if (inst) results.push(inst);
+                if (!key.startsWith(q)) break; // end of prefix block
+                const inst = this.bySymbol.get(key);
+                if (inst && !seen.has(inst.instrumentToken)) {
+                    results.push(inst);
+                    seen.add(inst.instrumentToken);
                 }
             }
         }
 
-        // 4. Fallback: Search Underlying Names (e.g. searching 'RELIANCE' should show 'RELIANCE' Futures)
-        // Include exact underlying match and prefix underlying matches (e.g. "NIF" -> "NIFTY").
-        const seen = new Set(results.map(r => r.instrumentToken));
+        // 4. Company name search — match word index entries that start with the query.
+        // The API scorer handles ranking; keep the candidate set tight with startsWith only.
+        for (const [word, insts] of this.byNameSearch.entries()) {
+            if (!word.startsWith(q)) continue;
+            for (const inst of insts) {
+                if (seen.has(inst.instrumentToken)) continue;
+                if (results.length >= limit * 3) break;
+                results.push(inst);
+                seen.add(inst.instrumentToken);
+            }
+        }
+
+        // 5. Underlying name / futures fallback (existing behaviour)
         const addGroupFutures = (group?: DerivativeGroup) => {
             if (!group || group.futures.length === 0) return;
             for (const fut of group.futures) {
@@ -289,7 +323,7 @@ export class InstrumentRepository {
     }
 
     /**
-     * Efficiently retrieves futures contacts for an underlying
+     * Efficiently retrieves futures contracts for an underlying
      * e.g. 'NIFTY' -> [NIFTY Feb Fut, NIFTY Mar Fut...]
      */
     getFutures(name: string): Instrument[] {
@@ -313,7 +347,7 @@ export class InstrumentRepository {
 
     /**
      * Get Option Chain instruments for a specific expiry
-     * optimized to avoid iterating 100k records
+     * Optimized to avoid iterating 100k records
      */
     getOptions(name: string, expiry?: Date): Instrument[] {
         const group = this.byName.get(this.normalizeUnderlying(name));
@@ -325,7 +359,7 @@ export class InstrumentRepository {
 
         // Filter by expiry (fast iteration over subset)
         const expiryTime = expiry.getTime();
-        return group.options.filter(opt => opt.expiry && opt.expiry.getTime() === expiryTime);
+        return group.options.filter((opt) => opt.expiry && opt.expiry.getTime() === expiryTime);
     }
 
     getOptionsByUnderlying(name: string): Instrument[] {
@@ -356,7 +390,7 @@ export class InstrumentRepository {
         const dates: Date[] = [];
 
         // Collect distinct expiries from Futures & Options
-        [...group.futures, ...group.options].forEach(inst => {
+        [...group.futures, ...group.options].forEach((inst) => {
             if (inst.expiry) {
                 const time = inst.expiry.getTime();
                 if (!uniqueExpiries.has(time)) {
@@ -375,7 +409,7 @@ export class InstrumentRepository {
             totalInstruments: this.byToken.size,
             underlyingAssets: this.byName.size,
             isInitialized: this.isInitialized,
-            lastSync: this.lastSyncTime
+            lastSync: this.lastSyncTime,
         };
     }
 }
@@ -385,5 +419,3 @@ declare global {
 }
 
 export const instrumentRepository = InstrumentRepository.getInstance();
-
-

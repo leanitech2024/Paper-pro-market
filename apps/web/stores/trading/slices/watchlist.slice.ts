@@ -10,6 +10,9 @@ function buildStocksBySymbol(stocks: Stock[]): Record<string, Stock> {
   return bySymbol;
 }
 
+// Add a ref to track the active abort controller outside the store state
+let searchAbortController: AbortController | null = null;
+
 export const createWatchlistSlice: MarketSlice<any> = (set, get) => ({
   // ─────────────────────────────────────────────────────────────────
   // 📊 Initial State (UI State Only - Data managed by TanStack Query)
@@ -94,44 +97,56 @@ export const createWatchlistSlice: MarketSlice<any> = (set, get) => ({
   },
 
   searchInstruments: async (query: string, type?: string) => {
-    if (!query) {
-      set({ searchResults: [] });
+    if (!query || query.trim().length === 0) {
+      set({ searchResults: [], isSearching: false });
       return;
     }
+
+    // Cancel previous in-flight request
+    searchAbortController?.abort();
+    searchAbortController = new AbortController();
+    const signal = searchAbortController.signal;
+
     set({ isSearching: true });
     try {
       const params = new URLSearchParams({ q: query });
       if (type) params.set('mode', type);
 
-      const res = await fetch(`/api/v1/instruments/search?${params.toString()}`);
-      const data = await res.json();
+      const res = await fetch(
+        `/api/v1/instruments/search?${params.toString()}`,
+        { signal } // ← attach signal
+      );
 
+      if (signal.aborted) return;
+
+      const data = await res.json();
       if (data.success) {
-        // Map API response to Stock interface
         const results = data.data.map((item: any) => ({
-          symbol: item.tradingsymbol, // Fixed: Database returns tradingsymbol
+          symbol: item.tradingsymbol,
           name: item.name,
           price: Number(item.price ?? item.lastPrice ?? 0),
           change: 0,
           changePercent: 0,
           volume: 0,
           lotSize: item.lotSize,
-          instrumentToken: item.instrumentToken, // Crucial for adding to watchlist
+          instrumentToken: item.instrumentToken,
           expiryDate: item.expiry ? new Date(item.expiry) : undefined,
           strikePrice: item.strike ? parseFloat(item.strike) : undefined,
           optionType:
-            item.instrumentType === 'OPTION' &&
-            (String(item.optionType || '').toUpperCase() === 'CE' ||
-              String(item.optionType || '').toUpperCase() === 'PE')
-              ? String(item.optionType).toUpperCase()
-              : undefined
+              item.instrumentType === 'OPTION' &&
+              ['CE', 'PE'].includes(String(item.optionType || '').toUpperCase())
+                  ? String(item.optionType).toUpperCase()
+                  : undefined,
         }));
         set({ searchResults: results });
       }
-    } catch (error) {
-      console.error("Search failed", error);
+    } catch (error: unknown) {
+      if (error instanceof Error && error.name === 'AbortError') return; // expected, silent
+      console.error('Search failed', error);
     } finally {
-      set({ isSearching: false });
+      if (!signal.aborted) {
+        set({ isSearching: false });
+      }
     }
   },
 });

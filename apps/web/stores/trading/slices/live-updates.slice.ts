@@ -116,21 +116,27 @@ export const createLiveUpdatesSlice: MarketSlice<any> = (set, get) => ({
   },
 
   applyTick: (tick: { instrumentKey: string; symbol?: string; price: number; close?: number; timestamp?: number }) => {
-    set((state: any) => {
-      const seed = buildQuoteFromTick(undefined, tick);
-      if (!seed) return state;
-      const nextQuote = buildQuoteFromTick(state.quotesByInstrument[seed.instrumentKey], tick);
-      if (!nextQuote) return state;
-      const nextQuotesByInstrument = { ...state.quotesByInstrument };
-      for (const key of quoteLookupKeys(tick.instrumentKey || nextQuote.instrumentKey)) {
-        nextQuotesByInstrument[key] = nextQuote;
-      }
+    const state = get() as any;
+    const seed = buildQuoteFromTick(undefined, tick);
+    if (!seed) return;
 
-      return {
-        quotesByInstrument: nextQuotesByInstrument,
-        quotesByKey: nextQuotesByInstrument,
-        livePrice: nextQuote.price,
-      };
+    // ← Bail early if price is identical — avoids unnecessary set() and re-renders
+    const existing = state.quotesByInstrument[seed.instrumentKey];
+    if (existing && existing.price === tick.price) return;
+
+    const nextQuote = buildQuoteFromTick(existing, tick);
+    if (!nextQuote) return;
+
+    set((s: any) => {
+        const nextQuotesByInstrument = { ...s.quotesByInstrument };
+        for (const key of quoteLookupKeys(tick.instrumentKey || nextQuote.instrumentKey)) {
+            nextQuotesByInstrument[key] = nextQuote;
+        }
+        return {
+            quotesByInstrument: nextQuotesByInstrument,
+            quotesByKey: nextQuotesByInstrument,
+            livePrice: nextQuote.price,
+        };
     });
   },
 

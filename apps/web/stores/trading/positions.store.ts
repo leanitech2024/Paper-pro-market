@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { subscribeWithSelector } from 'zustand/middleware';
 import { UserPosition as Position } from '@paper-market/core';
 import { useTradeExecutionStore } from './tradeExecution.store';
 import { toast } from 'sonner';
@@ -24,7 +25,7 @@ const calculatePnL = (position: Position, currentPrice: number): number => {
   return side === 'BUY' ? pnl : -pnl;
 };
 
-export const usePositionsStore = create<PositionsState>((set, get) => ({
+export const usePositionsStore = create<PositionsState>()(subscribeWithSelector((set, get) => ({
   positions: [],
   isLoading: false,
   hasFetched: false,
@@ -124,4 +125,4 @@ export const usePositionsStore = create<PositionsState>((set, get) => ({
     isLoading: false,
     hasFetched: false, 
   }),
-}));
+})));

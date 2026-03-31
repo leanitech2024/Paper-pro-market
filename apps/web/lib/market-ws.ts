@@ -32,6 +32,9 @@ interface MarketWsOptions {
 class MarketWebSocket {
     private ws: WebSocket | null = null;
     private url: string;
+    
+    // Stable forwarder functions — registered once on ws.onmessage etc.
+    // Inner targets are swapped via configure() without re-registering on ws
     private handlers: {
         tick?: MessageHandler;
         candle?: MessageHandler;
@@ -39,48 +42,53 @@ class MarketWebSocket {
         disconnected?: () => void;
         error?: (error: MarketWsErrorContext) => void;
     } = {};
+
     private reconnectAttempts = 0;
     private readonly MAX_RECONNECT_ATTEMPTS = 5;
     private readonly RECONNECT_DELAYS = [1000, 2000, 5000, 10000, 30000];
-    private reconnectTimer: NodeJS.Timeout | null = null;
+    private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
     private isIntentionalClose = false;
-    private loggedPersistentReconnect = false;
+    private connectionRequested = false;
 
     constructor(options: MarketWsOptions) {
         this.url = options.url;
-        this.handlers = {
-            tick: options.onTick,
-            candle: options.onCandle,
-            connected: options.onConnected,
-            disconnected: options.onDisconnected,
-            error: options.onError
-        };
+        this.mergeHandlers(options);
     }
 
+    // Merge handlers — only update what's provided, keep existing for omitted keys
+    // This is the key fix: init-realtime only passes onCandle, so tick/connected/etc stay intact
     configure(options: MarketWsOptions) {
         const nextUrl = options.url?.trim();
         if (nextUrl && nextUrl !== this.url) {
             this.url = nextUrl;
         }
+        this.mergeHandlers(options);
+    }
 
-        this.handlers = {
-            tick: options.onTick,
-            candle: options.onCandle,
-            connected: options.onConnected,
-            disconnected: options.onDisconnected,
-            error: options.onError,
-        };
+    private mergeHandlers(options: MarketWsOptions) {
+        if (options.onTick !== undefined)         this.handlers.tick         = options.onTick;
+        if (options.onCandle !== undefined)       this.handlers.candle       = options.onCandle;
+        if (options.onConnected !== undefined)    this.handlers.connected    = options.onConnected;
+        if (options.onDisconnected !== undefined) this.handlers.disconnected = options.onDisconnected;
+        if (options.onError !== undefined)        this.handlers.error        = options.onError;
     }
 
     connect() {
-        if (this.ws?.readyState === WebSocket.OPEN) return;
+        this.connectionRequested = true;
+        this.isIntentionalClose = false;
+
+        if (
+            this.ws?.readyState === WebSocket.OPEN ||
+            this.ws?.readyState === WebSocket.CONNECTING
+        ) {
+            return;
+        }
 
         try {
             this.ws = new WebSocket(this.url);
 
             this.ws.onopen = () => {
                 this.reconnectAttempts = 0;
-                this.loggedPersistentReconnect = false;
                 this.handlers.connected?.();
             };
 
@@ -88,36 +96,24 @@ class MarketWebSocket {
                 try {
                     const message = JSON.parse(event.data);
                     switch (message.type) {
-                        case 'tick':
-                            this.handlers.tick?.(message.data);
-                            break;
-                        case 'candle':
-                            this.handlers.candle?.(message.data);
-                            break;
+                        case 'tick':        this.handlers.tick?.(message.data); break;
+                        case 'candle':      this.handlers.candle?.(message.data); break;
                         case 'connected':
                         case 'subscribed':
                         case 'unsubscribed':
                         case 'subscription_error':
-                        case 'heartbeat':
-                            // Handled by caller state or silently acknowledged.
-                            break;
-                        // Unknown types are silently ignored — avoids noisy client console.
+                        case 'heartbeat':   break;
                     }
-                } catch {
-                    // JSON parse errors are non-fatal; the next valid tick will recover.
-                }
+                } catch { /* non-fatal */ }
             };
 
             this.ws.onerror = () => {
-                const context: MarketWsErrorContext = {
+                this.handlers.error?.({
                     kind: 'transport_error',
                     url: this.url,
                     readyState: this.ws?.readyState ?? WebSocket.CLOSED,
                     reconnectAttempts: this.reconnectAttempts,
-                };
-                // Browser WS error events intentionally hide details.
-                // All error signalling flows through the onError callback.
-                this.handlers.error?.(context);
+                });
             };
 
             this.ws.onclose = () => {
@@ -132,18 +128,13 @@ class MarketWebSocket {
     }
 
     private attemptReconnect() {
-        // H-8 FIX: Add ±20% jitter to reconnect delay to avoid thundering herd
-        // when the market-engine restarts and all clients reconnect simultaneously.
         const baseDelay = this.RECONNECT_DELAYS[
             Math.min(this.reconnectAttempts, this.RECONNECT_DELAYS.length - 1)
         ];
-        const jitter = baseDelay * 0.2 * (Math.random() * 2 - 1); // ±20%
+        const jitter = baseDelay * 0.2 * (Math.random() * 2 - 1);
         const delay = Math.round(baseDelay + jitter);
         this.reconnectAttempts++;
-
-        this.reconnectTimer = setTimeout(() => {
-            this.connect();
-        }, delay);
+        this.reconnectTimer = setTimeout(() => this.connect(), delay);
     }
 
     subscribe(symbols: string[]) {
@@ -159,18 +150,10 @@ class MarketWebSocket {
     }
 
     disconnect() {
+        this.connectionRequested = false;
         this.isIntentionalClose = true;
-        this.loggedPersistentReconnect = false;
-
-        if (this.reconnectTimer) {
-            clearTimeout(this.reconnectTimer);
-            this.reconnectTimer = null;
-        }
-
-        if (this.ws) {
-            this.ws.close();
-            this.ws = null;
-        }
+        if (this.reconnectTimer) { clearTimeout(this.reconnectTimer); this.reconnectTimer = null; }
+        if (this.ws) { this.ws.close(); this.ws = null; }
     }
 
     isConnected(): boolean {

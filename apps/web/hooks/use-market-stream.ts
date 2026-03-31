@@ -57,7 +57,7 @@ function resolveTradingSymbol(rawSymbol: unknown): string {
 
     // Fallback: resolve from currently loaded instruments/watchlist.
     const state = useMarketStore.getState();
-    const all = [...state.stocks, ...state.indices, ...state.futures, ...state.options];
+    const all = [...(state.stocks || []), ...(state.indices || []), ...(state.futures || []), ...(state.options || [])];
     const match = all.find((item) =>
         item.instrumentToken === input ||
         item.instrumentToken === symbolPart ||
@@ -68,351 +68,192 @@ function resolveTradingSymbol(rawSymbol: unknown): string {
 }
 
 export const useMarketStream = () => {
-    const applyTick = useMarketStore((state) => state.applyTick);
-    const hydrateQuotes = useMarketStore((state) => state.hydrateQuotes);
-    const updateLiveCandle = useMarketStore((state) => state.updateLiveCandle);
-    const stocks = useMarketStore((state) => state.stocks);
-    const indices = useMarketStore((state) => state.indices);
-    const futures = useMarketStore((state) => state.futures);
-    const options = useMarketStore((state) => state.options);
-    const simulatedInstrumentKey = useMarketStore((state) => state.simulatedInstrumentKey);
-    const simulatedSymbol = useMarketStore((state) => state.simulatedSymbol);
-    const positions = usePositionsStore((state) => state.positions);
     const [isConnected, setIsConnected] = useState(false);
     const wsRef = useRef<ReturnType<typeof getMarketWebSocket> | null>(null);
     const subscribedKeysRef = useRef<Set<string>>(new Set());
+    const isConnectedRef = useRef(false);
 
+    // Stable function refs
+    const applyTickRef = useRef(useMarketStore.getState().applyTick);
+    const hydrateQuotesRef = useRef(useMarketStore.getState().hydrateQuotes);
+    const updateLiveCandleRef = useRef(useMarketStore.getState().updateLiveCandle);
+
+    // collectDesiredKeys is already reading getState() — fully stable, no deps
     const collectDesiredKeys = useCallback((): string[] => {
         const state = useMarketStore.getState();
+        const posState = usePositionsStore.getState();
         const keys = new Set<string>();
 
-        // Collect keys from ALL instrument types (not just stocks and indices)
-        const allInstruments = [
-            ...(state.stocks || []),
-            ...(state.indices || []),
-            ...(state.futures || []),
-            ...(state.options || []),
-        ];
-
-        for (const item of allInstruments) {
+        for (const item of [...(state.stocks||[]), ...(state.indices||[]), ...(state.futures||[]), ...(state.options||[])]) {
             const key = toInstrumentKey(item.instrumentToken || item.symbol || '');
             if (key) keys.add(key);
         }
+        for (const key of CORE_INDEX_KEYS) keys.add(key);
 
-        // Always include core indices
-        for (const key of CORE_INDEX_KEYS) {
-            keys.add(key);
-        }
-
-        // Include chart instrument
         const chartKey = toInstrumentKey(state.simulatedInstrumentKey || state.simulatedSymbol || '');
         if (chartKey) keys.add(chartKey);
 
-        // Include open position instruments so Current/P&L stay live.
-        const openPositions = usePositionsStore.getState().positions || [];
-        for (const position of openPositions) {
-            const key = toInstrumentKey(position.instrumentToken || position.symbol || '');
+        for (const pos of (posState.positions || [])) {
+            const key = toInstrumentKey(pos.instrumentToken || pos.symbol || '');
             if (key) keys.add(key);
         }
 
-        // Per-user subscription cap: 150 instruments max
-        const keysArray = Array.from(keys);
-        if (keysArray.length > 150) {
-            console.warn(`⚠️  Subscription cap reached: ${keysArray.length} instruments requested, limiting to 150`);
-            return keysArray.slice(0, 150);
-        }
-
-        return keysArray;
+        const arr = Array.from(keys);
+        if (arr.length > 150) return arr.slice(0, 150);
+        return arr;
     }, []);
 
     const syncSubscriptions = useCallback(() => {
         const ws = wsRef.current;
-        if (!ws || !ws.isConnected()) return;
+        if (!ws || !isConnectedRef.current) return;
 
         const desired = new Set(collectDesiredKeys());
         const current = subscribedKeysRef.current;
+        if (desired.size === current.size && [...desired].every(k => current.has(k))) return;
 
-        if (desired.size === current.size && [...desired].every((k) => current.has(k))) {
-            return;
-        }
+        const toSubscribe = Array.from(desired).filter(k => !current.has(k));
+        const toUnsubscribe = Array.from(current).filter(k => !desired.has(k));
 
-        const toSubscribe = Array.from(desired).filter((key) => !current.has(key));
-        const toUnsubscribe = Array.from(current).filter((key) => !desired.has(key));
-
-        if (toSubscribe.length > 0) {
-            ws.subscribe(toSubscribe);
-        }
-
-        if (toUnsubscribe.length > 0) {
-            ws.unsubscribe(toUnsubscribe);
-        }
-
+        if (toSubscribe.length > 0) ws.subscribe(toSubscribe);
+        if (toUnsubscribe.length > 0) ws.unsubscribe(toUnsubscribe);
         subscribedKeysRef.current = desired;
     }, [collectDesiredKeys]);
 
-    const refreshQuotesFromApi = useCallback(
-        async (requestedKeys: string[]) => {
-            const normalizedKeys = Array.from(
-                new Set(
-                    requestedKeys
-                        .map((key) => toInstrumentKey(key))
-                        .filter((key): key is string => Boolean(key))
-                )
-            );
+    const refreshQuotesFromApi = useCallback(async (requestedKeys: string[]) => {
+        const normalizedKeys = Array.from(
+            new Set(requestedKeys.map((k) => toInstrumentKey(k)).filter((k): k is string => Boolean(k)))
+        );
+        if (normalizedKeys.length === 0) return;
 
-            if (normalizedKeys.length === 0) return;
+        const hydrated: Array<{ instrumentKey: string; symbol?: string; price: number; close?: number; timestamp?: number }> = [];
+        const batches = chunk(normalizedKeys, QUOTE_REQUEST_BATCH_SIZE);
 
-            const hydrated: Array<{
-                instrumentKey: string;
-                symbol?: string;
-                price: number;
-                close?: number;
-                timestamp?: number;
-            }> = [];
+        for (const instrumentKeys of batches) {
+            try {
+                const response = await fetch('/api/v1/market/quotes', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ instrumentKeys }),
+                    cache: 'no-store',
+                });
+                if (!response.ok) continue;
 
-            const batches = chunk(normalizedKeys, QUOTE_REQUEST_BATCH_SIZE);
+                const payload = await response.json();
+                const quoteMap = payload?.data;
+                if (!payload?.success || !quoteMap) continue;
 
-            for (const instrumentKeys of batches) {
-                try {
-                    const response = await fetch('/api/v1/market/quotes', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({ instrumentKeys }),
-                        cache: 'no-store',
+                const now = Date.now();
+                for (const [rawKey, quote] of Object.entries(quoteMap)) {
+                    const instrumentKey = toInstrumentKey(rawKey);
+                    const price = Number((quote as any)?.last_price);
+                    if (!instrumentKey || !Number.isFinite(price) || price <= 0) continue;
+                    const close = Number((quote as any)?.close_price);
+                    hydrated.push({
+                        instrumentKey,
+                        symbol: instrumentKey.split('|')[1] || instrumentKey,
+                        price,
+                        close: Number.isFinite(close) && close > 0 ? close : undefined,
+                        timestamp: now,
                     });
-
-                    if (!response.ok) {
-                        continue;
-                    }
-
-                    const payload = await response.json();
-                    const quoteMap = payload?.data;
-                    if (!payload?.success || !quoteMap || typeof quoteMap !== 'object') {
-                        continue;
-                    }
-
-                    const now = Date.now();
-                    for (const [rawKey, quote] of Object.entries(quoteMap)) {
-                        const instrumentKey = toInstrumentKey(rawKey);
-                        const price = Number((quote as any)?.last_price);
-                        if (!instrumentKey || !Number.isFinite(price) || price <= 0) continue;
-
-                        const close = Number((quote as any)?.close_price);
-                        hydrated.push({
-                            instrumentKey,
-                            symbol: instrumentKey.split('|')[1] || instrumentKey,
-                            price,
-                            close: Number.isFinite(close) && close > 0 ? close : undefined,
-                            timestamp: now,
-                        });
-                    }
-                } catch {
-                    // Best-effort refresh only.
                 }
-            }
-
-            if (hydrated.length > 0) {
-                hydrateQuotes(hydrated);
-            }
-        },
-        [hydrateQuotes]
-    );
-
-    // Re-sync subscriptions when instrument universe OR active chart instrument changes.
-    useEffect(() => {
-        if (isConnected) {
-            syncSubscriptions();
+            } catch { /* best-effort */ }
         }
-    }, [
-        stocks,
-        indices,
-        futures,
-        options,
-        positions,
-        simulatedInstrumentKey,
-        simulatedSymbol,
-        isConnected,
-        syncSubscriptions,
-    ]);
 
+        if (hydrated.length > 0) hydrateQuotesRef.current(hydrated);
+    }, []); // ← no deps, uses ref
+
+    // ── Effect 1: One-time WS setup (empty deps — never re-runs) ──────
     useEffect(() => {
-        let cancelled = false;
+        // Keep action refs fresh without re-running this effect
+        const unsubActions = useMarketStore.subscribe((state) => {
+            applyTickRef.current = state.applyTick;
+            hydrateQuotesRef.current = state.hydrateQuotes;
+            updateLiveCandleRef.current = state.updateLiveCandle;
+        });
 
-        const pollQuotesFallback = async () => {
-            if (cancelled) return;
-            const ws = wsRef.current;
-            if (ws?.isConnected()) return;
-
-            const desiredKeys = collectDesiredKeys();
-            if (desiredKeys.length === 0) return;
-            await refreshQuotesFromApi(desiredKeys);
-        };
-
-        void pollQuotesFallback();
-        const interval = setInterval(() => {
-            void pollQuotesFallback();
-        }, QUOTE_REFRESH_INTERVAL_MS);
-
-        return () => {
-            cancelled = true;
-            clearInterval(interval);
-        };
-    }, [collectDesiredKeys, refreshQuotesFromApi]);
-
-    useEffect(() => {
         let cancelled = false;
 
         const handleTick = (tickData: any) => {
-            if (process.env.NODE_ENV === 'development') {
-                console.log('RAW TICK:', tickData);
-            }
+            if (process.env.NODE_ENV === 'development') console.log('RAW TICK:', tickData);
 
             const rawInstrument =
-                tickData?.instrumentKey ??
-                tickData?.instrument_key ??
-                tickData?.instrumentToken ??
-                tickData?.instrument_token ??
-                tickData?.symbol;
+                tickData?.instrumentKey ?? tickData?.instrument_key ??
+                tickData?.instrumentToken ?? tickData?.instrument_token ?? tickData?.symbol;
 
             const instrumentKey = toInstrumentKey(String(rawInstrument || ''));
             if (!instrumentKey) return;
 
-            const tradingSymbol =
-                toCanonicalSymbol(tickData?.symbol) ||
-                instrumentKey.split('|')[1] ||
-                instrumentKey;
-
-            const safeSymbol =
-                tradingSymbol ||
-                instrumentKey.split('|')[1] ||
-                instrumentKey;
-
+            const tradingSymbol = toCanonicalSymbol(tickData?.symbol) || instrumentKey.split('|')[1] || instrumentKey;
             const price =
-                Number(tickData?.price) ||
-                Number(tickData?.ltp) ||
-                Number(tickData?.last_price) ||
-                Number(tickData?.lastTradedPrice) ||
-                Number(tickData?.lastPrice) ||
-                Number(tickData?.ltpc?.ltp) ||
-                Number(tickData?.data?.price) ||
-                Number(tickData?.data?.ltp);
+                Number(tickData?.price) || Number(tickData?.ltp) || Number(tickData?.last_price) ||
+                Number(tickData?.lastTradedPrice) || Number(tickData?.lastPrice) ||
+                Number(tickData?.ltpc?.ltp) || Number(tickData?.data?.price) || Number(tickData?.data?.ltp);
 
-            if (!Number.isFinite(price)) {
-                console.warn('Dropping tick - invalid price', tickData);
-                return;
-            }
+            if (!Number.isFinite(price)) return;
 
             const close = pickFirstFinite(
-                tickData?.close,
-                tickData?.cp,
-                tickData?.prevClose,
-                tickData?.prev_close,
-                tickData?.ltpc?.cp,
-                tickData?.data?.close
+                tickData?.close, tickData?.cp, tickData?.prevClose, tickData?.prev_close,
+                tickData?.ltpc?.cp, tickData?.data?.close
             );
-
             const timestamp = pickFirstFinite(
-                tickData?.timestamp,
-                tickData?.ts,
-                tickData?.time,
-                tickData?.ltt,
-                tickData?.ltpc?.ltt,
-                tickData?.data?.timestamp
+                tickData?.timestamp, tickData?.ts, tickData?.time, tickData?.ltt,
+                tickData?.ltpc?.ltt, tickData?.data?.timestamp
             );
 
-            if (process.env.NODE_ENV === 'development') {
-                console.log('PARSED TICK:', {
-                    instrumentKey,
-                    tradingSymbol: safeSymbol,
-                    price,
-                });
-            }
-
-            applyTick({
+            applyTickRef.current({
                 instrumentKey,
-                symbol: safeSymbol,
+                symbol: tradingSymbol,
                 price,
                 close: close && close > 0 ? close : undefined,
                 timestamp: timestamp && timestamp > 0 ? timestamp : undefined,
             });
         };
-
         const handleCandle = (candleData: any) => {
-            // ═══════════════════════════════════════════════════════════
-            // 📊 HANDLE CANDLE FROM MARKET-ENGINE
-            // ═══════════════════════════════════════════════════════════
-            const { candle, instrumentKey: rawInstrumentKey, symbol: rawSymbol } = candleData;
-
-            const instrumentKey = toInstrumentKey(rawInstrumentKey);
-            const tradingSymbol = toCanonicalSymbol(resolveTradingSymbol(rawSymbol || rawInstrumentKey));
-
+            const { candle, instrumentKey: rawKey, symbol: rawSymbol } = candleData;
+            const instrumentKey = toInstrumentKey(rawKey);
+            const tradingSymbol = toCanonicalSymbol(resolveTradingSymbol(rawSymbol || rawKey));
             if (!instrumentKey || !tradingSymbol) return;
-
-            // updateLiveCandle expects { price, volume, time }
-            updateLiveCandle(
-                {
-                    price: candle.close,
-                    volume: candle.volume || 0,
-                    time: candle.time
-                },
-                tradingSymbol,
-                instrumentKey
-            );
+            updateLiveCandleRef.current({ price: candle.close, volume: candle.volume || 0, time: candle.time }, tradingSymbol, instrumentKey);
         };
 
         const connect = async () => {
-            // ═══════════════════════════════════════════════════════════
-            // 🔄 STEP 1: Hydrate initial snapshot
-            // ═══════════════════════════════════════════════════════════
             try {
-                const snapshotRes = await fetch('/api/v1/market/snapshot', {
-                    cache: 'no-store',
-                });
+                const snapshotRes = await fetch('/api/v1/market/snapshot', { cache: 'no-store' });
                 if (snapshotRes.ok) {
                     const snapshot = await snapshotRes.json();
-                    if (snapshot?.success && Array.isArray(snapshot?.data?.quotes) && snapshot.data.quotes.length > 0) {
-                        hydrateQuotes(snapshot.data.quotes);
+                    if (snapshot?.success && Array.isArray(snapshot?.data?.quotes)) {
+                        hydrateQuotesRef.current(snapshot.data.quotes);
                     }
                 }
-            } catch {
-                // Best effort hydration only.
-            }
+            } catch { }
 
             void refreshQuotesFromApi(collectDesiredKeys());
-
             if (cancelled) return;
 
-            // ═══════════════════════════════════════════════════════════
-            // 🔌 STEP 2: Connect to market-engine WebSocket
-            // ═══════════════════════════════════════════════════════════
             const wsUrl = resolveMarketWsUrl();
-            if (!wsUrl) {
-                console.warn('Market engine WS URL is not configured; using API quote polling fallback.');
-                setIsConnected(false);
-                return;
-            }
+            if (!wsUrl) { setIsConnected(false); return; }
 
             const ws = getMarketWebSocket({
                 url: wsUrl,
                 onTick: handleTick,
                 onCandle: handleCandle,
                 onConnected: () => {
+                    isConnectedRef.current = true;
                     setIsConnected(true);
                     syncSubscriptions();
                 },
                 onDisconnected: () => {
+                    isConnectedRef.current = false;
                     setIsConnected(false);
                     subscribedKeysRef.current = new Set();
                 },
                 onError: () => {
+                    isConnectedRef.current = false;
                     setIsConnected(false);
                     subscribedKeysRef.current = new Set();
-                }
+                },
             });
             wsRef.current = ws;
-
             ws.connect();
         };
 
@@ -420,15 +261,53 @@ export const useMarketStream = () => {
 
         return () => {
             cancelled = true;
-            const ws = wsRef.current;
-            if (ws?.isConnected() && subscribedKeysRef.current.size > 0) {
-                ws.unsubscribe(Array.from(subscribedKeysRef.current));
-            }
+            unsubActions();
+            // DO NOT call ws.unsubscribe or ws.disconnect here
+            // The singleton persists across Strict Mode remounts
+            // Subscriptions are re-synced on reconnect via onConnected callback
             subscribedKeysRef.current = new Set();
-            // Note: We don't disconnect the WebSocket here as it's a singleton
-            // It will be reused across component mounts
+            isConnectedRef.current = false;
         };
-    }, [applyTick, collectDesiredKeys, hydrateQuotes, refreshQuotesFromApi, syncSubscriptions, updateLiveCandle]);
+    }, []); // ← empty, truly runs once
+
+    // ── Effect 2: Re-sync subscriptions when instrument universe changes ──
+    // Uses Zustand's subscribeWithSelector to avoid firing on price ticks —
+    // only fires when the actual list of instruments changes
+    useEffect(() => {
+        // Subscribe to structural changes only (watchlist items, positions)
+        // NOT quotesByInstrument which changes on every tick
+        const unsubWatchlist = useMarketStore.subscribe(
+            (state) => (state.stocks || []).map(s => s.instrumentToken).join(','),
+            () => syncSubscriptions()
+        );
+        const unsubPositions = usePositionsStore.subscribe(
+            (state) => (state.positions || []).map(p => p.instrumentToken).join(','),
+            () => syncSubscriptions()
+        );
+        const unsubChart = useMarketStore.subscribe(
+            (state) => state.simulatedInstrumentKey,
+            () => syncSubscriptions()
+        );
+
+        return () => {
+            unsubWatchlist();
+            unsubPositions();
+            unsubChart();
+        };
+    }, [syncSubscriptions]);
+
+    // ── Effect 3: Polling fallback ─────────────────────────────────────
+    useEffect(() => {
+        let cancelled = false;
+        const poll = async () => {
+            if (cancelled || wsRef.current?.isConnected()) return;
+            const keys = collectDesiredKeys();
+            if (keys.length > 0) await refreshQuotesFromApi(keys);
+        };
+        void poll();
+        const interval = setInterval(() => void poll(), QUOTE_REFRESH_INTERVAL_MS);
+        return () => { cancelled = true; clearInterval(interval); };
+    }, [collectDesiredKeys, refreshQuotesFromApi]);
 
     return { isConnected };
 };
