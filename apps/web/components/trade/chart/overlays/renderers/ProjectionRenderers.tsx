@@ -5,23 +5,29 @@ import { SEL_COLOR, GREEN_COLOR, RED_COLOR } from "./types";
 import type { PositionDrawing, TwoPointDrawing } from "@/stores/trading/analysis.store";
 
 // ─── Long Position ────────────────────────────────────────────────
-export function renderLongPosition({ drawing, mainSeries, width, selected }: DrawingRendererProps): React.ReactNode {
+export function renderLongPosition({ drawing, mainSeries, width, height, pointToCoords, selected }: DrawingRendererProps): React.ReactNode {
   const d = drawing as PositionDrawing;
-  const entryY = mainSeries.priceToCoordinate(d.entryPrice);
-  const targetY = mainSeries.priceToCoordinate(d.targetPrice);
-  const stopY = mainSeries.priceToCoordinate(d.stopPrice);
-  if (entryY === null || targetY === null || stopY === null) return null;
+  const entryY = mainSeries.priceToCoordinate(d.entryPrice) ?? 0;
+  const targetY = mainSeries.priceToCoordinate(d.targetPrice) ?? 0;
+  const stopY = mainSeries.priceToCoordinate(d.stopPrice) ?? 0;
 
+  // The user explicitly wants no gap on the left side, so we start at exactly 0
+  const panelX = 0; 
+  // Account for price scale on right (approx 60px)
+  const plotWidth = width - 60;
+  const panelW = Math.max(10, plotWidth);
+  
   const risk = Math.abs(d.entryPrice - d.stopPrice);
   const reward = Math.abs(d.targetPrice - d.entryPrice);
   const rr = risk > 0 ? (reward / risk).toFixed(2) : "∞";
   const pctTarget = ((d.targetPrice - d.entryPrice) / d.entryPrice * 100).toFixed(2);
   const pctStop = ((d.stopPrice - d.entryPrice) / d.entryPrice * 100).toFixed(2);
-  const panelX = 16;
-  const panelW = width - 32;
+
+  // Clip dimensions to avoid time-axis bleed
+  const clipHeight = height - 26;
 
   return (
-    <g data-id={d.id}>
+    <g data-id={d.id} clipPath={`url(#chart-clip)`}>
       {/* Target zone (green) */}
       <rect x={panelX} y={Math.min(Number(targetY), Number(entryY))} width={panelW}
         height={Math.abs(Number(targetY) - Number(entryY))}
@@ -50,9 +56,9 @@ export function renderLongPosition({ drawing, mainSeries, width, selected }: Dra
       </text>
 
       {/* Entry label */}
-      <rect x={panelX} y={Number(entryY) - 20} width={130} height={18} rx={3}
+      <rect x={panelX + 10} y={Number(entryY) - 20} width={130} height={18} rx={3}
         fill="rgba(0,0,0,0.85)" pointerEvents="none" />
-      <text x={panelX + 65} y={Number(entryY) - 7} textAnchor="middle" fill="#E0E0E0"
+      <text x={panelX + 75} y={Number(entryY) - 7} textAnchor="middle" fill="#E0E0E0"
         fontSize={10} fontWeight="600" fontFamily="monospace" pointerEvents="none">
         Entry ₹{d.entryPrice.toFixed(2)}
       </text>
@@ -66,9 +72,9 @@ export function renderLongPosition({ drawing, mainSeries, width, selected }: Dra
       </text>
 
       {/* R:R badge */}
-      <rect x={panelX} y={Number(entryY) + 4} width={180} height={16} rx={3}
+      <rect x={panelX + 10} y={Number(entryY) + 4} width={180} height={16} rx={3}
         fill="rgba(0,0,0,0.75)" pointerEvents="none" />
-      <text x={panelX + 90} y={Number(entryY) + 15} textAnchor="middle" fill="#AAA"
+      <text x={panelX + 100} y={Number(entryY) + 15} textAnchor="middle" fill="#AAA"
         fontSize={9} fontFamily="monospace" pointerEvents="none">
         Risk ₹{risk.toFixed(2)} | Reward ₹{reward.toFixed(2)} | R:R 1:{rr}
       </text>
@@ -77,23 +83,26 @@ export function renderLongPosition({ drawing, mainSeries, width, selected }: Dra
 }
 
 // ─── Short Position ───────────────────────────────────────────────
-export function renderShortPosition({ drawing, mainSeries, width, selected }: DrawingRendererProps): React.ReactNode {
+export function renderShortPosition({ drawing, mainSeries, width, height, pointToCoords, selected }: DrawingRendererProps): React.ReactNode {
   const d = drawing as PositionDrawing;
-  const entryY = mainSeries.priceToCoordinate(d.entryPrice);
-  const targetY = mainSeries.priceToCoordinate(d.targetPrice);
-  const stopY = mainSeries.priceToCoordinate(d.stopPrice);
-  if (entryY === null || targetY === null || stopY === null) return null;
+  const entryY = mainSeries.priceToCoordinate(d.entryPrice) ?? 0;
+  const targetY = mainSeries.priceToCoordinate(d.targetPrice) ?? 0;
+  const stopY = mainSeries.priceToCoordinate(d.stopPrice) ?? 0;
+
+  // Start at exactly 0 on the left side
+  const panelX = 0;
+  // Leave 60px for the right price scale
+  const plotWidth = width - 60;
+  const panelW = Math.max(10, plotWidth);
 
   const risk = Math.abs(d.stopPrice - d.entryPrice);
   const reward = Math.abs(d.entryPrice - d.targetPrice);
   const rr = risk > 0 ? (reward / risk).toFixed(2) : "∞";
   const pctTarget = ((d.targetPrice - d.entryPrice) / d.entryPrice * 100).toFixed(2);
   const pctStop = ((d.stopPrice - d.entryPrice) / d.entryPrice * 100).toFixed(2);
-  const panelX = 16;
-  const panelW = width - 32;
 
   return (
-    <g data-id={d.id}>
+    <g data-id={d.id} clipPath={`url(#chart-clip)`}>
       {/* Stop zone (red — above entry for short) */}
       <rect x={panelX} y={Math.min(Number(stopY), Number(entryY))} width={panelW}
         height={Math.abs(Number(stopY) - Number(entryY))}
@@ -122,9 +131,9 @@ export function renderShortPosition({ drawing, mainSeries, width, selected }: Dr
       </text>
 
       {/* Entry label */}
-      <rect x={panelX} y={Number(entryY) - 20} width={130} height={18} rx={3}
+      <rect x={panelX + 10} y={Number(entryY) - 20} width={130} height={18} rx={3}
         fill="rgba(0,0,0,0.85)" pointerEvents="none" />
-      <text x={panelX + 65} y={Number(entryY) - 7} textAnchor="middle" fill="#E0E0E0"
+      <text x={panelX + 75} y={Number(entryY) - 7} textAnchor="middle" fill="#E0E0E0"
         fontSize={10} fontWeight="600" fontFamily="monospace" pointerEvents="none">
         Entry ₹{d.entryPrice.toFixed(2)}
       </text>
@@ -138,9 +147,9 @@ export function renderShortPosition({ drawing, mainSeries, width, selected }: Dr
       </text>
 
       {/* R:R badge */}
-      <rect x={panelX} y={Number(entryY) + 4} width={180} height={16} rx={3}
+      <rect x={panelX + 10} y={Number(entryY) + 4} width={180} height={16} rx={3}
         fill="rgba(0,0,0,0.75)" pointerEvents="none" />
-      <text x={panelX + 90} y={Number(entryY) + 15} textAnchor="middle" fill="#AAA"
+      <text x={panelX + 100} y={Number(entryY) + 15} textAnchor="middle" fill="#AAA"
         fontSize={9} fontFamily="monospace" pointerEvents="none">
         Risk ₹{risk.toFixed(2)} | Reward ₹{reward.toFixed(2)} | R:R 1:{rr}
       </text>
