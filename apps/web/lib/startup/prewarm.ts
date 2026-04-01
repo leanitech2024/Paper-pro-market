@@ -22,6 +22,9 @@ const DEFAULT_PREWARM_INSTRUMENT_KEYS = [
     "NSE_INDEX|Nifty 50",
     "NSE_INDEX|Nifty Bank",
     "NSE_INDEX|Nifty Fin Service",
+    "NSE_INDEX|Nifty Midcap 100",
+    "NSE_INDEX|Nifty Next 50",
+    "NSE_INDEX|INDIA VIX",
 ];
 
 function resolvePrewarmSymbols(): string[] {

@@ -99,18 +99,29 @@ export default {
           "0%, 100%": { opacity: "1" },
           "50%": { opacity: "0.7" },
         },
-
         spinnerFade: {
-      "0%": { opacity: "1" },
-      "100%": { opacity: "0.15" },
-    },
+          "0%": { opacity: "1" },
+          "100%": { opacity: "0.15" },
+        },
+        marquee: {
+          from: { transform: "translateX(0)" },
+          to: { transform: "translateX(-50%)" },
+        },
+        flashGreen: {
+          "0%": { backgroundColor: "rgba(16, 185, 129, 0.4)" },
+          "100%": { backgroundColor: "transparent" },
+        },
+        flashRed: {
+          "0%": { backgroundColor: "rgba(244, 63, 94, 0.4)" },
+          "100%": { backgroundColor: "transparent" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
         "pulse-glow": "pulse-glow 2s ease-in-out infinite",
         spinnerFade: "spinnerFade 1s linear infinite",
-
+        marquee: "marquee 60s linear infinite",
       },
     },
   },

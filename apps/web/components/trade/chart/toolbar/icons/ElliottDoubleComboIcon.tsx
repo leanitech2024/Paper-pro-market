@@ -1,4 +1,4 @@
-import type { IconProps } from "./iconTypes";
+﻿import type { IconProps } from "./iconTypes";
 export function ElliottDoubleComboIcon({ size = 24, strokeWidth = 1.5, ...props }: IconProps) {
   return (
     <svg
@@ -25,9 +25,9 @@ export function ElliottDoubleComboIcon({ size = 24, strokeWidth = 1.5, ...props 
                 <circle cx="13" cy="14" r="1.2" fill="currentColor" stroke="none"/>
                 <circle cx="21" cy="16" r="1.2" fill="currentColor" stroke="none"/>
 
-                <text x="3"  y="5"   fontSize="4" fill="currentColor" fontFamily="sans-serif" font-weight="700">W</text>
-                <text x="10" y="9"   fontSize="4" fill="currentColor" fontFamily="sans-serif" font-weight="700">X</text>
-                <text x="15" y="13"  fontSize="4" fill="currentColor" fontFamily="sans-serif" font-weight="700">Y</text>
+                <text x="3"  y="5"   fontSize="4" fill="currentColor" fontFamily="sans-serif" fontWeight="700">W</text>
+                <text x="10" y="9"   fontSize="4" fill="currentColor" fontFamily="sans-serif" fontWeight="700">X</text>
+                <text x="15" y="13"  fontSize="4" fill="currentColor" fontFamily="sans-serif" fontWeight="700">Y</text>
 
                 <line x1="9"  y1="6" x2="9"  y2="22" strokeDasharray="1.5 1" strokeWidth="0.8"/>
                 <line x1="13" y1="6" x2="13" y2="22" strokeDasharray="1.5 1" strokeWidth="0.8"/>

@@ -139,12 +139,12 @@ export function ChartHeader({
   return (
     <div
       className={cn(
-        "z-30 shrink-0 border-b border-slate-200/80 bg-white/95 p-1.5 flex items-center justify-between gap-2 dark:border-white/[0.08] dark:bg-[#0c1322]/95",
+        "z-30  shrink-0 border-b border-slate-200/80 bg-white/95 p-1.5 flex items-center justify-between gap-2 dark:border-white/[0.08] dark:bg-[#0c1322]/95",
         compact ? "h-auto" : "h-11 md:h-11",
       )}
     >
       {/* Scrollable Container for Mobile, standard for Desktop */}
-      <div className="flex h-full items-center gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden w-full md:w-auto">
+      <div className="flex h-full items-center gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden flex-1 min-w-0 md:w-auto">
         {/* Symbol Search Trigger */}
         <Button 
           variant="ghost" 

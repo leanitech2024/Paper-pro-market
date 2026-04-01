@@ -1,4 +1,4 @@
-import type { IconProps } from "./iconTypes";
+﻿import type { IconProps } from "./iconTypes";
 export function AbcdPatternIcon({ size = 24, strokeWidth = 1.5, ...props }: IconProps) {
   return (
     <svg
@@ -19,10 +19,10 @@ export function AbcdPatternIcon({ size = 24, strokeWidth = 1.5, ...props }: Icon
                 <circle cx="17" cy="7"  r="1.2" fill="currentColor" stroke="none"/>
                 <circle cx="22" cy="19" r="1.2" fill="currentColor" stroke="none"/>
 
-                <text x="1"  y="4"   fontSize="4" fill="currentColor" fontFamily="sans-serif" font-weight="600">A</text>
-                <text x="9"  y="23"  fontSize="4" fill="currentColor" fontFamily="sans-serif" font-weight="600">B</text>
-                <text x="16" y="6"   fontSize="4" fill="currentColor" fontFamily="sans-serif" font-weight="600">C</text>
-                <text x="21" y="23"  fontSize="4" fill="currentColor" fontFamily="sans-serif" font-weight="600">D</text>
+                <text x="1"  y="4"   fontSize="4" fill="currentColor" fontFamily="sans-serif" fontWeight="600">A</text>
+                <text x="9"  y="23"  fontSize="4" fill="currentColor" fontFamily="sans-serif" fontWeight="600">B</text>
+                <text x="16" y="6"   fontSize="4" fill="currentColor" fontFamily="sans-serif" fontWeight="600">C</text>
+                <text x="21" y="23"  fontSize="4" fill="currentColor" fontFamily="sans-serif" fontWeight="600">D</text>
 
                 <line x1="5.5" y1="11" x2="7.5" y2="11" strokeWidth="1" transform="rotate(-66, 6.5, 11)"/>
                 <line x1="5.5" y1="13" x2="7.5" y2="13" strokeWidth="1" transform="rotate(-66, 6.5, 13)"/>

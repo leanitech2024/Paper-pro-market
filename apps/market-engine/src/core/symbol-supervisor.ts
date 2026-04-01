@@ -7,11 +7,16 @@ import type { UpstoxWebSocket } from '../upstox/websocket.js';
 
 export class SymbolSupervisor {
     private active = new Map<string, number>(); // symbol → ref count
-    private unsubTimer = new Map<string, NodeJS.Timeout>();
+    private unsubTimer = new Map<string, NodeJS.Timeout>(); // kept for cancel-on-resubscribe
     
     // 🔥 CRITICAL FIX #2: Micro-batching to prevent burst throttling
     private pending = new Set<string>();
     private flushTimer: NodeJS.Timeout | null = null;
+
+    // 🔥 FIX: Batched unsubscribes — shared pending set instead of per-symbol timer
+    private unsubPending = new Set<string>();
+    private unsubFlushTimer: NodeJS.Timeout | null = null;
+
     private ws: UpstoxWebSocket;
     
     constructor(ws: UpstoxWebSocket) {
@@ -65,12 +70,33 @@ export class SymbolSupervisor {
         const count = this.active.get(symbol) ?? 0;
         
         if (count <= 1) {
-            // Delayed unsubscribe (avoid thrashing)
-            this.unsubTimer.set(symbol, setTimeout(() => {
-                this.active.delete(symbol);
-                this.ws.unsubscribe([symbol]);
-                console.log(`🔕 Unsubscribed: ${symbol}`);
-            }, 5000)); // 5s grace period
+            // Cancel any existing per-symbol timer (legacy safety)
+            const existing = this.unsubTimer.get(symbol);
+            if (existing) {
+                clearTimeout(existing);
+                this.unsubTimer.delete(symbol);
+            }
+
+            // Stage for batched unsubscribe
+            this.unsubPending.add(symbol);
+
+            // Single shared timer — all symbols queued within 5s are sent together
+            if (!this.unsubFlushTimer) {
+                this.unsubFlushTimer = setTimeout(() => {
+                    this.unsubFlushTimer = null;
+                    const batch = Array.from(this.unsubPending);
+                    this.unsubPending.clear();
+
+                    for (const s of batch) {
+                        this.active.delete(s);
+                    }
+
+                    if (batch.length > 0) {
+                        this.ws.unsubscribe(batch);
+                        console.log(`🔕 Unsubscribed (batch ${batch.length}): ${batch.join(', ')}`);
+                    }
+                }, 5000);
+            }
         } else {
             this.active.set(symbol, count - 1);
             console.log(`🔕 Ref-- ${symbol} (count: ${count - 1})`);
@@ -105,6 +131,28 @@ export class SymbolSupervisor {
             this.ws.subscribe(batch);
             console.log(`🔔 Flushed pending (${batch.length}): ${batch.join(', ')}`);
             this.pending.clear();
+        }
+    }
+
+    /**
+     * Flush pending unsubscribes immediately (e.g. on reconnect cleanup)
+     */
+    flushPendingUnsubs() {
+        if (this.unsubFlushTimer) {
+            clearTimeout(this.unsubFlushTimer);
+            this.unsubFlushTimer = null;
+        }
+
+        const batch = Array.from(this.unsubPending);
+        this.unsubPending.clear();
+
+        for (const s of batch) {
+            this.active.delete(s);
+        }
+
+        if (batch.length > 0) {
+            this.ws.unsubscribe(batch);
+            console.log(`🔕 Flushed unsub pending (${batch.length}): ${batch.join(', ')}`);
         }
     }
 }

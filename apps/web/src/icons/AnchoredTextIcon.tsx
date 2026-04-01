@@ -12,7 +12,7 @@ export function AnchoredTextIcon({ size = 24, strokeWidth = 1.5, ...props }: Ico
       height={props.height ?? size}
       {...props}
     >
-      <text x="5" y="14" fontSize="11" font-weight="500" fill="currentColor" stroke="none" fontFamily="sans-serif">T</text>
+      <text x="5" y="14" fontSize="11" fontWeight="500" fill="currentColor" stroke="none" fontFamily="sans-serif">T</text>
       <line x1="12" y1="16" x2="12" y2="20"/>
       <circle cx="12" cy="20" r="1.5" fill="currentColor" stroke="none"/>
       <line x1="10" y1="20" x2="14" y2="20"/>

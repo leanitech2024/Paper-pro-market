@@ -12,10 +12,30 @@ const INDEX_ALIAS_BY_KEY: Record<string, string> = {
 
 // Upstox uses mixed-case format for indices (e.g., "NSE_INDEX|Nifty 50")
 // This map ensures we preserve the exact format Upstox expects
+// Note: some indices (e.g. MIDCAP) are stored ALL-CAPS in Upstox — we preserve those too.
 const UPSTOX_INDEX_FORMAT: Record<string, string> = {
   "NIFTY 50": "Nifty 50",
   "NIFTY BANK": "Nifty Bank",
   "NIFTY FIN SERVICE": "Nifty Fin Service",
+  "NIFTY MIDCAP 100": "Nifty Midcap 100",  // Title case — Upstox token: NSE_INDEX|Nifty Midcap 100
+  "NIFTY NEXT 50": "Nifty Next 50",
+  "INDIA VIX": "INDIA VIX",               // ALL CAPS — Upstox token: NSE_INDEX|INDIA VIX
+  "NIFTY MIDCAP 50": "Nifty Midcap 50",
+  "NIFTY SMALLCAP 100": "Nifty Smallcap 100",
+  "NIFTY 100": "Nifty 100",
+  "NIFTY 200": "Nifty 200",
+  "NIFTY 500": "Nifty 500",
+  "NIFTY AUTO": "Nifty Auto",
+  "NIFTY IT": "Nifty IT",
+  "NIFTY FMCG": "Nifty FMCG",
+  "NIFTY PHARMA": "Nifty Pharma",
+  "NIFTY METAL": "Nifty Metal",
+  "NIFTY REALTY": "Nifty Realty",
+  "NIFTY ENERGY": "Nifty Energy",
+  "NIFTY INFRA": "Nifty Infra",
+  "NIFTY MEDIA": "Nifty Media",
+  "NIFTY PSU BANK": "Nifty PSU Bank",
+  "NIFTY PRIVATE BANK": "Nifty Private Bank",
 };
 
 export function toSymbolKey(symbol: string): string {
@@ -89,9 +109,9 @@ export function symbolToIndexInstrumentKey(symbol: string): string | null {
   if (!canonical) return null;
 
   // Use toInstrumentKey to ensure proper format (mixed case for indices)
-  if (canonical === "NIFTY 50") return toInstrumentKey("NSE_INDEX|Nifty 50");
-  if (canonical === "NIFTY BANK") return toInstrumentKey("NSE_INDEX|Nifty Bank");
-  if (canonical === "NIFTY FIN SERVICE") return toInstrumentKey("NSE_INDEX|Nifty Fin Service");
+  if (UPSTOX_INDEX_FORMAT[canonical]) {
+    return toInstrumentKey(`NSE_INDEX|${UPSTOX_INDEX_FORMAT[canonical]}`);
+  }
 
   return null;
 }

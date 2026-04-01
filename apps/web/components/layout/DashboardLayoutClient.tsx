@@ -127,7 +127,7 @@ function DashboardContentWrapper({ children }: { children: ReactNode }) {
         )}
       >
         <MobileFloatingHeader />
-        <div className="hidden md:block">
+        <div className="hidden md:block w-full overflow-hidden" style={{ contain: 'layout paint' }}>
           <MarketStatusBar />
         </div>
 

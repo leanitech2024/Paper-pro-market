@@ -1,4 +1,4 @@
-import type { IconProps } from "./iconTypes";
+﻿import type { IconProps } from "./iconTypes";
 export function ElliottTriangleIcon({ size = 24, strokeWidth = 1.5, ...props }: IconProps) {
   return (
     <svg
@@ -33,11 +33,11 @@ export function ElliottTriangleIcon({ size = 24, strokeWidth = 1.5, ...props }: 
                 <circle cx="19" cy="10" r="1.2" fill="currentColor" stroke="none"/>
                 <circle cx="22" cy="13" r="1.2" fill="currentColor" stroke="none"/>
 
-                <text x="1"  y="4"   fontSize="3.5" fill="currentColor" fontFamily="sans-serif" font-weight="700">A</text>
-                <text x="6"  y="22"  fontSize="3.5" fill="currentColor" fontFamily="sans-serif" font-weight="700">B</text>
-                <text x="11" y="7"   fontSize="3.5" fill="currentColor" fontFamily="sans-serif" font-weight="700">C</text>
-                <text x="15" y="20"  fontSize="3.5" fill="currentColor" fontFamily="sans-serif" font-weight="700">D</text>
-                <text x="19" y="9"   fontSize="3.5" fill="currentColor" fontFamily="sans-serif" font-weight="700">E</text>
+                <text x="1"  y="4"   fontSize="3.5" fill="currentColor" fontFamily="sans-serif" fontWeight="700">A</text>
+                <text x="6"  y="22"  fontSize="3.5" fill="currentColor" fontFamily="sans-serif" fontWeight="700">B</text>
+                <text x="11" y="7"   fontSize="3.5" fill="currentColor" fontFamily="sans-serif" fontWeight="700">C</text>
+                <text x="15" y="20"  fontSize="3.5" fill="currentColor" fontFamily="sans-serif" fontWeight="700">D</text>
+                <text x="19" y="9"   fontSize="3.5" fill="currentColor" fontFamily="sans-serif" fontWeight="700">E</text>
     </svg>
   );
 }

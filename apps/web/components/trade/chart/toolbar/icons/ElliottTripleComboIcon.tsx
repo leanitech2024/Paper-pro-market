@@ -1,4 +1,4 @@
-import type { IconProps } from "./iconTypes";
+﻿import type { IconProps } from "./iconTypes";
 export function ElliottTripleComboIcon({ size = 24, strokeWidth = 1.5, ...props }: IconProps) {
   return (
     <svg
@@ -32,11 +32,11 @@ export function ElliottTripleComboIcon({ size = 24, strokeWidth = 1.5, ...props 
                 <circle cx="16" cy="16" r="1"   fill="currentColor" stroke="none"/>
                 <circle cx="22" cy="17" r="1"   fill="currentColor" stroke="none"/>
 
-                <text x="2"  y="4"   fontSize="3.5" fill="currentColor" fontFamily="sans-serif" font-weight="700">W</text>
-                <text x="7"  y="8"   fontSize="3.5" fill="currentColor" fontFamily="sans-serif" font-weight="700">X</text>
-                <text x="10" y="11"  fontSize="3.5" fill="currentColor" fontFamily="sans-serif" font-weight="700">Y</text>
-                <text x="14" y="12"  fontSize="3.5" fill="currentColor" fontFamily="sans-serif" font-weight="700">X</text>
-                <text x="17" y="15"  fontSize="3.5" fill="currentColor" fontFamily="sans-serif" font-weight="700">Z</text>
+                <text x="2"  y="4"   fontSize="3.5" fill="currentColor" fontFamily="sans-serif" fontWeight="700">W</text>
+                <text x="7"  y="8"   fontSize="3.5" fill="currentColor" fontFamily="sans-serif" fontWeight="700">X</text>
+                <text x="10" y="11"  fontSize="3.5" fill="currentColor" fontFamily="sans-serif" fontWeight="700">Y</text>
+                <text x="14" y="12"  fontSize="3.5" fill="currentColor" fontFamily="sans-serif" fontWeight="700">X</text>
+                <text x="17" y="15"  fontSize="3.5" fill="currentColor" fontFamily="sans-serif" fontWeight="700">Z</text>
 
                 <line x1="7"  y1="4" x2="7"  y2="22" strokeDasharray="1.5 1" strokeWidth="0.7"/>
                 <line x1="9"  y1="4" x2="9"  y2="22" strokeDasharray="1.5 1" strokeWidth="0.7"/>

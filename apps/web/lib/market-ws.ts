@@ -81,6 +81,12 @@ class MarketWebSocket {
             this.ws?.readyState === WebSocket.OPEN ||
             this.ws?.readyState === WebSocket.CONNECTING
         ) {
+            // Socket already open — fire connected immediately so remounting consumers
+            // (e.g. React Strict Mode) can re-sync their subscriptions without waiting
+            // for a new onopen event that will never come.
+            if (this.ws?.readyState === WebSocket.OPEN) {
+                this.handlers.connected?.();
+            }
             return;
         }
 

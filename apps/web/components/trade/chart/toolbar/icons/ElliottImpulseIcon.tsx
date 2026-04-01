@@ -1,4 +1,4 @@
-import type { IconProps } from "./iconTypes";
+﻿import type { IconProps } from "./iconTypes";
 export function ElliottImpulseIcon({ size = 24, strokeWidth = 1.5, ...props }: IconProps) {
   return (
     <svg
@@ -29,11 +29,11 @@ export function ElliottImpulseIcon({ size = 24, strokeWidth = 1.5, ...props }: I
                 <circle cx="17" cy="10" r="1.2" fill="currentColor" stroke="none"/>
                 <circle cx="21" cy="4"  r="1.2" fill="currentColor" stroke="none"/>
 
-                <text x="3.5" y="12"  fontSize="3.5" fill="currentColor" fontFamily="sans-serif" font-weight="700">1</text>
-                <text x="7"   y="20"  fontSize="3.5" fill="currentColor" fontFamily="sans-serif" font-weight="700">2</text>
-                <text x="11"  y="9"   fontSize="3.5" fill="currentColor" fontFamily="sans-serif" font-weight="700">3</text>
-                <text x="15"  y="14"  fontSize="3.5" fill="currentColor" fontFamily="sans-serif" font-weight="700">4</text>
-                <text x="19"  y="6"   fontSize="3.5" fill="currentColor" fontFamily="sans-serif" font-weight="700">5</text>
+                <text x="3.5" y="12"  fontSize="3.5" fill="currentColor" fontFamily="sans-serif" fontWeight="700">1</text>
+                <text x="7"   y="20"  fontSize="3.5" fill="currentColor" fontFamily="sans-serif" fontWeight="700">2</text>
+                <text x="11"  y="9"   fontSize="3.5" fill="currentColor" fontFamily="sans-serif" fontWeight="700">3</text>
+                <text x="15"  y="14"  fontSize="3.5" fill="currentColor" fontFamily="sans-serif" fontWeight="700">4</text>
+                <text x="19"  y="6"   fontSize="3.5" fill="currentColor" fontFamily="sans-serif" fontWeight="700">5</text>
     </svg>
   );
 }

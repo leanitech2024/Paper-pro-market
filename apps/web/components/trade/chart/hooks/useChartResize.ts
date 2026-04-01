@@ -23,18 +23,26 @@ export const useChartResize = ({
   useEffect(() => {
     if (!autoResize || !chartContainerRef.current || !chart) return;
 
-    const resizeObserver = new ResizeObserver((entries) => {
-      if (entries.length === 0 || !entries[0].contentRect) return;
-      const { width, height: nextHeight } = entries[0].contentRect;
+    const resizeObserver = new ResizeObserver(() => {
+      const container = chartContainerRef.current;
+      if (!container) return;
 
-      chart.applyOptions({ width, height: nextHeight });
-      setDimensions({ width, height: nextHeight });
+      requestAnimationFrame(() => {
+        if (!chartContainerRef.current) return;
+        const width = container.clientWidth;
+        const nextHeight = container.clientHeight || height || 400;
+
+        if (width === 0 || nextHeight === 0) return;
+
+        chart.applyOptions({ width, height: nextHeight });
+        setDimensions({ width, height: nextHeight });
+      });
     });
 
     resizeObserver.observe(chartContainerRef.current);
 
     return () => resizeObserver.disconnect();
-  }, [autoResize, chartContainerRef, chart, chartInstance, setDimensions]);
+  }, [autoResize, chartContainerRef, chart, chartInstance, setDimensions, height]);
 
   useEffect(() => {
     if (typeof height === 'number' && height > 0 && chart) {

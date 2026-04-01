@@ -612,7 +612,7 @@ export function ChartContainer({ symbol, headerSymbol, instrumentKey, onSearchCl
   const leftToolbar = <ChartToolbar symbol={symbol} />;
 
   const renderChartArea = () => (
-    <div className="relative flex-1 h-full min-w-0 bg-transparent flex flex-col">
+    <div className="relative flex-1 h-full bg-transparent flex flex-col min-w-0">
       {showTradingPanel && <ChartTradingPanel symbol={symbol} />}
 
       <div className="flex-1 w-full min-h-0 relative">

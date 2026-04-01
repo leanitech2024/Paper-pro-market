@@ -3,13 +3,10 @@ import { useMarketStore } from '@/stores/trading/market.store';
 import { usePositionsStore } from '@/stores/trading/positions.store';
 import { getMarketWebSocket } from '@/lib/market-ws';
 import { toCanonicalSymbol, toInstrumentKey } from '@paper-market/core';
+import { TICKER_CONFIG } from '@/lib/ticker-config';
 
 const ISIN_LIKE = /^[A-Z]{2}[A-Z0-9]{8,14}$/i;
-const CORE_INDEX_KEYS = [
-    toInstrumentKey('NSE_INDEX|NIFTY 50'),
-    toInstrumentKey('NSE_INDEX|NIFTY BANK'),
-    toInstrumentKey('NSE_INDEX|NIFTY FIN SERVICE'),
-].filter(Boolean);
+const TICKER_KEYS = TICKER_CONFIG.map(cfg => cfg.instrumentKey).filter(Boolean);
 const QUOTE_REFRESH_INTERVAL_MS = 20_000;
 const QUOTE_REQUEST_BATCH_SIZE = 80;
 
@@ -88,7 +85,7 @@ export const useMarketStream = () => {
             const key = toInstrumentKey(item.instrumentToken || item.symbol || '');
             if (key) keys.add(key);
         }
-        for (const key of CORE_INDEX_KEYS) keys.add(key);
+        for (const key of TICKER_KEYS) keys.add(key);
 
         const chartKey = toInstrumentKey(state.simulatedInstrumentKey || state.simulatedSymbol || '');
         if (chartKey) keys.add(chartKey);
@@ -125,6 +122,21 @@ export const useMarketStream = () => {
         );
         if (normalizedKeys.length === 0) return;
 
+        // Build a map from human-readable key suffix → symbol name.
+        // e.g., TICKER_CONFIG sends "NSE_EQ|RELIANCE" → symbolHintMap.set("NSE_EQ|RELIANCE", "RELIANCE")
+        // This lets us annotate ISIN-keyed API responses with the human symbol name.
+        const symbolHintMap = new Map<string, string>();
+        for (const k of requestedKeys) {
+            const normalized = toInstrumentKey(k);
+            if (!normalized) continue;
+            const parts = normalized.split('|');
+            const suffix = parts[1] ?? '';
+            if (suffix && !/^[A-Z]{2}[A-Z0-9]{8,14}$/.test(suffix)) {
+                // suffix is a human name (e.g. "RELIANCE"), not an ISIN
+                symbolHintMap.set(normalized, suffix);
+            }
+        }
+
         const hydrated: Array<{ instrumentKey: string; symbol?: string; price: number; close?: number; timestamp?: number }> = [];
         const batches = chunk(normalizedKeys, QUOTE_REQUEST_BATCH_SIZE);
 
@@ -148,9 +160,14 @@ export const useMarketStream = () => {
                     const price = Number((quote as any)?.last_price);
                     if (!instrumentKey || !Number.isFinite(price) || price <= 0) continue;
                     const close = Number((quote as any)?.close_price);
+
+                    // Prefer human hint if available; otherwise the raw suffix (may be ISIN)
+                    const rawSuffix = instrumentKey.split('|')[1] || instrumentKey;
+                    const symbolHint = symbolHintMap.get(instrumentKey) ?? rawSuffix;
+
                     hydrated.push({
                         instrumentKey,
-                        symbol: instrumentKey.split('|')[1] || instrumentKey,
+                        symbol: symbolHint,
                         price,
                         close: Number.isFinite(close) && close > 0 ? close : undefined,
                         timestamp: now,
@@ -218,16 +235,18 @@ export const useMarketStream = () => {
 
         const connect = async () => {
             try {
+                if (cancelled) return;
                 const snapshotRes = await fetch('/api/v1/market/snapshot', { cache: 'no-store' });
-                if (snapshotRes.ok) {
+                if (!cancelled && snapshotRes.ok) {
                     const snapshot = await snapshotRes.json();
                     if (snapshot?.success && Array.isArray(snapshot?.data?.quotes)) {
                         hydrateQuotesRef.current(snapshot.data.quotes);
                     }
                 }
-            } catch { }
+            } catch { /* best-effort snapshot pre-hydration — failures do not block WS connect */ }
 
-            void refreshQuotesFromApi(collectDesiredKeys());
+            if (cancelled) return;
+            await refreshQuotesFromApi(TICKER_KEYS);
             if (cancelled) return;
 
             const wsUrl = resolveMarketWsUrl();

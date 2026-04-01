@@ -18,7 +18,9 @@ function buildOptionChainKey(symbol: string, expiry?: string): string {
   return `${normalizedSymbol}::${expiryKey || "NEAREST"}`;
 }
 
-function quoteLookupKeys(rawKey: string): string[] {
+const ISIN_PATTERN = /^[A-Z]{2}[A-Z0-9]{8,14}$/;
+
+function quoteLookupKeys(rawKey: string, symbol?: string): string[] {
   const normalized = toInstrumentKey(rawKey);
   if (!normalized) return [];
 
@@ -31,6 +33,21 @@ function quoteLookupKeys(rawKey: string): string[] {
 
   const raw = String(rawKey || "").trim();
   if (raw) keys.add(raw);
+
+  // If the suffix of the normalized key is ISIN-like (equity feed keys), also register
+  // a human-readable alias key so TICKER_CONFIG entries (e.g. NSE_EQ|RELIANCE) hit.
+  const sep = normalized.includes("|") ? "|" : ":";
+  const parts = normalized.split(sep);
+  const prefix = parts[0] ?? "";
+  const suffix = parts[1] ?? "";
+  if (suffix && ISIN_PATTERN.test(suffix)) {
+    // The suffix is an ISIN — try to add a symbol-name alias if provided
+    const sym = String(symbol || "").trim().toUpperCase();
+    if (sym && !ISIN_PATTERN.test(sym) && !sym.includes("|")) {
+      keys.add(`${prefix}|${sym}`);
+      keys.add(`${prefix}:${sym}`);
+    }
+  }
 
   return Array.from(keys);
 }
@@ -129,7 +146,7 @@ export const createLiveUpdatesSlice: MarketSlice<any> = (set, get) => ({
 
     set((s: any) => {
         const nextQuotesByInstrument = { ...s.quotesByInstrument };
-        for (const key of quoteLookupKeys(tick.instrumentKey || nextQuote.instrumentKey)) {
+        for (const key of quoteLookupKeys(tick.instrumentKey || nextQuote.instrumentKey, tick.symbol)) {
             nextQuotesByInstrument[key] = nextQuote;
         }
         return {
@@ -154,7 +171,7 @@ export const createLiveUpdatesSlice: MarketSlice<any> = (set, get) => ({
         if (!seed) continue;
         const nextQuote = buildQuoteFromTick(nextByKey[seed.instrumentKey], tick);
         if (!nextQuote) continue;
-        for (const key of quoteLookupKeys(tick.instrumentKey || nextQuote.instrumentKey)) {
+        for (const key of quoteLookupKeys(tick.instrumentKey || nextQuote.instrumentKey, tick.symbol)) {
           nextByKey[key] = nextQuote;
         }
         latestPrice = nextQuote.price;

@@ -1,4 +1,4 @@
-import type { IconProps } from "./iconTypes";
+﻿import type { IconProps } from "./iconTypes";
 export function PriceRangeIcon({ size = 24, strokeWidth = 1.5, ...props }: IconProps) {
   return (
     <svg

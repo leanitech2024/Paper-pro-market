@@ -368,9 +368,9 @@ export default function FuturesPage() {
       <div className="h-[calc(100dvh-6rem)] md:h-[calc(100vh-32px)] min-h-0 overflow-hidden bg-background">
         <AdaptiveTradeLayout
           desktopLeft={<div className="h-full min-h-0">{renderOrderNode(true)}</div>}
-          desktopLeftWidth="320px"
-          desktopCenter={<div className={`flex h-full min-h-0 flex-col overflow-hidden ${panelClass}`}>{chartNode}</div>}
-          tabletTop={<div className={`flex h-full min-h-0 flex-col overflow-hidden ${panelClass}`}>{chartNode}</div>}
+          desktopLeftWidth="280px"
+          desktopCenter={<div className={`flex h-full min-h-0 flex-col ${panelClass}`}>{chartNode}</div>}
+          tabletTop={<div className={`flex h-full min-h-0 flex-col ${panelClass}`}>{chartNode}</div>}
           tabletLeft={<div className="h-full min-h-0">{renderOrderNode(true)}</div>}
           tabletRight={<PositionsCards instrumentFilter="futures" />}
           mobileContent={mobileContentNode}

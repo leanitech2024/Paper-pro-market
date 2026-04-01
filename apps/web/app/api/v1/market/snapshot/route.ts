@@ -184,6 +184,7 @@ const toSnapshotQuote = (
     key: record.instrumentKey,
     price: record.price,
     close: record.prevClose,
+    changePercent: record.changePct ?? 0,
     timestamp: record.timestamp,
   };
 };
@@ -363,6 +364,21 @@ export async function GET() {
         logger.warn({ err: error }, "Snapshot Redis read failed, falling back to Upstox");
       }
       redisReadMs += performance.now() - redisStart;
+
+      const hitCount = quoteByInstrument.size;
+      const missCount = requestedInstruments.length - hitCount;
+      if (missCount > 0) {
+        logger.debug(
+          {
+            redis_hits: hitCount,
+            redis_misses: missCount,
+            missing_keys: requestedInstruments
+              .filter((key) => !quoteByInstrument.has(key))
+              .slice(0, 10), // cap log size
+          },
+          "Snapshot Redis cache misses"
+        );
+      }
     }
 
     const missingInstrumentKeys = requestedInstruments.filter((key) => !quoteByInstrument.has(key));

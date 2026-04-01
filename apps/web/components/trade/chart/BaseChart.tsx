@@ -179,6 +179,8 @@ export const BaseChart = forwardRef<BaseChartRef, BaseChartProps>(({
         fontSize: isCompact ? 10 : 12,
       },
       rightPriceScale: {
+        visible: true,
+        autoScale: true,
         minimumWidth: isCompact ? 46 : 60,
       },
     });

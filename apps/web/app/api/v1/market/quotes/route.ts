@@ -94,36 +94,74 @@ function buildQuoteLookup(quotes: UpstoxQuoteMap): Map<string, { last: number; c
     return out;
 }
 
-async function buildSymbolSuffixLookup(instrumentKeys: string[]): Promise<Map<string, string>> {
-    const out = new Map<string, string>();
-    const equityIsinKeys = Array.from(
-        new Set(
-            instrumentKeys
-                .map((key) => toInstrumentKey(key))
-                .filter((key) => /^(NSE_EQ|BSE_EQ)[|:][A-Z0-9]{8,20}$/.test(key))
-                .map((key) => key.replace(":", "|"))
-        )
-    );
+// Matches ISIN-like suffixes (e.g. INE002A01018)
+const ISIN_SUFFIX_RE = /^[A-Z]{2}[A-Z0-9]{8,14}$/;
 
-    if (equityIsinKeys.length === 0) return out;
+/**
+ * For equity keys whose suffix is a trading symbol (e.g. NSE_EQ|RELIANCE),
+ * look up the actual ISIN-based instrumentToken in the DB and return a map:
+ *   requestedKey → isinKey  (e.g. "NSE_EQ|RELIANCE" → "NSE_EQ|INE002A01018")
+ * Keys whose suffix is already an ISIN are passed through unchanged.
+ */
+async function resolveSymbolKeysToIsins(
+    instrumentKeys: string[]
+): Promise<Map<string, string>> {
+    // out[requestedKey] = isinKey (may equal requestedKey if already ISIN)
+    const out = new Map<string, string>();
+
+    const symbolNameKeys: Array<{ key: string; segment: string; symbol: string }> = [];
+    const isinKeys: string[] = [];
+
+    for (const raw of instrumentKeys) {
+        const key = toInstrumentKey(raw);
+        if (!key) continue;
+        const pipe = key.indexOf("|");
+        if (pipe === -1) { out.set(key, key); continue; }
+        const segment = key.slice(0, pipe);   // e.g. "NSE_EQ"
+        const suffix  = key.slice(pipe + 1);  // e.g. "RELIANCE" or "INE002A01018"
+        if (ISIN_SUFFIX_RE.test(suffix)) {
+            // Already ISIN — use as-is
+            isinKeys.push(key);
+            out.set(key, key);
+        } else if (segment === "NSE_EQ" || segment === "BSE_EQ") {
+            // Text trading symbol — needs DB resolution
+            symbolNameKeys.push({ key, segment, symbol: suffix });
+        } else {
+            // Index / FO — pass through
+            out.set(key, key);
+        }
+    }
+
+    if (symbolNameKeys.length === 0) return out;
 
     try {
+        const tradingSymbols = symbolNameKeys.map((x) => x.symbol);
         const rows = await db
             .select({
                 instrumentToken: instruments.instrumentToken,
-                symbol: instruments.tradingsymbol,
+                tradingsymbol: instruments.tradingsymbol,
+                segment: instruments.segment,
             })
             .from(instruments)
-            .where(inArray(instruments.instrumentToken, equityIsinKeys));
+            .where(inArray(instruments.tradingsymbol, tradingSymbols));
 
+        // Build lookup: "NSE_EQ:RELIANCE" → "NSE_EQ|INE002A01018"
+        const dbLookup = new Map<string, string>();
         for (const row of rows) {
-            const key = toInstrumentKey(row.instrumentToken);
-            const symbol = String(row.symbol || "").trim().toUpperCase();
-            if (!key || !symbol) continue;
-            out.set(key, symbol);
+            const seg = String(row.segment || "").toUpperCase();
+            const sym = String(row.tradingsymbol || "").toUpperCase();
+            const token = String(row.instrumentToken || "");
+            if (seg && sym && token) dbLookup.set(`${seg}:${sym}`, token);
+        }
+
+        for (const { key, segment, symbol } of symbolNameKeys) {
+            const isinKey = dbLookup.get(`${segment}:${symbol}`);
+            out.set(key, isinKey ?? key); // fall back to original if not found
         }
     } catch (error) {
-        logger.warn({ err: error }, "Failed to load quote key symbol aliases");
+        logger.warn({ err: error }, "Failed to resolve symbol keys to ISINs");
+        // Fall back: map each unresolved key to itself
+        for (const { key } of symbolNameKeys) if (!out.has(key)) out.set(key, key);
     }
 
     return out;
@@ -132,7 +170,7 @@ async function buildSymbolSuffixLookup(instrumentKeys: string[]): Promise<Map<st
 function toRequestedKeyPayload(
     instrumentKeys: string[],
     lookup: Map<string, { last: number; close: number }>,
-    symbolSuffixByKey?: Map<string, string>
+    symbolToIsinMap?: Map<string, string>
 ): UpstoxQuoteMap {
     const out: UpstoxQuoteMap = {};
 
@@ -142,14 +180,22 @@ function toRequestedKeyPayload(
 
         const sep = key.includes(":") ? ":" : key.includes("|") ? "|" : "";
         const suffix = sep ? key.split(sep)[1] || "" : key;
-        const mappedSymbolSuffix = symbolSuffixByKey?.get(key);
+        // If symbolToIsinMap provided, get the resolved ISIN key for this requested key
+        const isinKey = symbolToIsinMap?.get(key);
+        const isinSuffix = isinKey
+            ? (isinKey.includes("|") ? isinKey.split("|")[1] : isinKey.split(":")[1] || isinKey)
+            : undefined;
 
         const candidates = [
             key,
             key.replace("|", ":"),
             key.replace(":", "|"),
             suffix ? `suffix:${suffix.toUpperCase()}` : "",
-            mappedSymbolSuffix ? `suffix:${mappedSymbolSuffix}` : "",
+            // ISIN key candidates — crucial for text-symbol equity keys
+            isinKey ?? "",
+            isinKey ? isinKey.replace("|", ":") : "",
+            isinKey ? isinKey.replace(":", "|") : "",
+            isinSuffix ? `suffix:${isinSuffix.toUpperCase()}` : "",
         ].filter(Boolean);
 
         let quote: { last: number; close: number } | undefined;
@@ -199,11 +245,19 @@ export async function POST(req: NextRequest) {
             );
         }
 
-        const symbolSuffixByKey = await buildSymbolSuffixLookup(instrumentKeys);
+        // Resolve text-symbol equity keys (e.g. NSE_EQ|RELIANCE) to ISIN keys (NSE_EQ|INE002A01018).
+        // Upstox's market-quote API only accepts ISIN-based keys for equities.
+        const symbolToIsinMap = await resolveSymbolKeysToIsins(instrumentKeys);
+
+        // Build the upstream request keys: use the ISIN key where available, else the original.
+        // Also apply Upstox mixed-case formatting for indices.
         const upstreamInstrumentKeys = Array.from(
             new Set(
-                requestKeys
-                    .map((key) => toUpstoxRequestInstrumentKey(key))
+                instrumentKeys
+                    .map((key) => {
+                        const isinKey = symbolToIsinMap.get(key) ?? key;
+                        return toUpstoxRequestInstrumentKey(isinKey);
+                    })
                     .filter((key) => key.length > 0)
             )
         );
@@ -234,12 +288,13 @@ export async function POST(req: NextRequest) {
 
         if (response.ok && upstreamStatus !== "error" && Object.keys(upstreamData).length > 0) {
             const lookup = buildQuoteLookup(upstreamData);
-            const payload = toRequestedKeyPayload(instrumentKeys, lookup, symbolSuffixByKey);
-            if (Object.keys(payload).length > 0) {
+            // Also index by the isin keys from symbolToIsinMap so toRequestedKeyPayload can match
+            const responsePayload = toRequestedKeyPayload(instrumentKeys, lookup, symbolToIsinMap);
+            if (Object.keys(responsePayload).length > 0) {
                 return NextResponse.json({
                     success: true,
-                    data: payload,
-                    count: Object.keys(payload).length,
+                    data: responsePayload,
+                    count: Object.keys(responsePayload).length,
                     source: "quotes",
                     timestamp: new Date().toISOString(),
                 });
@@ -268,7 +323,7 @@ export async function POST(req: NextRequest) {
         }
 
         const ltpLookup = buildQuoteLookup(ltpAsQuotes);
-        const fallbackPayload = toRequestedKeyPayload(instrumentKeys, ltpLookup, symbolSuffixByKey);
+        const fallbackPayload = toRequestedKeyPayload(instrumentKeys, ltpLookup, symbolToIsinMap);
 
         if (Object.keys(fallbackPayload).length > 0) {
             logger.info({ count: Object.keys(fallbackPayload).length }, "Quotes served from LTP fallback");

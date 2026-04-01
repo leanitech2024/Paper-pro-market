@@ -318,9 +318,9 @@ export default function EquityPage({ initialSymbol }: { initialSymbol?: string }
       <div className="h-[calc(100dvh-6rem)] md:h-[calc(100vh-2rem)] min-h-0 overflow-hidden bg-background">
         <AdaptiveTradeLayout
           desktopLeft={watchlistNode}
-          desktopLeftWidth="360px"
+          desktopLeftWidth="300px"
           desktopCenter={
-            <div className={`relative h-full min-h-0 overflow-hidden ${chartPanelClass}`}>
+            <div className={`relative h-full min-h-0 ${chartPanelClass}`}>
               {chartNode}
               {isDesktop && showOrderForm && selectedStock && selectedSymbol ? (
                 <div className="absolute right-4 top-16 z-50 w-[340px] animate-in fade-in slide-in-from-right-8 duration-200">

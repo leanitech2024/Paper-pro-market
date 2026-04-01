@@ -70,250 +70,294 @@ export const useChartInstance = ({
   const [chartInstance, setChartInstance] = useState<IChartApi | null>(null);
 
   useEffect(() => {
-    if (!chartContainerRef.current) return;
+    const container = chartContainerRef.current;
+    if (!container) return;
 
-    const width = chartContainerRef.current.clientWidth;
-    const initialHeight = chartContainerRef.current.clientHeight || height || 400;
-    const palette = getChartPalette();
-    setDimensions({ width, height: initialHeight });
+    let chart: IChartApi | null = null;
+    let themeObserver: MutationObserver | null = null;
+    let crosshairHandler: ((param: any) => void) | null = null;
 
-    const chart = createChart(chartContainerRef.current, {
-      layout: {
-        background: { type: ColorType.Solid, color: 'transparent' },
-        textColor: palette.textColor,
-      },
-      grid: {
-        vertLines: { color: palette.gridColor, style: 2 },
-        horzLines: { color: palette.gridColor, style: 2 },
-      },
-      width,
-      height: initialHeight,
-      timeScale: {
-        borderColor: palette.borderColor,
-        timeVisible: true,
-        secondsVisible: false,
-        rightBarStaysOnScroll: true,
-        lockVisibleTimeRangeOnResize: true,
-        ignoreWhitespaceIndices: true,
-        rightOffset: 12,
-        tickMarkFormatter: (time: number, tickMarkType: number) => {
-          const date = new Date(resolveDisplayTime(time) * 1000);
-          switch (tickMarkType) {
-            case 0:
-              return yearFormatter.current.format(date);
-            case 1:
-              return monthFormatter.current.format(date);
-            case 2:
-              return dayFormatter.current.format(date);
-            case 3:
-            case 4:
-              return timeFormatter.current.format(date);
-            default:
-              return dayFormatter.current.format(date);
-          }
-        },
-      },
-      rightPriceScale: {
-        borderColor: palette.borderColor,
-        visible: true,
-        autoScale: true,
-      },
-      localization: {
-        timeFormatter: (time: number) => {
-          const date = new Date(resolveDisplayTime(time) * 1000);
-          const timeStr = date.toLocaleTimeString('en-IN', {
-            timeZone: 'Asia/Kolkata',
-            hour: '2-digit',
-            minute: '2-digit',
-            hour12: false,
-          });
-          const isDailyOrHigher = timeStr === '00:00';
+    const initChart = () => {
+      if (chart) return;
+      const width = container.clientWidth;
+      const initialHeight = container.clientHeight || height || 400;
 
-          if (isDailyOrHigher) {
-            return date.toLocaleDateString('en-IN', {
-              timeZone: 'Asia/Kolkata',
-              day: 'numeric',
-              month: 'short',
-              year: 'numeric',
-            });
-          }
+      if (width === 0) return;
 
-          return date.toLocaleString('en-IN', {
-            timeZone: 'Asia/Kolkata',
-            month: 'short',
-            day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit',
-            hour12: false,
-          });
-        },
-      },
-      crosshair: { mode: CrosshairMode.Normal },
-    });
+      const palette = getChartPalette();
+      setDimensions({ width, height: initialHeight });
 
-    const candlestickSeriesInstance = chart.addSeries(CandlestickSeries, {
-      upColor: '#089981',
-      downColor: '#F23645',
-      borderUpColor: '#089981',
-      borderDownColor: '#F23645',
-      wickUpColor: '#089981',
-      wickDownColor: '#F23645',
-    });
-
-    const barSeriesInstance = chart.addSeries(BarSeries, {
-      upColor: '#089981',
-      downColor: '#F23645',
-      openVisible: true,
-      thinBars: false,
-      visible: false,
-    });
-
-    const lineSeriesInstance = chart.addSeries(LineSeries, {
-      color: '#60A5FA',
-      lineWidth: 2,
-      visible: false,
-      priceScaleId: 'right',
-      lastValueVisible: true,
-      priceLineVisible: false,
-    });
-
-    const areaSeriesInstance = chart.addSeries(AreaSeries, {
-      lineColor: '#38BDF8',
-      topColor: 'rgba(56, 189, 248, 0.35)',
-      bottomColor: 'rgba(56, 189, 248, 0.02)',
-      lineWidth: 2,
-      visible: false,
-      priceScaleId: 'right',
-      lastValueVisible: true,
-      priceLineVisible: false,
-    });
-
-    const baselineSeriesInstance = chart.addSeries(BaselineSeries, {
-      baseValue: { type: 'price', price: 0 },
-      topLineColor: '#22C55E',
-      topFillColor1: 'rgba(34, 197, 94, 0.25)',
-      topFillColor2: 'rgba(34, 197, 94, 0.02)',
-      bottomLineColor: '#F43F5E',
-      bottomFillColor1: 'rgba(244, 63, 94, 0.22)',
-      bottomFillColor2: 'rgba(244, 63, 94, 0.02)',
-      lineWidth: 2,
-      visible: false,
-      priceScaleId: 'right',
-    });
-
-    const columnSeriesInstance = chart.addSeries(HistogramSeries, {
-      color: '#60A5FA',
-      base: 0,
-      visible: false,
-      priceScaleId: 'right',
-      priceLineVisible: false,
-    });
-
-    chart.priceScale('right').applyOptions({
-      scaleMargins: {
-        top: CANDLE_TOP_MARGIN_WITH_VOLUME,
-        bottom: CANDLE_BOTTOM_MARGIN_WITH_VOLUME,
-      },
-    });
-
-    const volumeSeriesInstance = chart.addSeries(HistogramSeries, {
-      color: palette.volumeColor,
-      priceFormat: {
-        type: 'volume',
-      },
-      priceScaleId: 'volume',
-      priceLineVisible: false,
-      lastValueVisible: false,
-    });
-
-    chart.priceScale('volume').applyOptions({
-      scaleMargins: {
-        top: VOLUME_TOP_MARGIN,
-        bottom: VOLUME_BOTTOM_MARGIN,
-      },
-    });
-
-    const applyChartPalette = () => {
-      const nextPalette = getChartPalette();
-      chart.applyOptions({
+      const chartInstance = createChart(container, {
         layout: {
           background: { type: ColorType.Solid, color: 'transparent' },
-          textColor: nextPalette.textColor,
+          textColor: palette.textColor,
         },
         grid: {
-          vertLines: { color: nextPalette.gridColor, style: 2 },
-          horzLines: { color: nextPalette.gridColor, style: 2 },
+          vertLines: { color: palette.gridColor, style: 2 },
+          horzLines: { color: palette.gridColor, style: 2 },
         },
+        width,
+        height: initialHeight,
         timeScale: {
-          borderColor: nextPalette.borderColor,
+          borderColor: palette.borderColor,
+          timeVisible: true,
+          secondsVisible: false,
+          rightBarStaysOnScroll: true,
+          lockVisibleTimeRangeOnResize: true,
+          ignoreWhitespaceIndices: true,
+          rightOffset: 12,
+          tickMarkFormatter: (time: number, tickMarkType: number) => {
+            const date = new Date(resolveDisplayTime(time) * 1000);
+            switch (tickMarkType) {
+              case 0:
+                return yearFormatter.current.format(date);
+              case 1:
+                return monthFormatter.current.format(date);
+              case 2:
+                return dayFormatter.current.format(date);
+              case 3:
+              case 4:
+                return timeFormatter.current.format(date);
+              default:
+                return dayFormatter.current.format(date);
+            }
+          },
         },
         rightPriceScale: {
-          borderColor: nextPalette.borderColor,
+          borderColor: palette.borderColor,
+          visible: true,
+          autoScale: true,
+          minimumWidth: 60,
+        },
+        localization: {
+          timeFormatter: (time: number) => {
+            const date = new Date(resolveDisplayTime(time) * 1000);
+            const timeStr = date.toLocaleTimeString('en-IN', {
+              timeZone: 'Asia/Kolkata',
+              hour: '2-digit',
+              minute: '2-digit',
+              hour12: false,
+            });
+            const isDailyOrHigher = timeStr === '00:00';
+
+            if (isDailyOrHigher) {
+              return date.toLocaleDateString('en-IN', {
+                timeZone: 'Asia/Kolkata',
+                day: 'numeric',
+                month: 'short',
+                year: 'numeric',
+              });
+            }
+
+            return date.toLocaleString('en-IN', {
+              timeZone: 'Asia/Kolkata',
+              month: 'short',
+              day: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit',
+              hour12: false,
+            });
+          },
+        },
+        crosshair: { mode: CrosshairMode.Normal },
+      });
+
+      const candlestickSeriesInstance = chartInstance.addSeries(CandlestickSeries, {
+        upColor: '#089981',
+        downColor: '#F23645',
+        borderUpColor: '#089981',
+        borderDownColor: '#F23645',
+        wickUpColor: '#089981',
+        wickDownColor: '#F23645',
+      });
+
+      const barSeriesInstance = chartInstance.addSeries(BarSeries, {
+        upColor: '#089981',
+        downColor: '#F23645',
+        openVisible: true,
+        thinBars: false,
+        visible: false,
+      });
+
+      const lineSeriesInstance = chartInstance.addSeries(LineSeries, {
+        color: '#60A5FA',
+        lineWidth: 2,
+        visible: false,
+        priceScaleId: 'right',
+        lastValueVisible: true,
+        priceLineVisible: false,
+      });
+
+      const areaSeriesInstance = chartInstance.addSeries(AreaSeries, {
+        lineColor: '#38BDF8',
+        topColor: 'rgba(56, 189, 248, 0.35)',
+        bottomColor: 'rgba(56, 189, 248, 0.02)',
+        lineWidth: 2,
+        visible: false,
+        priceScaleId: 'right',
+        lastValueVisible: true,
+        priceLineVisible: false,
+      });
+
+      const baselineSeriesInstance = chartInstance.addSeries(BaselineSeries, {
+        baseValue: { type: 'price', price: 0 },
+        topLineColor: '#22C55E',
+        topFillColor1: 'rgba(34, 197, 94, 0.25)',
+        topFillColor2: 'rgba(34, 197, 94, 0.02)',
+        bottomLineColor: '#F43F5E',
+        bottomFillColor1: 'rgba(244, 63, 94, 0.22)',
+        bottomFillColor2: 'rgba(244, 63, 94, 0.02)',
+        lineWidth: 2,
+        visible: false,
+        priceScaleId: 'right',
+      });
+
+      const columnSeriesInstance = chartInstance.addSeries(HistogramSeries, {
+        color: '#60A5FA',
+        base: 0,
+        visible: false,
+        priceScaleId: 'right',
+        priceLineVisible: false,
+      });
+
+      chartInstance.priceScale('right').applyOptions({
+        scaleMargins: {
+          top: CANDLE_TOP_MARGIN_WITH_VOLUME,
+          bottom: CANDLE_BOTTOM_MARGIN_WITH_VOLUME,
         },
       });
-      volumeSeriesInstance.applyOptions({
-        color: nextPalette.volumeColor,
-      });
-    };
-    applyChartPalette();
 
-    const themeObserver =
-      typeof MutationObserver !== 'undefined'
-        ? new MutationObserver((mutations) => {
-            for (const mutation of mutations) {
-              if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
-                applyChartPalette();
-                break;
+      const volumeSeriesInstance = chartInstance.addSeries(HistogramSeries, {
+        color: palette.volumeColor,
+        priceFormat: {
+          type: 'volume',
+        },
+        priceScaleId: 'volume',
+        priceLineVisible: false,
+        lastValueVisible: false,
+      });
+
+      chartInstance.priceScale('volume').applyOptions({
+        scaleMargins: {
+          top: VOLUME_TOP_MARGIN,
+          bottom: VOLUME_BOTTOM_MARGIN,
+        },
+      });
+
+      const applyChartPalette = () => {
+        const nextPalette = getChartPalette();
+        chartInstance.applyOptions({
+          layout: {
+            background: { type: ColorType.Solid, color: 'transparent' },
+            textColor: nextPalette.textColor,
+          },
+          grid: {
+            vertLines: { color: nextPalette.gridColor, style: 2 },
+            horzLines: { color: nextPalette.gridColor, style: 2 },
+          },
+          timeScale: {
+            borderColor: nextPalette.borderColor,
+          },
+          rightPriceScale: {
+            borderColor: nextPalette.borderColor,
+            visible: true,
+            autoScale: true,
+            minimumWidth: 60,
+          },
+        });
+        volumeSeriesInstance.applyOptions({
+          color: nextPalette.volumeColor,
+        });
+      };
+      applyChartPalette();
+
+      themeObserver =
+        typeof MutationObserver !== 'undefined'
+          ? new MutationObserver((mutations) => {
+              for (const mutation of mutations) {
+                if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
+                  applyChartPalette();
+                  break;
+                }
               }
-            }
-          })
-        : null;
+            })
+          : null;
 
-    if (themeObserver && typeof document !== 'undefined') {
-      themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
-    }
-
-    const handleCrosshairMove = (param: any) => {
-      const callback = onHoverCandleChangeRef.current;
-      if (!callback) return;
-      const row = param?.seriesData?.get?.(candlestickSeriesInstance) as any;
-      if (!row) {
-        callback(null);
-        return;
+      if (themeObserver && typeof document !== 'undefined') {
+        themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
       }
-      const renderTime = Number(row.time);
-      callback({
-        time: resolveDisplayTime(renderTime) as any,
-        open: Number(row.open),
-        high: Number(row.high),
-        low: Number(row.low),
-        close: Number(row.close),
-      });
+
+      crosshairHandler = (param: any) => {
+        const callback = onHoverCandleChangeRef.current;
+        if (!callback) return;
+        const row = param?.seriesData?.get?.(candlestickSeriesInstance) as any;
+        if (!row) {
+          callback(null);
+          return;
+        }
+        const renderTime = Number(row.time);
+        callback({
+          time: resolveDisplayTime(renderTime) as any,
+          open: Number(row.open),
+          high: Number(row.high),
+          low: Number(row.low),
+          close: Number(row.close),
+        });
+      };
+      chartInstance.subscribeCrosshairMove(crosshairHandler);
+
+      chartRef.current = chartInstance;
+      candleSeriesRef.current = candlestickSeriesInstance;
+      barSeriesRef.current = barSeriesInstance;
+      lineSeriesRef.current = lineSeriesInstance;
+      areaSeriesRef.current = areaSeriesInstance;
+      baselineSeriesRef.current = baselineSeriesInstance;
+      columnSeriesRef.current = columnSeriesInstance;
+      volumeSeriesRef.current = volumeSeriesInstance;
+      chart = chartInstance;
+      setChartInstance(chartInstance);
+
+      if (onChartReady) {
+        onChartReady(chartInstance);
+      }
     };
-    chart.subscribeCrosshairMove(handleCrosshairMove);
 
-    chartRef.current = chart;
-    candleSeriesRef.current = candlestickSeriesInstance;
-    barSeriesRef.current = barSeriesInstance;
-    lineSeriesRef.current = lineSeriesInstance;
-    areaSeriesRef.current = areaSeriesInstance;
-    baselineSeriesRef.current = baselineSeriesInstance;
-    columnSeriesRef.current = columnSeriesInstance;
-    volumeSeriesRef.current = volumeSeriesInstance;
-    setChartInstance(chart);
+    if (container.clientWidth > 0) {
+      initChart();
+    } else {
+      const initObserver = new ResizeObserver(() => {
+        if (container.clientWidth > 0) {
+          initObserver.disconnect();
+          initChart();
+        }
+      });
+      initObserver.observe(container);
 
-    if (onChartReady) {
-      onChartReady(chart);
+      return () => {
+        initObserver.disconnect();
+        themeObserver?.disconnect();
+        if (crosshairHandler && chart) {
+          chart.unsubscribeCrosshairMove(crosshairHandler);
+        }
+        if (chart) {
+          chart.remove();
+          chartRef.current = null;
+        }
+      };
     }
 
     return () => {
       themeObserver?.disconnect();
-      chart.unsubscribeCrosshairMove(handleCrosshairMove);
-      chart.remove();
-      chartRef.current = null;
+      if (crosshairHandler && chart) {
+        chart.unsubscribeCrosshairMove(crosshairHandler);
+      }
+      if (chart) {
+        chart.remove();
+        chartRef.current = null;
+      }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [resolveDisplayTime]);
+  }, [resolveDisplayTime, height, onChartReady]);
 
   return { chartInstance };
 };

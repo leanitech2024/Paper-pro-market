@@ -1,4 +1,4 @@
-import type { IconProps } from "./iconTypes";
+﻿import type { IconProps } from "./iconTypes";
 export function XabcdPatternIcon({ size = 24, strokeWidth = 1.5, ...props }: IconProps) {
   return (
     <svg
@@ -20,11 +20,11 @@ export function XabcdPatternIcon({ size = 24, strokeWidth = 1.5, ...props }: Ico
                 <circle cx="15" cy="4"  r="1.2" fill="currentColor" stroke="none"/>
                 <circle cx="20" cy="12" r="1.2" fill="currentColor" stroke="none"/>
 
-                <text x="0"  y="22"  fontSize="4" fill="currentColor" fontFamily="sans-serif" font-weight="600">X</text>
-                <text x="5"  y="4"   fontSize="4" fill="currentColor" fontFamily="sans-serif" font-weight="600">A</text>
-                <text x="9"  y="21"  fontSize="4" fill="currentColor" fontFamily="sans-serif" font-weight="600">B</text>
-                <text x="14" y="3"   fontSize="4" fill="currentColor" fontFamily="sans-serif" font-weight="600">C</text>
-                <text x="19" y="16"  fontSize="4" fill="currentColor" fontFamily="sans-serif" font-weight="600">D</text>
+                <text x="0"  y="22"  fontSize="4" fill="currentColor" fontFamily="sans-serif" fontWeight="600">X</text>
+                <text x="5"  y="4"   fontSize="4" fill="currentColor" fontFamily="sans-serif" fontWeight="600">A</text>
+                <text x="9"  y="21"  fontSize="4" fill="currentColor" fontFamily="sans-serif" fontWeight="600">B</text>
+                <text x="14" y="3"   fontSize="4" fill="currentColor" fontFamily="sans-serif" fontWeight="600">C</text>
+                <text x="19" y="16"  fontSize="4" fill="currentColor" fontFamily="sans-serif" fontWeight="600">D</text>
     </svg>
   );
 }
