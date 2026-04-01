@@ -6,6 +6,7 @@ import { candleEngine } from '../core/candle-engine.js';
 import { marketFeedSupervisor } from '../core/market-feed-supervisor.js';
 import { logger } from '../lib/logger.js';
 import { toInstrumentKey } from '../core/symbol-normalization.js';
+import { warmRedisFromUpstox } from '../lib/redis-prewarm.js';
 import type { NormalizedTick, CandleUpdate } from '../core/types.js';
 
 // ═══════════════════════════════════════════════════════════
@@ -27,6 +28,7 @@ const droppingSockets = new WeakSet<WebSocket>();
 
 let droppedSlowClients = 0;
 let rejectedMessages = 0;
+let redisPrewarmed = false; // fire-once flag
 
 const MAX_SYMBOLS_PER_CLIENT = Number(process.env.WS_MAX_SYMBOLS_PER_CLIENT ?? 100);
 const MAX_BUFFERED_BYTES = Number(process.env.WS_MAX_BUFFERED_BYTES ?? 1_000_000);
@@ -372,8 +374,15 @@ function handleSubscribe(client: ClientSubscription, symbols: string[]) {
 
         if (count === 0) {
             marketFeedSupervisor.subscribe(symbol);
-            logger.info({ symbol }, 'Subscribed upstream (first client)');
         }
+    }
+
+    // Fire Redis pre-warm once — after the first real batch of symbols is known
+    if (!redisPrewarmed && added.length > 0) {
+        redisPrewarmed = true;
+        warmRedisFromUpstox(marketFeedSupervisor).catch((err: unknown) =>
+            logger.warn({ err }, 'Redis pre-warm failed (non-fatal)')
+        );
     }
 
     sendJson(client.ws, {
@@ -418,7 +427,6 @@ function handleUnsubscribe(client: ClientSubscription, symbols: string[]) {
             globalSubscriptions.delete(symbol);
             perSymbol.push({ symbol, subscribers: 0 });
             marketFeedSupervisor.unsubscribe(symbol);
-            logger.info({ symbol }, 'Unsubscribed upstream (last client)');
         } else {
             const next = count - 1;
             globalSubscriptions.set(symbol, next);

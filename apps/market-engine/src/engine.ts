@@ -20,9 +20,12 @@ export async function initializeEngine() {
 
     // ═══════════════════════════════════════════════════════════
     // 📊 STEP 1: Load instruments from database
+    // Only select the two columns needed for the ISIN map — not all 18 fields.
     // ═══════════════════════════════════════════════════════════
     logger.info('Loading instruments from database...');
-    const allInstruments = await db.select().from(instruments);
+    const allInstruments = await db
+        .select({ instrumentToken: instruments.instrumentToken, tradingsymbol: instruments.tradingsymbol })
+        .from(instruments);
     logger.info({ count: allInstruments.length }, 'Instruments loaded');
 
     // Build ISIN → Trading Symbol map
@@ -78,7 +81,8 @@ export async function initializeEngine() {
     await marketFeedSupervisor.initialize();
     logger.info('MarketFeedSupervisor initialized');
 
-    logger.info('✅ Market engine initialization complete');
+    // Redis pre-warm is triggered from ws-server.ts on first client subscribe,
+    // since no symbols are active here yet at engine startup.
 }
 
 export function getEngineStats() {

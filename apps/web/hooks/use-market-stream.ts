@@ -234,24 +234,13 @@ export const useMarketStream = () => {
         };
 
         const connect = async () => {
-            try {
-                if (cancelled) return;
-                const snapshotRes = await fetch('/api/v1/market/snapshot', { cache: 'no-store' });
-                if (!cancelled && snapshotRes.ok) {
-                    const snapshot = await snapshotRes.json();
-                    if (snapshot?.success && Array.isArray(snapshot?.data?.quotes)) {
-                        hydrateQuotesRef.current(snapshot.data.quotes);
-                    }
-                }
-            } catch { /* best-effort snapshot pre-hydration — failures do not block WS connect */ }
-
-            if (cancelled) return;
-            await refreshQuotesFromApi(TICKER_KEYS);
             if (cancelled) return;
 
             const wsUrl = resolveMarketWsUrl();
             if (!wsUrl) { setIsConnected(false); return; }
 
+            // 🚀 Start WS connection IMMEDIATELY — don't block on snapshot/quotes.
+            // Subscriptions sync in onConnected, so WS is ready as soon as possible.
             const ws = getMarketWebSocket({
                 url: wsUrl,
                 onTick: handleTick,
@@ -274,6 +263,23 @@ export const useMarketStream = () => {
             });
             wsRef.current = ws;
             ws.connect();
+
+            // Hydrate quotes in parallel — best-effort, does not block WS
+            void (async () => {
+                try {
+                    if (cancelled) return;
+                    const snapshotRes = await fetch('/api/v1/market/snapshot', { cache: 'no-store' });
+                    if (!cancelled && snapshotRes.ok) {
+                        const snapshot = await snapshotRes.json();
+                        if (snapshot?.success && Array.isArray(snapshot?.data?.quotes)) {
+                            hydrateQuotesRef.current(snapshot.data.quotes);
+                        }
+                    }
+                } catch { /* best-effort snapshot pre-hydration — failures do not block WS connect */ }
+
+                if (cancelled) return;
+                await refreshQuotesFromApi(TICKER_KEYS);
+            })();
         };
 
         connect();
