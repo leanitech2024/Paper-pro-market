@@ -39,14 +39,11 @@ async function createDevRedis(url: string): Promise<RedisClient> {
   const IORedisModule = await import('ioredis');
   const IORedis = IORedisModule.default || IORedisModule;
   const innerClient = new IORedis(url, {
-    maxRetriesPerRequest: 1,
-    connectTimeout: 1000,
+    maxRetriesPerRequest: 0,
+    connectTimeout: 300,
     lazyConnect: true,
     enableOfflineQueue: false,
-    retryStrategy(times: number) {
-      if (times > 5) return null;
-      return Math.min(times * 100, 2000);
-    }
+    retryStrategy: () => null,
   });
 
   let errorLogged = false;

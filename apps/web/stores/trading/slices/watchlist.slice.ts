@@ -1,6 +1,67 @@
 import { Stock } from '@paper-market/core';
 import { WatchlistInstrument, MarketSlice } from '../types';
-import { indicesList } from '@/content/indices';
+const indicesList: Stock[] = [
+  {
+    symbol: "NIFTY 50",
+    name: "Nifty 50",
+    price: 0,
+    change: 0,
+    changePercent: 0,
+    volume: 0,
+    lotSize: 1,
+    instrumentToken: "NSE_INDEX|Nifty 50",
+  },
+  {
+    symbol: "NIFTY BANK",
+    name: "Nifty Bank",
+    price: 0,
+    change: 0,
+    changePercent: 0,
+    volume: 0,
+    lotSize: 1,
+    instrumentToken: "NSE_INDEX|Nifty Bank",
+  },
+  {
+    symbol: "NIFTY FIN SERVICE",
+    name: "Nifty Fin Service",
+    price: 0,
+    change: 0,
+    changePercent: 0,
+    volume: 0,
+    lotSize: 1,
+    instrumentToken: "NSE_INDEX|Nifty Fin Service",
+  },
+  {
+    symbol: "NIFTY MIDCAP 100",
+    name: "Nifty Midcap 100",
+    price: 0,
+    change: 0,
+    changePercent: 0,
+    volume: 0,
+    lotSize: 1,
+    instrumentToken: "NSE_INDEX|Nifty Midcap 100",
+  },
+  {
+    symbol: "NIFTY NEXT 50",
+    name: "Nifty Next 50",
+    price: 0,
+    change: 0,
+    changePercent: 0,
+    volume: 0,
+    lotSize: 1,
+    instrumentToken: "NSE_INDEX|Nifty Next 50",
+  },
+  {
+    symbol: "INDIA VIX",
+    name: "India VIX",
+    price: 0,
+    change: 0,
+    changePercent: 0,
+    volume: 0,
+    lotSize: 1,
+    instrumentToken: "NSE_INDEX|INDIA VIX",
+  },
+];
 
 function buildStocksBySymbol(stocks: Stock[]): Record<string, Stock> {
   const bySymbol: Record<string, Stock> = {};

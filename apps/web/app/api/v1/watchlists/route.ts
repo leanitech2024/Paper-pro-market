@@ -19,7 +19,10 @@ export async function GET() {
 
     const watchlists = await WatchlistService.getUserWatchlists(session.user.id);
 
-    return NextResponse.json({ success: true, data: watchlists });
+    return NextResponse.json(
+      { success: true, data: watchlists },
+      { headers: { 'Cache-Control': 'private, max-age=30' } }
+    );
   } catch (error) {
     logger.error({ err: error }, 'GET /api/v1/watchlists failed');
     return NextResponse.json({ error: 'Failed to fetch watchlists' }, { status: 500 });

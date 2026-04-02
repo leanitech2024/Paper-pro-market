@@ -7,7 +7,6 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import { INSTRUMENTS } from "@/content/instruments";
 
 export type InstrumentType =
     | "NIFTY"
@@ -17,6 +16,16 @@ export type InstrumentType =
     | "MIDCAP"
     | "STOCK FUTURES"
     | "STOCK OPTIONS";
+
+const INSTRUMENTS: Array<{ label: string; value: InstrumentType }> = [
+    { label: "NIFTY", value: "NIFTY" },
+    { label: "BANKNIFTY", value: "BANKNIFTY" },
+    { label: "FINNIFTY", value: "FINNIFTY" },
+    { label: "SENSEX", value: "SENSEX" },
+    { label: "MIDCAP", value: "MIDCAP" },
+    { label: "STOCK FUTURES", value: "STOCK FUTURES" },
+    { label: "STOCK OPTIONS", value: "STOCK OPTIONS" },
+];
 
 interface InstrumentSelectorProps {
     value: InstrumentType;

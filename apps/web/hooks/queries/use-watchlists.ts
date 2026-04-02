@@ -42,6 +42,13 @@ function toQuoteLookup(payload: Record<string, QuoteApiItem>): Map<string, Quote
   return out;
 }
 
+async function fetchWatchlists(): Promise<Watchlist[]> {
+  const res = await fetch('/api/v1/watchlists');
+  if (!res.ok) throw new Error('Failed to fetch watchlists');
+  const { data } = await res.json();
+  return data as Watchlist[];
+}
+
 
 // ─────────────────────────────────────────────────────────────────
 // 🔍 QUERY: Fetch all watchlists
@@ -49,15 +56,46 @@ function toQuoteLookup(payload: Record<string, QuoteApiItem>): Map<string, Quote
 export function useWatchlists() {
   return useQuery({
     queryKey: ['watchlists'],
-    queryFn: async () => {
-      const res = await fetch('/api/v1/watchlists');
-      if (!res.ok) throw new Error('Failed to fetch watchlists');
-      const { data } = await res.json();
-      return data as Watchlist[];
-    },
+    queryFn: fetchWatchlists,
     staleTime: 5 * 60_000, // 5 minutes — watchlist names rarely change
     refetchOnWindowFocus: false,
     retry: 1,
+  });
+}
+
+// ─────────────────────────────────────────────────────────────────
+// 🔍 QUERY: Fetch default watchlist + snapshot (prefill cache)
+// ─────────────────────────────────────────────────────────────────
+export function useDefaultWatchlistSnapshot() {
+  const queryClient = useQueryClient();
+
+  return useQuery({
+    queryKey: ['watchlist', 'default'],
+    queryFn: async () => {
+      const watchlists = await queryClient.fetchQuery({
+        queryKey: ['watchlists'],
+        queryFn: fetchWatchlists,
+        staleTime: 5 * 60_000,
+      });
+
+      const defaultWatchlist = watchlists.find((w) => w.isDefault) ?? watchlists[0];
+      if (!defaultWatchlist) {
+        return { watchlists, defaultId: null as string | null, instruments: [] as Stock[] };
+      }
+
+      const res = await fetch(`/api/v1/watchlists/${defaultWatchlist.id}/snapshot`);
+      if (!res.ok) throw new Error('Failed to fetch snapshot');
+      const { data } = await res.json();
+
+      return {
+        watchlists,
+        defaultId: defaultWatchlist.id,
+        instruments: (data ?? []) as Stock[],
+      };
+    },
+    staleTime: 15_000,
+    refetchOnWindowFocus: false,
+    retry: 0,
   });
 }
 

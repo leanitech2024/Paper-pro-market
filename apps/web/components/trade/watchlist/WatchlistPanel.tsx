@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo, useRef } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
@@ -24,7 +25,12 @@ import {
 import { toast } from 'sonner';
 import { WatchlistItemMenu } from './WatchlistItemMenu';
 import { WatchlistSkeleton } from './WatchlistSkeleton';
-import { useWatchlists, useWatchlistInstruments, useCreateWatchlist } from '@/hooks/queries/use-watchlists';
+import {
+  useWatchlists,
+  useWatchlistInstruments,
+  useCreateWatchlist,
+  useDefaultWatchlistSnapshot,
+} from '@/hooks/queries/use-watchlists';
 import { toCanonicalSymbol, toInstrumentKey, toSymbolKey } from '@paper-market/core';
 
 interface WatchlistPanelProps {
@@ -41,9 +47,11 @@ export function WatchlistPanel({ instruments, onSelect, selectedSymbol, onOpenSe
   const [hoveredSymbol, setHoveredSymbol] = useState<string | null>(null);
   const [preferredWatchlistId, setPreferredWatchlistId] = useState<string | null>(null);
   const lastAppliedQuerySnapshotRef = useRef<string>('');
+  const queryClient = useQueryClient();
 
   // 🔥 NEW: TanStack Query hooks for data fetching
   const { data: watchlists = [], isLoading: isLoadingWatchlists } = useWatchlists();
+  const { data: defaultSnapshot } = useDefaultWatchlistSnapshot();
   const createWatchlistMutation = useCreateWatchlist();
 
   useEffect(() => {
@@ -81,6 +89,32 @@ export function WatchlistPanel({ instruments, onSelect, selectedSymbol, onOpenSe
       localStorage.setItem('lastWatchlistId', resolvedWatchlistId);
     }
   }, [resolvedWatchlistId, activeWatchlistId, isLoadingWatchlists, setActiveWatchlistId]);
+
+  // Pre-seed default watchlist snapshot cache on first load
+  useEffect(() => {
+    if (!defaultSnapshot?.defaultId) return;
+    const cached = queryClient.getQueryData(['watchlist', defaultSnapshot.defaultId]);
+    if (cached) return;
+    queryClient.setQueryData(['watchlist', defaultSnapshot.defaultId], defaultSnapshot.instruments);
+  }, [defaultSnapshot, queryClient]);
+
+  // Prefetch resolved watchlist snapshot as soon as we know the ID
+  useEffect(() => {
+    if (!resolvedWatchlistId) return;
+    const cached = queryClient.getQueryData(['watchlist', resolvedWatchlistId]);
+    if (cached) return;
+    queryClient.prefetchQuery({
+      queryKey: ['watchlist', resolvedWatchlistId],
+      queryFn: () =>
+        fetch(`/api/v1/watchlists/${resolvedWatchlistId}/snapshot`)
+          .then((r) => {
+            if (!r.ok) throw new Error('Failed to fetch snapshot');
+            return r.json();
+          })
+          .then((r) => r.data as Stock[]),
+      staleTime: 15_000,
+    });
+  }, [resolvedWatchlistId, queryClient]);
   
   // Fetch instruments for active watchlist
   const { data: queryInstruments = [], isLoading: isLoadingInstruments } = useWatchlistInstruments(resolvedWatchlistId);
