@@ -17,7 +17,7 @@ async function main() {
         WHERE table_name='users'
       `);
       console.log("Columns:", res.rows.map(r => r.column_name).join(", "));
-  } catch(e) { console.error(e) }
+  } catch (_) { console.error(e) }
   await c.end();
 }
 main();

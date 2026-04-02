@@ -1,9 +1,7 @@
 "use client";
 import { useJournalEntries } from '@/hooks/use-journal-entries';
 import { calculatePerformanceMetrics } from '@paper-market/core';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { cn } from '@/lib/utils';
-import { Activity, Target, TrendingUp, TrendingDown, AlertTriangle, IndianRupee, BarChart3, ArrowDownToLine } from 'lucide-react';
+import { Activity, Target, TrendingUp, TrendingDown, IndianRupee, BarChart3, ArrowDownToLine } from 'lucide-react';
 
 export function PerformanceSummary() {
   const entries = useJournalEntries();

@@ -37,8 +37,8 @@ class MarketGatewayImpl implements IMarketDataSource {
     public async getQuote(symbol: string): Promise<MarketQuote> {
         try {
             return await this.upstox.getQuote(symbol);
-        } catch (error) {
-            this.handleError(error);
+        } catch (err) {
+            this.handleError(err);
         }
         throw new Error("Unreachable");
     }
@@ -50,8 +50,8 @@ class MarketGatewayImpl implements IMarketDataSource {
     public async getHistory(symbol: string, interval: string, from: Date, to: Date): Promise<MarketCandle[]> {
         try {
             return await this.upstox.getHistory(symbol, interval, from, to);
-        } catch (error) {
-            this.handleError(error);
+        } catch (err) {
+            this.handleError(err);
         }
         throw new Error("Unreachable");
     }
@@ -63,8 +63,8 @@ class MarketGatewayImpl implements IMarketDataSource {
     public async getOptionChain(symbol: string, expiry: Date): Promise<OptionChain> {
         try {
             return await this.upstox.getOptionChain(symbol, expiry);
-        } catch (error) {
-            this.handleError(error);
+        } catch (err) {
+            this.handleError(err);
         }
         throw new Error("Unreachable");
     }

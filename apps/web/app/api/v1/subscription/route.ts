@@ -19,8 +19,8 @@ export async function GET(): Promise<NextResponse> {
             isTrialExpired: effectivePlan.isTrialExpired,
             trialEndDate: effectivePlan.trialEndDate?.toISOString() ?? null,
         });
-    } catch (error) {
-        logger.error({ err: error }, 'Failed to fetch subscription status');
+    } catch (err) {
+        logger.error({ err: err }, 'Failed to fetch subscription status');
         return NextResponse.json({ error: 'Internal server error', code: 'INTERNAL_ERROR' }, { status: 500 });
     }
 }

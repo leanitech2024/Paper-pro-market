@@ -412,8 +412,8 @@ function computeSingle(input: ComputeInput, indicator: IndicatorConfig): Compute
       default:
         computed = { config: indicator, data: [] };
     }
-  } catch (error) {
-    console.error("Indicator compute failed:", indicator.type, error);
+  } catch (err) {
+    console.error("Indicator compute failed:", indicator.type, err);
     trackAnalysisEvent({
       name: "indicator_compute_failed",
       level: "error",

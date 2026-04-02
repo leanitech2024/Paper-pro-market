@@ -61,10 +61,10 @@ export class EODPriceUpdateService {
           }
 
           failed += Math.max(0, batch.length - seen.size);
-        } catch (error: any) {
+        } catch (err: any) {
           failed += batch.length;
-          errors.push(`Batch ${index + 1}: ${error?.message || 'unknown error'}`);
-          logger.error({ err: error, batch: index + 1 }, 'EOD batch quote fetch failed');
+          errors.push(`Batch ${index + 1}: ${err?.message || 'unknown error'}`);
+          logger.error({ err: err, batch: index + 1 }, 'EOD batch quote fetch failed');
         }
       }
 
@@ -75,13 +75,13 @@ export class EODPriceUpdateService {
       );
 
       return { success: true, updated, failed, errors };
-    } catch (error: any) {
-      logger.error({ err: error }, 'EOD quote refresh failed');
+    } catch (err: any) {
+      logger.error({ err: err }, 'EOD quote refresh failed');
       return {
         success: false,
         updated: 0,
         failed: 0,
-        errors: [error?.message || 'unknown error'],
+        errors: [err?.message || 'unknown error'],
       };
     }
   }

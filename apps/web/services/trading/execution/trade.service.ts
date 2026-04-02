@@ -47,9 +47,9 @@ export class TradeService {
                 total,
                 hasMore: limit !== undefined ? offset + data.length < total : false,
             };
-        } catch (error) {
-            logger.error({ err: error, userId }, "Failed to get user trades");
-            throw error;
+        } catch (err) {
+            logger.error({ err: err, userId }, "Failed to get user trades");
+            throw err;
         }
     }
 }

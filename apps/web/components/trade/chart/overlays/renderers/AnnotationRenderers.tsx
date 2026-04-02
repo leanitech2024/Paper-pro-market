@@ -121,7 +121,7 @@ export function renderPriceLabel({ drawing, pointToCoords, selected }: DrawingRe
 }
 
 // ─── Signpost ─────────────────────────────────────────────────────
-export function renderSignpost({ drawing, pointToCoords, selected }: DrawingRendererProps): React.ReactNode {
+export function renderSignpost({ drawing, pointToCoords, selected: _selected }: DrawingRendererProps): React.ReactNode {
   const d = drawing as TextDrawing;
   const c = pointToCoords(d.point);
   if (!c) return null;

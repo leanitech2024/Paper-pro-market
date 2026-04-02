@@ -78,17 +78,17 @@ export async function exchangeCodeForToken(code: string): Promise<{
             accessToken: data.access_token,
             expiresAt,
         };
-    } catch (error) {
-        if (error instanceof MarketIntegrationError) {
-            throw error;
+    } catch (err) {
+        if (err instanceof MarketIntegrationError) {
+            throw err;
         }
-        logger.error({ err: error }, "Failed to exchange Upstox code");
+        logger.error({ err: err }, "Failed to exchange Upstox code");
         throw new MarketIntegrationError(
             "Network error during token exchange",
             "NETWORK_ERROR",
             502,
             "UPSTOX",
-            error
+            err
         );
     }
 }

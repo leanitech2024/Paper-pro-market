@@ -6,7 +6,6 @@ import type {
   TwoPointDrawing,
   HorizontalLineDrawing,
   SinglePointLineDrawing,
-  Point,
 } from "@/stores/trading/analysis.store";
 
 // ─── Trendline ────────────────────────────────────────────────────

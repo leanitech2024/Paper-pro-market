@@ -360,8 +360,8 @@ export async function GET() {
           }
           quoteByInstrument.set(requestedInstruments[idx], parsed);
         });
-      } catch (error) {
-        logger.warn({ err: error }, "Snapshot Redis read failed, falling back to Upstox");
+      } catch (err) {
+        logger.warn({ err: err }, "Snapshot Redis read failed, falling back to Upstox");
       }
       redisReadMs += performance.now() - redisStart;
 
@@ -416,8 +416,8 @@ export async function GET() {
           void pipeline.exec().catch((error) => {
             logger.warn({ err: error, count: fetchedRecords.length }, "Snapshot Redis backfill failed");
           });
-        } catch (error) {
-          logger.warn({ err: error }, "Snapshot Redis pipeline creation failed");
+        } catch (err) {
+          logger.warn({ err: err }, "Snapshot Redis pipeline creation failed");
         }
       }
     }
@@ -441,7 +441,7 @@ export async function GET() {
         quotes,
       },
     });
-  } catch (error: any) {
+  } catch (err: any) {
     logSnapshotLatency({
       auth_duration_ms: Number(authDurationMs.toFixed(2)),
       redis_read_ms: Number(redisReadMs.toFixed(2)),
@@ -451,7 +451,7 @@ export async function GET() {
     return NextResponse.json(
       {
         success: false,
-        error: error?.message || "Failed to load market snapshot",
+        error: err?.message || "Failed to load market snapshot",
       },
       { status: 500 }
     );

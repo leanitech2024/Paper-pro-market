@@ -33,8 +33,8 @@ export async function POST(req: NextRequest) {
             success: true,
             data: order,
         }, { status: 201 });
-    } catch (error) {
-        return handleError(error);
+    } catch (err) {
+        return handleError(err);
     }
 }
 
@@ -66,8 +66,8 @@ export async function GET(req: NextRequest) {
             success: true,
             data: orders,
         });
-    } catch (error) {
-        return handleError(error);
+    } catch (err) {
+        return handleError(err);
     }
 }
 

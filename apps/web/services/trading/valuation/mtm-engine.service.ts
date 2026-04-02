@@ -1,4 +1,4 @@
-import { and, eq, ne, sql } from "drizzle-orm";
+import { and, eq, ne } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { instruments, positions, wallets } from "@paper-market/core/db";
 import { logger } from "@/lib/logger";
@@ -9,10 +9,8 @@ import { eventBus } from "@/lib/event-bus";
 import { maintenanceMarginService } from "@/services/trading/valuation/maintenance-margin.service";
 import { liquidationEngineService } from "@/services/trading/valuation/liquidation-engine.service";
 import { instrumentStore } from "@/stores/instrument.store";
-import {
-    calculateShortOptionMargin,
-    calculateFuturesRequiredMargin,
-} from "@paper-market/core";
+
+
 import { realTimeMarketService } from "@/services/market/feeds/realtime-market.service";
 import { LedgerService } from "@/services/accounting/ledger/ledger.service";
 import { MarginCalculatorService } from "@/services/trading/margin/margin-calculator.service";
@@ -657,12 +655,12 @@ export class MtmEngineService {
                 }
             }
             logger.info({ count: users.length }, "MTM flush completed (Redis)");
-        } catch (error) {
+        } catch (err) {
             // Re-add users to dirty set so they are retried on next flush
             for (const userId of users) {
                 this.dirtyUsers.add(userId);
             }
-            logger.error({ err: error }, "MTM snapshot flush failed");
+            logger.error({ err: err }, "MTM snapshot flush failed");
         } finally {
             this.flushing = false;
             // If more dirty users accumulated during the flush, schedule another pass

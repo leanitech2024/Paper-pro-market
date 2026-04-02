@@ -63,7 +63,7 @@ export interface TransactionFilters {
     page?: number;
 }
 
-export const useWalletStore = create<WalletState>((set, get) => ({
+export const useWalletStore = create<WalletState>((set, _get) => ({
     // Initial state
     balance: 0,
     equity: 0,
@@ -120,10 +120,10 @@ export const useWalletStore = create<WalletState>((set, get) => ({
             } else {
                 throw new Error("Invalid response format");
             }
-        } catch (error) {
-            console.error("Failed to fetch wallet:", error);
+        } catch (err) {
+            console.error("Failed to fetch wallet:", err);
             set({
-                balanceError: error instanceof Error ? error.message : "Failed to fetch wallet",
+                balanceError: err instanceof Error ? err.message : "Failed to fetch wallet",
                 isLoadingBalance: false,
             });
         }
@@ -174,10 +174,10 @@ export const useWalletStore = create<WalletState>((set, get) => ({
             } else {
                 throw new Error("Invalid response format");
             }
-        } catch (error) {
-            console.error("Failed to fetch transactions:", error);
+        } catch (err) {
+            console.error("Failed to fetch transactions:", err);
             set({
-                transactionsError: error instanceof Error ? error.message : "Failed to fetch transactions",
+                transactionsError: err instanceof Error ? err.message : "Failed to fetch transactions",
                 isLoadingTransactions: false,
             });
         }

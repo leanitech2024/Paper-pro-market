@@ -41,7 +41,7 @@ export async function POST(
         equity: result.equity,
       },
     });
-  } catch (error) {
-    return handleError(error);
+  } catch (err) {
+    return handleError(err);
   }
 }

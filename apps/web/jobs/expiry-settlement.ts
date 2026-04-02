@@ -59,8 +59,8 @@ class ExpirySettlementJob {
                     "Expiry settlement cycle completed"
                 );
             }
-        } catch (error) {
-            logger.error({ err: error }, "Expiry settlement cycle failed");
+        } catch (err) {
+            logger.error({ err: err }, "Expiry settlement cycle failed");
         }
     }
 }

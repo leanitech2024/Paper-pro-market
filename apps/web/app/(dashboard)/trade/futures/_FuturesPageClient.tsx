@@ -9,7 +9,6 @@ import { Stock } from "@paper-market/core";
 import { symbolToIndexInstrumentKey } from "@paper-market/core";
 import { AdaptiveTradeLayout } from "@/components/trade/layout/AdaptiveTradeLayout";
 import { PositionsCards } from "@/components/trade/mobile/PositionsCards";
-import { useWalletStore } from "@/stores/wallet.store";
 import { cn } from "@/lib/utils";
 import { useMarketStore } from "@/stores/trading/market.store";
 import { BottomBar } from "@/components/trade/options/BottomBar";
@@ -72,11 +71,6 @@ async function fetchFuturesContracts(underlying: string): Promise<Stock[]> {
   return payload?.data?.instruments || [];
 }
 
-function formatBalance(value: number): string {
-  if (!Number.isFinite(value)) return "--";
-  return `INR ${value.toLocaleString("en-IN", { maximumFractionDigits: 0 })}`;
-}
-
 function formatLtp(value: number): string {
   if (!Number.isFinite(value) || value <= 0) return "--";
   return value.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -99,8 +93,6 @@ const panelClass =
 const headerBorderClass = "border-b border-slate-200/80 dark:border-white/[0.08]";
 
 export default function FuturesPage() {
-  const walletBalance = useWalletStore((state) => state.balance);
-
   const [currentInstruments, setCurrentInstruments] = useState<Stock[]>([]);
   const [selectedStock, setSelectedStock] = useState<Stock | null>(null);
   const [searchModalOpen, setSearchModalOpen] = useState(false);

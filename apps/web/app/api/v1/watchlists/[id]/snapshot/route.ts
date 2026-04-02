@@ -118,8 +118,8 @@ export async function GET(
       { success: true, data },
       { headers: { 'Cache-Control': 'private, max-age=10' } }
     );
-  } catch (error) {
-    logger.error({ err: error }, 'GET watchlist snapshot failed');
+  } catch (err) {
+    logger.error({ err: err }, 'GET watchlist snapshot failed');
     return NextResponse.json({ error: 'Failed to fetch watchlist' }, { status: 500 });
   }
 }

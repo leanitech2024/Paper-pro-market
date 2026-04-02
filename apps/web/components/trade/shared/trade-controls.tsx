@@ -25,7 +25,7 @@ interface TradeControlsProps {
 }
 
 export function TradeControls({
-  side, setSide,
+  side, setSide: _setSide,
   productType, setProductType,
   leverage, setLeverage,
   quantity, setQuantity,

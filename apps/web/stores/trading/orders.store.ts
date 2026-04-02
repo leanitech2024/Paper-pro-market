@@ -17,7 +17,7 @@ interface OrdersState {
   updateTrade: (tradeId: string, updates: Partial<Trade>) => void;
 }
 
-export const useOrdersStore = create<OrdersState>((set, get) => ({
+export const useOrdersStore = create<OrdersState>((set, _get) => ({
   trades: [],
   journalEntries: [],
   isLoading: false,
@@ -87,9 +87,9 @@ export const useOrdersStore = create<OrdersState>((set, get) => ({
         set({ trades: mappedTrades });
         console.log('✅ Fetched', mappedTrades.length, 'orders');
       }
-    } catch (error: any) {
-      console.error("Failed to fetch orders:", error);
-      set({ error: error.message });
+    } catch (err: any) {
+      console.error("Failed to fetch orders:", err);
+      set({ error: err.message });
       toast.error('Failed to load orders');
     } finally {
       set({ isLoading: false,hasFetched: true,  });
@@ -124,10 +124,10 @@ export const useOrdersStore = create<OrdersState>((set, get) => ({
         toast.success('Order cancelled successfully');
         console.log('✅ Cancelled order:', orderId);
       }
-    } catch (error: any) {
-      console.error("Failed to cancel order:", error);
-      toast.error(error.message);
-      throw error;
+    } catch (err: any) {
+      console.error("Failed to cancel order:", err);
+      toast.error(err.message);
+      throw err;
     }
   },
 

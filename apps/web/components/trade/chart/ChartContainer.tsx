@@ -1,10 +1,9 @@
 "use client";
 import { useEffect, useMemo, useState, useCallback, useRef } from 'react';
 import dynamic from 'next/dynamic';
-import { CandlestickData, HistogramData, IChartApi, Time } from 'lightweight-charts';
+import { IChartApi } from 'lightweight-charts';
 import { Drawing, IndicatorConfig, useAnalysisStore } from '@/stores/trading/analysis.store';
 import { useMarketStore } from '@/stores/trading/market.store';
-import { IndicatorsMenu } from './IndicatorsMenu';
 import { ChartHeader } from './ChartHeader';
 import { ChartOverlayLegend } from './ChartOverlayLegend';
 import { ChartTradingPanel } from './ChartTradingPanel';
@@ -65,7 +64,6 @@ const INITIAL_VISIBLE_BARS_BY_TIMEFRAME: Record<string, number> = {
 export function ChartContainer({ symbol, headerSymbol, instrumentKey, onSearchClick }: ChartContainerProps) {
   const { isMobile } = useTradeViewport();
   const canonicalSymbol = toCanonicalSymbol(symbol);
-  const analysisV2Enabled = process.env.NEXT_PUBLIC_ANALYSIS_V2 === "true";
   const {
     isAnalysisMode,
     setAnalysisMode,
@@ -77,9 +75,7 @@ export function ChartContainer({ symbol, headerSymbol, instrumentKey, onSearchCl
     setActiveTool,
     selectedDrawingIds,
     globalHideState,
-    setSelectedDrawingsLocked,
     deleteSelectedDrawings,
-    setDrawingVisibility,
     updateIndicator,
     removeIndicator,
   } = useAnalysisStore();
@@ -374,8 +370,8 @@ export function ChartContainer({ symbol, headerSymbol, instrumentKey, onSearchCl
         timeScale.scrollToRealTime();
       }
       return true;
-    } catch (error) {
-      console.warn('Initial chart framing failed:', error);
+    } catch (err) {
+      console.warn('Initial chart framing failed:', err);
       return false;
     }
   }, [activeRangeKey, activeTimeframeKey, chartApi, historicalData.length]);
@@ -601,14 +597,6 @@ export function ChartContainer({ symbol, headerSymbol, instrumentKey, onSearchCl
     await fetchMoreHistory(symbol, currentRange, firstCandle.time as number, resolvedInstrumentKey);
   }, [historicalData, symbol, range, fetchMoreHistory, resolvedInstrumentKey]); // ✅ Stable dependencies only
 
-  const selectedDrawings = useMemo(
-    () => drawings.filter((drawing: any) => selectedDrawingIds.includes(drawing.id)),
-    [drawings, selectedDrawingIds]
-  );
-  const hasSelection = selectedDrawings.length > 0;
-  const allVisible = hasSelection && selectedDrawings.every((drawing: any) => drawing.visible !== false);
-  const allLocked = hasSelection && selectedDrawings.every((drawing: any) => drawing.locked === true);
- 
   const leftToolbar = <ChartToolbar symbol={symbol} />;
 
   const renderChartArea = () => (

@@ -279,11 +279,11 @@ export class ExpirySettlementService {
                 exitReason: "EXPIRY",
                 settlementPrice: position.settlementPrice,
             }, { force: options.force });
-        } catch (error) {
-            if (error instanceof ApiError && error.code === "DUPLICATE_ORDER") {
+        } catch (err) {
+            if (err instanceof ApiError && err.code === "DUPLICATE_ORDER") {
                 return false;
             }
-            throw error;
+            throw err;
         }
 
         if (this.currentCycleUsers) {
@@ -335,8 +335,8 @@ export class ExpirySettlementService {
         try {
             await mtmEngineService.forceRefreshOpenState();
             mtmEngineService.requestRefresh();
-        } catch (error) {
-            logger.error({ err: error }, "MTM refresh failed after expiry settlement");
+        } catch (err) {
+            logger.error({ err: err }, "MTM refresh failed after expiry settlement");
         }
 
         await Promise.all(

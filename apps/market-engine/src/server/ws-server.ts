@@ -89,8 +89,8 @@ function sendJson(ws: WebSocket, payload: Record<string, unknown>): void {
     if (ws.readyState !== WebSocket.OPEN) return;
     try {
         ws.send(JSON.stringify(payload));
-    } catch (error) {
-        logger.warn({ err: error }, 'Failed to send websocket control message');
+    } catch (err) {
+        logger.warn({ err: err }, 'Failed to send websocket control message');
     }
 }
 
@@ -111,8 +111,8 @@ function safeSend(client: ClientSubscription, payload: string): void {
 
     try {
         client.ws.send(payload);
-    } catch (error) {
-        logger.warn({ err: error, userId: client.userId }, 'Failed to send websocket payload');
+    } catch (err) {
+        logger.warn({ err: err, userId: client.userId }, 'Failed to send websocket payload');
     }
 }
 
@@ -320,9 +320,9 @@ async function onConnection(ws: WebSocket, request: IncomingMessage): Promise<vo
 
             rejectedMessages++;
             sendJson(ws, { type: 'error', error: 'Unsupported message type' });
-        } catch (error) {
+        } catch (err) {
             rejectedMessages++;
-            logger.warn({ err: error, userId: client.userId }, 'Failed to parse client message');
+            logger.warn({ err: err, userId: client.userId }, 'Failed to parse client message');
             sendJson(ws, { type: 'error', error: 'Invalid JSON payload' });
         }
     });

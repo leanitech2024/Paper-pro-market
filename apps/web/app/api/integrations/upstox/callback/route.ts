@@ -34,7 +34,7 @@ export async function GET(req: NextRequest) {
   try {
     await UpstoxService.generateToken(code, session.user.id);
     return NextResponse.redirect(new URL("/admin/upstox?status=success", req.url));
-  } catch (err: any) {
+  } catch (_: any) {
     return NextResponse.redirect(new URL("/admin/upstox?status=error&error=oauth_failed", req.url));
   }
 }

@@ -5,7 +5,7 @@ import { drawingStroke, SEL_COLOR, DRAW_COLOR } from "./types";
 import type { ThreePointDrawing, TwoPointDrawing } from "@/stores/trading/analysis.store";
 
 // ─── Parallel Channel ─────────────────────────────────────────────
-export function renderParallelChannel({ drawing, pointToCoords, width, selected }: DrawingRendererProps): React.ReactNode {
+export function renderParallelChannel({ drawing, pointToCoords, width: _width, selected }: DrawingRendererProps): React.ReactNode {
   const d = drawing as ThreePointDrawing;
   const c1 = pointToCoords(d.p1);
   const c2 = pointToCoords(d.p2);
@@ -39,7 +39,7 @@ export function renderParallelChannel({ drawing, pointToCoords, width, selected 
 }
 
 // ─── Regression Trend ─────────────────────────────────────────────
-export function renderRegressionTrend({ drawing, pointToCoords, data, selected }: DrawingRendererProps): React.ReactNode {
+export function renderRegressionTrend({ drawing, pointToCoords, data: _data, selected }: DrawingRendererProps): React.ReactNode {
   const d = drawing as TwoPointDrawing;
   const c1 = pointToCoords(d.p1);
   const c2 = pointToCoords(d.p2);
@@ -65,7 +65,7 @@ export function renderRegressionTrend({ drawing, pointToCoords, data, selected }
 }
 
 // ─── Flat Top/Bottom ──────────────────────────────────────────────
-export function renderFlatTopBottom({ drawing, pointToCoords, width, selected }: DrawingRendererProps): React.ReactNode {
+export function renderFlatTopBottom({ drawing, pointToCoords, width: _width, selected }: DrawingRendererProps): React.ReactNode {
   const d = drawing as TwoPointDrawing;
   const c1 = pointToCoords(d.p1);
   const c2 = pointToCoords(d.p2);
@@ -97,7 +97,6 @@ export function renderDisjointChannel({ drawing, pointToCoords, selected }: Draw
   if (!c1 || !c2) return null;
   const s = drawingStroke(selected);
 
-  const midY = (c1.y + c2.y) / 2;
   const gap = 4;
 
   return (

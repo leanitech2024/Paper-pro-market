@@ -24,18 +24,14 @@ interface PositionsTableProps {
   loading?: boolean;
 }
 
-export function PositionsTable({ loading: parentLoading = false }: PositionsTableProps) {
+export function PositionsTable({ loading: _loading = false }: PositionsTableProps) {
   const positions = usePositionsStore((state) => state.positions);
   const fetchPositions = usePositionsStore((state) => state.fetchPositions);
-  const isLoading = usePositionsStore((state) => state.isLoading);
-  const closePosition = usePositionsStore((state) => state.closePosition);
   const quotesByInstrument = useMarketStore((state) => state.quotesByInstrument);
   const selectQuote = useMarketStore((state) => state.selectQuote);
   
-  const loading = parentLoading || isLoading;
-  
   const [closingPosition, setClosingPosition] = useState<Position | null>(null);
-  const [closingPositionId, setClosingPositionId] = useState<string | null>(null); // Track which position is closing
+  const [closingPositionId, _setClosingPositionId] = useState<string | null>(null); // Track which position is closing
   useEffect(() => {
     fetchPositions();
     // Poll lightly for structural recovery only (SSE remains price source of truth).

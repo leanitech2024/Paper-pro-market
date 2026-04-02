@@ -1,5 +1,5 @@
 import { Stock } from '@paper-market/core';
-import { WatchlistInstrument, MarketSlice } from '../types';
+import { MarketSlice } from '../types';
 const indicesList: Stock[] = [
   {
     symbol: "NIFTY 50",
@@ -201,7 +201,7 @@ export const createWatchlistSlice: MarketSlice<any> = (set, get) => ({
         }));
         set({ searchResults: results });
       }
-    } catch (error: unknown) {
+    } catch (_: unknown) {
       if (error instanceof Error && error.name === 'AbortError') return; // expected, silent
       console.error('Search failed', error);
     } finally {

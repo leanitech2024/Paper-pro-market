@@ -461,8 +461,8 @@ class RealTimeMarketService {
         },
         "Snapshot prices seeded",
       );
-    } catch (error) {
-      logger.error({ err: error }, "Failed to seed snapshot prices");
+    } catch (err) {
+      logger.error({ err: err }, "Failed to seed snapshot prices");
     }
   }
 

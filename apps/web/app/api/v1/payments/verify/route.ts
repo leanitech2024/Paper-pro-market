@@ -77,8 +77,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
             plan: effectivePlan.plan,
             status: effectivePlan.status,
         });
-    } catch (error) {
-        logger.error({ err: error }, 'Payment verification failed');
+    } catch (err) {
+        logger.error({ err: err }, 'Payment verification failed');
         return NextResponse.json({ error: 'Payment verification failed', code: 'VERIFICATION_FAILED' }, { status: 500 });
     }
 }

@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { tickBus } from '@/lib/trading/tick-bus';
-import { realTimeMarketService } from '@/services/market/feeds/realtime-market.service';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -13,7 +12,7 @@ export const runtime = 'nodejs';
  * Active symbols and ref-counts are now tracked by realTimeMarketService
  * via its subscribers Map (formerly in market-feed-supervisor).
  */
-export async function GET(req: NextRequest) {
+export async function GET(_req: NextRequest) {
     try {
         const session = await auth();
         if (!session?.user) {

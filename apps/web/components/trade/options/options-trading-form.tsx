@@ -18,7 +18,7 @@ import { useInstrumentPrice } from '@/hooks/useInstrumentPrice';
 import { useMarginPreview } from '@/hooks/useMarginPreview';
 import { getExitQuantity } from '@/utils/trading/position-exit';
 
-import { TradePriceDisplay, formatPrice } from '../shared/trade-price-display';
+import { TradePriceDisplay } from '../shared/trade-price-display';
 import { TradeMarginSummary, formatMoney } from '../shared/trade-margin-summary';
 import { TradeControls } from '../shared/trade-controls';
 import { parseExpiryDate, toExpiryIso } from '../shared/utils';
@@ -202,8 +202,8 @@ export function OptionsTradingForm({
       toast.success('Trade Sent', { description: `${side} ${effectiveQuantity} units of ${selectedStock.symbol} at market.` });
       setShowConfirmDialog(false);
       setTimeout(() => { setQuantity('1'); setStopLoss(''); setTarget(''); }, 300);
-    } catch (error) {
-      const fallbackMessage = error instanceof Error ? error.message : 'Order placement failed';
+    } catch (err) {
+      const fallbackMessage = err instanceof Error ? err.message : 'Order placement failed';
       const message = fallbackMessage.includes('PARTIAL_EXIT_NOT_ALLOWED')
         ? 'Partial exit is disabled in paper trading mode.'
         : fallbackMessage;

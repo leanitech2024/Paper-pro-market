@@ -25,16 +25,6 @@ let initialized = false;
 // shared Promise so the first real operation waits for the client to be ready.
 let clientReadyPromise: Promise<unknown> | null = null;
 
-function makeMockPipeline(): RedisPipeline {
-  const mockPipe: RedisPipeline = {
-    set() { return mockPipe; },
-    get() { return mockPipe; },
-    del() { return mockPipe; },
-    async exec() { return []; }
-  };
-  return mockPipe;
-}
-
 async function createDevRedis(url: string): Promise<RedisClient> {
   const IORedisModule = await import('ioredis');
   const IORedis = IORedisModule.default || IORedisModule;

@@ -68,8 +68,8 @@ class TokenProvider {
                 this.cacheExpiry = new Date(candidate.expiresAt).getTime();
                 return normalized;
             }
-        } catch (error) {
-            logger.error({ err: error }, 'Failed to fetch token from database');
+        } catch (err) {
+            logger.error({ err: err}, 'Failed to fetch token from database');
         }
 
         throw new Error(

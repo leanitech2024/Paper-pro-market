@@ -1,10 +1,8 @@
 "use client";
 
 import { useMarketStore } from '@/stores/trading/market.store';
-import { ChevronDown, ChevronsDown, Minus, Plus } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { useState, useEffect } from 'react';
+import { ChevronDown } from 'lucide-react';
+import { useState } from 'react';
 
 interface ChartTradingPanelProps {
   symbol: string;
@@ -13,7 +11,6 @@ interface ChartTradingPanelProps {
 export function ChartTradingPanel({ symbol }: ChartTradingPanelProps) {
   const { historicalData, livePrice } = useMarketStore();
   const [qty, setQty] = useState(1);
-  const [isExpanded, setIsExpanded] = useState(true);
 
   // Mock OHLC or get from last candle
   const lastCandle = historicalData.length > 0 ? historicalData[historicalData.length - 1] : null;

@@ -45,7 +45,7 @@ async function main() {
       `);
 
       console.log("admin_audit_logs table created successfully.");
-  } catch(e) {
+  } catch (_) {
       console.error("DB Error:", e);
   } finally {
       await c.end();

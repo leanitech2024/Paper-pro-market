@@ -55,7 +55,7 @@ export const useSubscriptionStore = create<SubscriptionState>((set, get) => ({
             try {
                 const res = await fetch('/api/v1/subscription');
                 if (!res.ok) {
-                    // eslint-disable-next-line no-console
+                     
                     console.warn('[subscription.store] Failed to fetch subscription, status:', res.status);
                     return;
                 }
@@ -79,9 +79,9 @@ export const useSubscriptionStore = create<SubscriptionState>((set, get) => ({
                         lastFetchedAt: Date.now(),
                     });
                 }
-            } catch (error) {
-                // eslint-disable-next-line no-console
-                console.error('[subscription.store] Error fetching subscription:', error);
+            } catch (err) {
+                 
+                console.error('[subscription.store] Error fetching subscription:', err);
             } finally {
                 set({ isLoading: false });
                 _fetchPromise = null;

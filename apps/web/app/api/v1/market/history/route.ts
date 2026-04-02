@@ -248,12 +248,12 @@ export async function GET(req: NextRequest) {
       success: true,
       data,
     });
-  } catch (error: any) {
+  } catch (err: any) {
     if (process.env.DEBUG_MARKET === "true") {
-      logger.error({ err: error }, "Historical API error");
+      logger.error({ err: err }, "Historical API error");
     }
     return NextResponse.json(
-      { success: false, error: error?.message || "History fetch failed" },
+      { success: false, error: err?.message || "History fetch failed" },
       { status: 500 },
     );
   }

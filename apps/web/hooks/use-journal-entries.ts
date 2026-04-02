@@ -1,5 +1,4 @@
 import { useJournalStore } from '@/stores/trading/journal.store';
-import { useOrdersStore } from '@/stores/trading/orders.store';
 import { JournalEntry } from '@paper-market/core';
 
 export function useJournalEntries(): JournalEntry[] {

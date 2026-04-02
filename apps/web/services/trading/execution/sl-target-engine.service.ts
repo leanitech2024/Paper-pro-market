@@ -143,7 +143,7 @@ export class SlTargetEngineService {
                 // Mark OPEN → PROCESSING atomically so concurrent callers skip it
                 try {
                     await OrderStateMachineService.transition(childOrder.id, "OPEN", "PROCESSING");
-                } catch (e) {
+                } catch (_) {
                     continue; // another runner grabbed it first
                 }
 
@@ -252,7 +252,7 @@ export class SlTargetEngineService {
                 }
             } catch (err) {
                 logger.error(
-                    { err, positionId: position.id, symbol: position.symbol, event: "MIS_SQUARE_OFF_ERROR" },
+                    { err: err, positionId: position.id, symbol: position.symbol, event: "MIS_SQUARE_OFF_ERROR" },
                     "MIS_SQUARE_OFF_ERROR"
                 );
             }

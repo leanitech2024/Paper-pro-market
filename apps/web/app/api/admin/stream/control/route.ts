@@ -59,9 +59,9 @@ export async function POST(req: NextRequest) {
     }
 
     return NextResponse.json({ error: "Invalid action", code: "INVALID_ACTION" }, { status: 400 });
-  } catch (error) {
+  } catch (err) {
     // H-7 FIX: Never return raw error.message — it may contain internal details.
-    logger.error({ err: error }, "Admin stream control failed");
+    logger.error({ err: err }, "Admin stream control failed");
     return NextResponse.json({ error: "Internal server error", code: "INTERNAL_ERROR" }, { status: 500 });
   }
 }

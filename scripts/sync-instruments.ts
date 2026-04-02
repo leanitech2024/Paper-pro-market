@@ -125,9 +125,9 @@ async function main() {
     console.log("\n✅ Sync completed successfully!\n");
 
     process.exit(0);
-  } catch (error: any) {
-    console.error("\n❌ Sync failed:", error.message);
-    console.error(error);
+  } catch (err: any) {
+    console.error("\n❌ Sync failed:", err.message);
+    console.error(err);
     console.log("");
     process.exit(1);
   }

@@ -68,7 +68,7 @@ async function main() {
       try {
         await WatchlistService.ensureDefaultWatchlist(user.id);
         ensured += 1;
-      } catch (error) {
+      } catch (_) {
         failed += 1;
         console.error(`Failed for user ${user.id}:`, error);
       }

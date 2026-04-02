@@ -36,13 +36,13 @@ export class OrderService {
   ) {
     try {
       return await OrderPipelineService.placeOrder(userId, payload, options);
-    } catch (error) {
-      if (error instanceof ApiError) throw error;
-      if (isApiErrorLike(error)) {
-        throw new ApiError(error.message, error.statusCode, error.code);
+    } catch (err) {
+      if (err instanceof ApiError) throw err;
+      if (isApiErrorLike(err)) {
+        throw new ApiError(err.message, err.statusCode, err.code);
       }
       logger.error(
-        { err: error, userId, symbol: payload.symbol },
+        { err: err, userId, symbol: payload.symbol },
         "Failed to place order",
       );
       throw new ApiError(
@@ -110,9 +110,9 @@ export class OrderService {
         "Order cancelled",
       );
       return cancelledOrder;
-    } catch (error) {
-      if (error instanceof ApiError) throw error;
-      logger.error({ err: error, userId, orderId }, "Failed to cancel order");
+    } catch (err) {
+      if (err instanceof ApiError) throw err;
+      logger.error({ err: err, userId, orderId }, "Failed to cancel order");
       throw new ApiError(
         "Failed to cancel order",
         500,
@@ -160,8 +160,8 @@ export class OrderService {
       const results = await query;
 
       return results;
-    } catch (error) {
-      logger.error({ err: error, userId, filters }, "Failed to get orders");
+    } catch (err) {
+      logger.error({ err: err, userId, filters }, "Failed to get orders");
       throw new ApiError(
         "Failed to retrieve orders",
         500,

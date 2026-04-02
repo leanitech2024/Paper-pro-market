@@ -43,7 +43,7 @@ export default function AdminLoginClient() {
       toast.success("Welcome back, admin");
       router.push(callbackUrl);
       router.refresh();
-    } catch (error) {
+    } catch (_) {
       toast.error("Something went wrong");
       setLoading(false);
     }

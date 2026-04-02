@@ -1,6 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Stock } from '@paper-market/core';
-import { toInstrumentKey } from '@paper-market/core';
 
 // ═══════════════════════════════════════════════════════════
 // 📊 WATCHLIST QUERY HOOKS
@@ -13,34 +12,7 @@ interface Watchlist {
   userId: string;
 }
 
-interface WatchlistInstrument {
-  instrumentToken: string;
-  tradingsymbol: string;
-  name: string;
-  lotSize: number;
-}
-
-type QuoteApiItem = {
-  last_price?: number;
-  close_price?: number;
-};
-
 type AddInstrumentInput = string | Stock;
-
-function toQuoteLookup(payload: Record<string, QuoteApiItem>): Map<string, QuoteApiItem> {
-  const out = new Map<string, QuoteApiItem>();
-
-  for (const [rawKey, quote] of Object.entries(payload || {})) {
-    const normalized = toInstrumentKey(rawKey);
-    if (!normalized) continue;
-
-    out.set(normalized, quote);
-    out.set(normalized.replace('|', ':'), quote);
-    out.set(normalized.replace(':', '|'), quote);
-  }
-
-  return out;
-}
 
 async function fetchWatchlists(): Promise<Watchlist[]> {
   const res = await fetch('/api/v1/watchlists');

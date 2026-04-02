@@ -46,7 +46,7 @@ function LoginForm() {
                 router.push(callbackUrl);
                 router.refresh();
             }
-        } catch (error) {
+        } catch (_) {
             toast.error("Something went wrong");
             setLoading(false);
         }

@@ -36,9 +36,6 @@ const toFiniteNumber = (value: unknown): number | null => {
 };
 
 const normalizeKey = (instrumentKey: string): string => toInstrumentKey(instrumentKey);
-const toCacheSegment = (value: string): string =>
-  encodeURIComponent(String(value || "").trim().toLowerCase() || "na");
-
 export const ltpKey = (instrumentKey: string): string =>
   `${cachePrefix}:v1:ltp:${normalizeKey(instrumentKey)}`;
 

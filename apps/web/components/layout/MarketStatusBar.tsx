@@ -116,8 +116,6 @@ export function MarketStatusBar() {
   );
 
   const indices = useMemo(() => TICKER_CONFIG.filter((c) => c.isIndex), []);
-  const equities = useMemo(() => TICKER_CONFIG.filter((c) => !c.isIndex), []);
-
   // Duplicate for seamless loop: indices scroll with equities as one band
   const allItems = useMemo(() => TICKER_CONFIG, []);
   const duplicated = useMemo(() => [...allItems, ...allItems], [allItems]);

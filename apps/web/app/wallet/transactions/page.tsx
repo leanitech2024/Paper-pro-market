@@ -2,11 +2,11 @@
 import { useEffect } from "react";
 import { useWalletStore } from "@/stores/wallet.store";
 import { TransactionHistory } from "@/components/wallet/TransactionHistory";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Wallet, TrendingUp, Lock } from "lucide-react";
 
 export default function TransactionsPage() {
-    const { balance, blockedBalance, availableBalance, fetchWallet, fetchTransactions } = useWalletStore();
+    const { balance, blockedBalance, availableBalance, fetchTransactions } = useWalletStore();
 
     useEffect(() => {
         // fetchWallet(); // Handled by layout

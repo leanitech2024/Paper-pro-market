@@ -7,7 +7,7 @@ import { performance } from "node:perf_hooks";
 import { mtmEngineService } from "@/services/trading/valuation/mtm-engine.service";
 import { PositionService } from "@/services/trading/positions/position.service";
 import { MarginCalculatorService } from "@/services/trading/margin/margin-calculator.service";
-import { and, asc, eq, inArray, ne, sql } from "drizzle-orm";
+import { and, asc, eq, ne, sql } from "drizzle-orm";
 import { requireInstrumentTokenForIdentityLookup } from "@/lib/trading/token-identity-guard";
 import { FillEngineService } from "@/services/trading/execution/fill-engine.service";
 import { assertTradingEnabled, isTradingEnabled } from "@/lib/system-control";
@@ -108,15 +108,15 @@ export class OrderExecutorService {
             const reopenOrder = async (orderId: string) => {
                 try {
                     await OrderStateMachineService.transition(orderId, "PROCESSING", "OPEN");
-                } catch (error) {
-                    if (error instanceof ApiError && (error.code === "TRANSITION_FAILED" || error.code === "INVALID_STATE_TRANSITION")) {
+                } catch (err) {
+                    if (err instanceof ApiError && (err.code === "TRANSITION_FAILED" || err.code === "INVALID_STATE_TRANSITION")) {
                         logger.debug(
-                            { err: error, orderId },
+                            { err: err, orderId },
                             "Order already left PROCESSING; skipping reopen"
                         );
                         return;
                     }
-                    throw error;
+                    throw err;
                 }
             };
 
@@ -130,9 +130,9 @@ export class OrderExecutorService {
                         // tick can retry.
                         await reopenOrder(order.id);
                     }
-                } catch (error) {
+                } catch (err) {
                     logger.error(
-                        { err: error, orderId: order.id },
+                        { err: err, orderId: order.id },
                         "Failed to execute individual order"
                     );
                     // Restore to OPEN on unexpected error so the order is not
@@ -146,8 +146,8 @@ export class OrderExecutorService {
             }
 
             return executedCount;
-        } catch (error) {
-            logger.error({ err: error }, "Failed to execute open orders");
+        } catch (err) {
+            logger.error({ err: err }, "Failed to execute open orders");
             throw new ApiError("Execution engine failed", 500, "EXECUTION_FAILED");
         }
     }
@@ -818,7 +818,7 @@ export class OrderExecutorService {
                 logger.info(metricsPayload, "ORDER_EXECUTION_TIMING");
             }
             return true;
-        } catch (error: unknown) {
+        } catch (_: unknown) {
             const apiErr = error instanceof ApiError ? error : null;
             if (apiErr?.code === "INSUFFICIENT_FUNDS") {
                 logger.warn({ orderId: order.id }, "Execution failed: Insufficient Funds");
@@ -877,8 +877,8 @@ export class OrderExecutorService {
             if (requiresImmediateSettlementFill && !executed) {
                 throw new ApiError("Expiry settlement execution failed", 503, "EXPIRY_EXECUTION_FAILED");
             }
-        } catch (error) {
-            logger.error({ err: error, orderId: order.id }, "Failed to execute MARKET order");
+        } catch (err) {
+            logger.error({ err: err, orderId: order.id }, "Failed to execute MARKET order");
             await db.update(orders)
                 .set({ status: "OPEN", updatedAt: new Date() })
                 .where(and(eq(orders.id, order.id), eq(orders.status, "PROCESSING")))
@@ -886,7 +886,7 @@ export class OrderExecutorService {
                     logger.error({ err: restoreErr, orderId: order.id }, "Failed to restore order to OPEN")
                 );
             if (requiresImmediateSettlementFill) {
-                throw error;
+                throw err;
             }
         }
     }

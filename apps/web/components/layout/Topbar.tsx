@@ -1,7 +1,5 @@
 import { cn } from '@/lib/utils';
 import { useWalletStore } from '@/stores/wallet.store';
-import { usePositionsStore } from '@/stores/trading/positions.store';
-import { useOrdersStore } from '@/stores/trading/orders.store';
 import { useEffect } from 'react';
 
 interface TopbarProps {
@@ -11,9 +9,7 @@ interface TopbarProps {
 
 export function Topbar({ onMobileMenuToggle, mobileMenuOpen = false }: TopbarProps) {
   // Use real wallet balance from API
-  const { balance, blockedBalance, availableBalance, fetchWallet, isLoadingBalance } = useWalletStore();
-  const positions = usePositionsStore((state) => state.positions);
-  const trades = useOrdersStore((state) => state.trades);
+  const { fetchWallet } = useWalletStore();
 
   // Fetch wallet on mount and poll every 30 seconds
   useEffect(() => {
@@ -26,24 +22,6 @@ export function Topbar({ onMobileMenuToggle, mobileMenuOpen = false }: TopbarPro
 
     return () => clearInterval(interval);
   }, [fetchWallet]);
-
-  const openPnL = positions.reduce((acc, pos) => {
-    const pnl = pos.side === 'BUY'
-      ? (pos.currentPrice - pos.entryPrice) * pos.quantity
-      : (pos.entryPrice - pos.currentPrice) * pos.quantity;
-    return acc + pnl;
-  }, 0);
-
-  const closedPnL = trades.reduce((acc, trade) => acc + (trade.pnl || 0), 0);
-  const totalPnL = openPnL + closedPnL;
-
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('en-IN', {
-      style: 'currency',
-      currency: 'INR',
-      maximumFractionDigits: 0,
-    }).format(value);
-  };
 
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-4 lg:px-6">

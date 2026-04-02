@@ -16,7 +16,7 @@ import { TransactionQuerySchema } from "@paper-market/core";
  * - limit: number (default 20, max 100)
  * - page: number (default 1)
  */
-export async function GET(req: Request) {
+export async function GET(_req: Request) {
     try {
         // 1. Authenticate user
         const session = await auth();
@@ -27,7 +27,7 @@ export async function GET(req: Request) {
         const userId = session.user.id;
 
         // 2. Parse and validate query parameters
-        const { searchParams } = new URL(req.url);
+        const { searchParams } = new URL(_req.url);
 
         const queryData = {
             userId,
@@ -66,8 +66,8 @@ export async function GET(req: Request) {
             },
         });
 
-    } catch (error) {
-        return handleError(error);
+    } catch (err) {
+        return handleError(err);
     }
 }
 

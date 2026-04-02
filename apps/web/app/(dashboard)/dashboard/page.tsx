@@ -7,7 +7,6 @@ import { useMarketStore } from "@/stores/trading/market.store";
 import { toInstrumentKey } from "@paper-market/core";
 import {
   Activity,
-  ArrowUpRight,
   BookOpenText,
   CandlestickChart,
   ChartNoAxesCombined,
@@ -17,7 +16,6 @@ import {
   LayoutGrid,
   ShieldCheck,
   Target,
-  TrendingDown,
   TrendingUp,
   Wallet,
 } from "lucide-react";

@@ -20,7 +20,6 @@
  */
 
 import { db } from '@/lib/db';
-import { type Instrument } from "@paper-market/core";
 import { instruments } from "@paper-market/core/db";;
 import { logger } from '@/lib/logger';
 import { ApiError } from '@/lib/errors';
@@ -331,7 +330,7 @@ function normalize(raw: UpstoxInstrument, syncTime: Date): ParsedInstrument | nu
       isActive: true, // Always active if present in master
       lastSyncedAt: syncTime,
     };
-  } catch (err) {
+  } catch (_) {
     return null;
   }
 }

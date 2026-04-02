@@ -14,8 +14,8 @@ export async function checkDbConnection() {
         await dbPool.query('SELECT 1');
         logger.info("Database connection established successfully.");
         return true;
-    } catch (error) {
-        logger.error({ err: error }, "Failed to connect to the database.");
+    } catch (err) {
+        logger.error({ err: err }, "Failed to connect to the database.");
         return false;
     }
 }

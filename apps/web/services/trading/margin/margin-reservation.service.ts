@@ -1,9 +1,7 @@
 import { MarginCalculatorService } from "@/services/trading/margin/margin-calculator.service";
 import { WalletService } from "@/services/accounting/wallet/wallet.service";
-import { db } from "@/lib/db";
 import type { Instrument, PlaceOrder } from "@paper-market/core";
 import { ApiError } from "@/lib/errors";
-import { logger } from "@/lib/logger";
 
 export class MarginReservationService {
   /**

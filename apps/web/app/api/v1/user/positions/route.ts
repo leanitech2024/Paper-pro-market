@@ -5,7 +5,7 @@ import { OrderExecutorService } from "@/services/trading/execution/order-executo
 import { handleError, ApiError } from "@/lib/errors";
 import { logger } from "@/lib/logger";
 
-export async function GET(req: NextRequest) {
+export async function GET(_req: NextRequest) {
     try {
         const session = await auth();
         if (!session?.user?.id) {
@@ -17,8 +17,8 @@ export async function GET(req: NextRequest) {
         if (paperMode && process.env.NODE_ENV !== "production") {
             try {
                 await OrderExecutorService.executeOpenOrders();
-            } catch (error) {
-                logger.warn({ err: error }, "Auto-execute open orders failed");
+            } catch (err) {
+                logger.warn({ err: err }, "Auto-execute open orders failed");
             }
         }
 
@@ -29,8 +29,8 @@ export async function GET(req: NextRequest) {
             data: positions,
         });
 
-    } catch (error) {
-        return handleError(error);
+    } catch (err) {
+        return handleError(err);
     }
 }
 

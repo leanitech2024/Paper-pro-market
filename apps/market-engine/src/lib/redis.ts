@@ -72,7 +72,7 @@ function createDevRedis(url: string): RedisClient {
 
     innerClient = {
       async get(key: string) {
-        try { return await client.get(key); } catch (e) { return null; }
+        try { return await client.get(key); } catch (_) { return null; }
       },
       async set(key: string, value: unknown, options?: { ex?: number }) {
         try {
@@ -81,21 +81,21 @@ function createDevRedis(url: string): RedisClient {
             return await client.set(key, serialized, 'EX', options.ex);
           }
           return await client.set(key, serialized);
-        } catch (e) { return null; }
+        } catch (_) { return null; }
       },
       async mget(...keys: string[]) {
         if (keys.length === 0) return [];
         try {
           return await client.mget(...keys);
-        } catch (e) {
+        } catch (_) {
           return keys.map(() => null);
         }
       },
       async del(...keys: string[]) {
-        try { return await client.del(...keys); } catch (e) { return 0; }
+        try { return await client.del(...keys); } catch (_) { return 0; }
       },
       async exists(...keys: string[]) {
-        try { return await client.exists(...keys); } catch (e) { return 0; }
+        try { return await client.exists(...keys); } catch (_) { return 0; }
       },
       pipeline,
     };
@@ -172,13 +172,13 @@ function createProdRedis(): RedisClient {
         const val = await client.get(key);
         if (val === null || val === undefined) return null;
         return typeof val === 'string' ? val : JSON.stringify(val);
-      } catch (e) { return null; }
+      } catch (_) { return null; }
     },
     async set(key: string, value: unknown, options?: { ex?: number }) {
       if (!client) return null;
       try {
         return await client.set(key, value, options?.ex ? { ex: options.ex } : undefined);
-      } catch (e) { return null; }
+      } catch (_) { return null; }
     },
     async mget(...keys: string[]) {
       if (!client) return keys.map(() => null);
@@ -189,15 +189,15 @@ function createProdRedis(): RedisClient {
           if (val === null || val === undefined) return null;
           return typeof val === 'string' ? val : JSON.stringify(val);
         });
-      } catch (e) { return keys.map(() => null); }
+      } catch (_) { return keys.map(() => null); }
     },
     async del(...keys: string[]) {
       if (!client) return 0;
-      try { return await client.del(...keys); } catch(e) { return 0; }
+      try { return await client.del(...keys); } catch (_) { return 0; }
     },
     async exists(...keys: string[]) {
       if (!client) return 0;
-      try { return await client.exists(...keys); } catch(e) { return 0; }
+      try { return await client.exists(...keys); } catch (_) { return 0; }
     },
     pipeline,
   };

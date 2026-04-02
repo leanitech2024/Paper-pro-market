@@ -98,8 +98,8 @@ export async function GET(req: NextRequest) {
                 instruments,
             },
         });
-    } catch (error) {
-        return handleError(error);
+    } catch (err) {
+        return handleError(err);
     }
 }
 

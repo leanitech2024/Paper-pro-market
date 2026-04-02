@@ -33,12 +33,12 @@ export async function GET(
       success: true,
       data: watchlist,
     });
-  } catch (error: any) {
+  } catch (err: any) {
     const { id } = await params; // Ensure id is available
-    logger.error({ err: error, watchlistId: id }, 'GET /api/v1/watchlists/:id failed');
+    logger.error({ err: err, watchlistId: id }, 'GET /api/v1/watchlists/:id failed');
     
-    if (error.message?.includes('not found') || error.message?.includes('access denied')) {
-      return NextResponse.json({ error: error.message }, { status: 404 });
+    if (err.message?.includes('not found') || err.message?.includes('access denied')) {
+      return NextResponse.json({ error: err.message }, { status: 404 });
     }
 
     return NextResponse.json(
@@ -65,16 +65,16 @@ export async function DELETE(
       success: true,
       message: 'Watchlist deleted',
     });
-  } catch (error: any) {
+  } catch (err: any) {
     const { id } = await params;
-    logger.error({ err: error, watchlistId: id }, 'DELETE /api/v1/watchlists/:id failed');
+    logger.error({ err: err, watchlistId: id }, 'DELETE /api/v1/watchlists/:id failed');
     
-    if (error.message?.includes('not found') || error.message?.includes('access denied')) {
-      return NextResponse.json({ error: error.message }, { status: 404 });
+    if (err.message?.includes('not found') || err.message?.includes('access denied')) {
+      return NextResponse.json({ err: err.message }, { status: 404 });
     }
 
-    if (error.message?.includes('Cannot delete default')) {
-      return NextResponse.json({ error: error.message }, { status: 400 });
+    if (err.message?.includes('Cannot delete default')) {
+      return NextResponse.json({ err: err.message }, { status: 400 });
     }
 
     return NextResponse.json(

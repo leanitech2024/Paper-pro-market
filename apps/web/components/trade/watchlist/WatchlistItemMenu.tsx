@@ -59,7 +59,7 @@ export function WatchlistItemMenu({ stock, isInWatchlist = true, onSelect, onRem
     try {
       await addInstrument(stock);
       toast.success(`Added ${stock.symbol} to watchlist`);
-    } catch (error) {
+    } catch (_) {
       toast.error('Failed to add to watchlist');
     }
   };
@@ -80,7 +80,7 @@ export function WatchlistItemMenu({ stock, isInWatchlist = true, onSelect, onRem
       onRemoved?.(stock);
       toast.success(`Removed ${stock.symbol} from watchlist`);
       await removeInstrument(stock.instrumentToken);
-    } catch (error) {
+    } catch (_) {
       toast.error('Failed to remove from watchlist');
     }
   };

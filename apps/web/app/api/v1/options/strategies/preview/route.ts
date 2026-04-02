@@ -22,8 +22,8 @@ export async function POST(req: NextRequest) {
             success: true,
             data: preview,
         });
-    } catch (error) {
-        return handleError(error);
+    } catch (err) {
+        return handleError(err);
     }
 }
 

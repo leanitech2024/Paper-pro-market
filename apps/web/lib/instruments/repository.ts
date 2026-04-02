@@ -187,10 +187,10 @@ export class InstrumentRepository {
                     },
                     'InstrumentRepository loaded successfully'
                 );
-            } catch (error) {
-                logger.error({ error }, 'Failed to initialize InstrumentRepository');
-                this.initializationError = error as Error;
-                throw error;
+            } catch (err) {
+                logger.error({ err }, 'Failed to initialize InstrumentRepository');
+                this.initializationError = err as Error;
+                throw err;
             } finally {
                 this.initializePromise = null;
             }

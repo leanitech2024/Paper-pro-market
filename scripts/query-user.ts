@@ -14,7 +14,7 @@ async function main() {
   try {
       const res = await c.query('SELECT id, email, "onboardingCompleted" FROM users LIMIT 1');
       console.log("User onboardingCompleted state:", res.rows[0]);
-  } catch(e) { console.error(e) }
+  } catch (_) { console.error(e) }
   await c.end();
 }
 main();

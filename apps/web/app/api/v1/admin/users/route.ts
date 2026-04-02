@@ -3,12 +3,12 @@ import { handleError } from "@/lib/errors";
 import { requireAdmin } from "@/lib/admin";
 import { AdminService } from "@/services/admin/admin.service";
 
-export async function GET(req: Request) {
+export async function GET(_req: Request) {
   try {
     const authResult = await requireAdmin();
     if (!authResult.ok) return authResult.response;
 
-    const { searchParams } = new URL(req.url);
+    const { searchParams } = new URL(_req.url);
     const limit = Number(searchParams.get("limit") || 20);
     const page = Number(searchParams.get("page") || 1);
     const result = await AdminService.listUsers({ page, limit });
@@ -20,7 +20,7 @@ export async function GET(req: Request) {
         pagination: result.pagination,
       },
     });
-  } catch (error) {
-    return handleError(error);
+  } catch (err) {
+    return handleError(err);
   }
 }

@@ -180,6 +180,7 @@ export const useMarketStream = () => {
     }, []); // ← no deps, uses ref
 
     // ── Effect 1: One-time WS setup (empty deps — never re-runs) ──────
+    /* eslint-disable react-hooks/exhaustive-deps */
     useEffect(() => {
         // Keep action refs fresh without re-running this effect
         const unsubActions = useMarketStore.subscribe((state) => {
@@ -294,6 +295,7 @@ export const useMarketStream = () => {
             isConnectedRef.current = false;
         };
     }, []); // ← empty, truly runs once
+    /* eslint-enable react-hooks/exhaustive-deps */
 
     // ── Effect 2: Re-sync subscriptions when instrument universe changes ──
     // Uses Zustand's subscribeWithSelector to avoid firing on price ticks —

@@ -1,6 +1,6 @@
 import { and, eq, inArray } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { type Instrument, type NewOrder } from "@paper-market/core";
+import { type Instrument } from "@paper-market/core";
 import { instruments, orders, positions, wallets } from "@paper-market/core/db";
 import { logger } from "@/lib/logger";
 import { InstrumentRepository } from "@/lib/instruments/repository";
@@ -8,7 +8,6 @@ import { maintenanceMarginService } from "@/services/trading/valuation/maintenan
 import { marketSimulation } from "@/services/market/feeds/market-simulation.service";
 import { realTimeMarketService } from "@/services/market/feeds/realtime-market.service";
 import { isTradingEnabled } from "@/lib/system-control";
-import { calculateFuturesRequiredMargin } from "@paper-market/core";
 import { LedgerService } from "@/services/accounting/ledger/ledger.service";
 import { MarginCalculatorService } from "@/services/trading/margin/margin-calculator.service";
 import { instrumentStore } from "@/stores/instrument.store";
@@ -280,9 +279,9 @@ export class LiquidationEngineService {
 
             // True means we successfully placed the liquidation request
             return true;
-        } catch (error) {
+        } catch (err) {
             logger.error(
-                { err: error, userId, instrument: position.instrumentToken },
+                { err: err, userId, instrument: position.instrumentToken },
                 "Failed to place forced liquidation order via pipeline"
             );
             return false;
@@ -344,7 +343,7 @@ export class LiquidationEngineService {
         }
 
         let unrealizedPnL = 0;
-        let realizedPnL = 0;
+        let _realizedPnL = 0;
         let requiredMargin = 0;
         const positionsWithRisk: PositionRisk[] = [];
 
@@ -381,7 +380,7 @@ export class LiquidationEngineService {
             } else {
                 unrealizedPnL += (averagePrice - markPrice) * Math.abs(quantity);
             }
-            realizedPnL += toNumber(row.realizedPnL);
+            _realizedPnL += toNumber(row.realizedPnL);
 
             item.marginUsage = await computeRequiredMargin(item);
             item.unrealizedLoss = computeUnrealizedLoss(item);

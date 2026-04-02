@@ -83,8 +83,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
             currency: order.currency,
             keyId: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
         });
-    } catch (error) {
-        logger.error({ err: error }, 'Failed to create Razorpay order');
+    } catch (err) {
+        logger.error({ err: err }, 'Failed to create Razorpay order');
         return NextResponse.json({ error: 'Failed to create payment order', code: 'ORDER_CREATION_FAILED' }, { status: 500 });
     }
 }

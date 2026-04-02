@@ -95,9 +95,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
             try {
               await WatchlistService.ensureDefaultWatchlist(createdId);
-            } catch (error) {
+            } catch (err) {
               logger.warn(
-                { err: error, userId: createdId },
+                { err: err, userId: createdId },
                 "Failed to create default watchlist during Google sign-in"
               );
             }
@@ -122,8 +122,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
               user.plan = "free_trial";
             }
           }
-        } catch (error) {
-          logger.error({ err: error }, "Error in Google signIn callback");
+        } catch (err) {
+          logger.error({ err: err }, "Error in Google signIn callback");
           return false;
         }
       }

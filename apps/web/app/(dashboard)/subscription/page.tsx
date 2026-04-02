@@ -1,7 +1,6 @@
 "use client";
 import { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
-import { useRouter } from 'next/navigation';
 import { useSubscriptionStore } from '@/stores/subscription.store';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -31,8 +30,7 @@ function redirectToSuccess(url: string) {
   }
 }
 export default function SubscriptionPage() {
-  const router = useRouter();
-  const { data: session, update, status: sessionStatus } = useSession();
+  const { data: session, status: sessionStatus } = useSession();
 
   const store = useSubscriptionStore();
   const fetchSubscription = store.fetchSubscription;
@@ -156,7 +154,7 @@ export default function SubscriptionPage() {
           );
         },
       };
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-call
+       
       const rzp = new window.Razorpay(rzpOptions as unknown as RazorpayOptions);
 
       rzp.open();

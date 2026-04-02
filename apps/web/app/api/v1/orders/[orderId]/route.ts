@@ -26,7 +26,7 @@ export async function DELETE(
             success: true,
             data: order,
         });
-    } catch (error) {
-        return handleError(error);
+    } catch (err) {
+        return handleError(err);
     }
 }

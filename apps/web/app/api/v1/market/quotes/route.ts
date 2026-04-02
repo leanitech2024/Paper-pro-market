@@ -158,8 +158,8 @@ async function resolveSymbolKeysToIsins(
             const isinKey = dbLookup.get(`${segment}:${symbol}`);
             out.set(key, isinKey ?? key); // fall back to original if not found
         }
-    } catch (error) {
-        logger.warn({ err: error }, "Failed to resolve symbol keys to ISINs");
+    } catch (err) {
+        logger.warn({ err: err }, "Failed to resolve symbol keys to ISINs");
         // Fall back: map each unresolved key to itself
         for (const { key } of symbolNameKeys) if (!out.has(key)) out.set(key, key);
     }
@@ -343,15 +343,15 @@ export async function POST(req: NextRequest) {
             "Failed to fetch quotes";
 
         throw new ApiError(msg, 502, "UPSTOX_QUOTES_FAILED");
-    } catch (error) {
-        logger.error({ err: error }, "Quote fetch error");
-        if (error instanceof ApiError) {
-            return handleError(error);
+    } catch (err) {
+        logger.error({ err: err }, "Quote fetch error");
+        if (err instanceof ApiError) {
+            return handleError(err);
         }
 
         return handleError(
             new ApiError(
-                normalizeErrorMessage(error),
+                normalizeErrorMessage(err),
                 502,
                 "UPSTOX_QUOTES_INTERNAL"
             )

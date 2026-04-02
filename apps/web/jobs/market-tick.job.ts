@@ -28,9 +28,9 @@ class MarketTickJob {
 
             this.isRunning = true;
             logger.info("MarketTickJob started");
-        } catch (error) {
-            logger.error({ err: error }, "Failed to start MarketTickJob");
-            throw error;
+        } catch (err) {
+            logger.error({ err: err }, "Failed to start MarketTickJob");
+            throw err;
         }
     }
 
@@ -81,8 +81,8 @@ class MarketTickJob {
 
             await SlTargetEngineService.checkAndExecute();
             await SlTargetEngineService.misSquareOff();
-        } catch (error) {
-            logger.error({ err: error, tickCount: this.tickCount }, "Market tick failed");
+        } catch (err) {
+            logger.error({ err: err, tickCount: this.tickCount }, "Market tick failed");
         }
     }
 }

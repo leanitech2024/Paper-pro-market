@@ -9,7 +9,7 @@ import {
     TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { useWalletStore, Transaction } from "@/stores/wallet.store";
+import { Transaction } from "@/stores/wallet.store";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
 

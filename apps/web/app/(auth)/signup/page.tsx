@@ -68,8 +68,8 @@ function SignupForm() {
             }
 
             router.replace(callbackUrl || "/onboarding");
-        } catch (error: any) {
-            toast.error(error.message);
+        } catch (err: any) {
+            toast.error(err.message);
         } finally {
             setLoading(false);
         }

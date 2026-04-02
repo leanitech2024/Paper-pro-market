@@ -3,7 +3,7 @@ import { handleError } from "@/lib/errors";
 import { requireAdmin } from "@/lib/admin";
 import { AdminService } from "@/services/admin/admin.service";
 
-export async function GET(req: Request) {
+export async function GET(_req: Request) {
   try {
     const authResult = await requireAdmin();
     if (!authResult.ok) return authResult.response;
@@ -20,7 +20,7 @@ export async function GET(req: Request) {
         pagination: result.pagination,
       },
     });
-  } catch (error) {
-    return handleError(error);
+  } catch (err) {
+    return handleError(err);
   }
 }

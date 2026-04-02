@@ -158,8 +158,8 @@ export function OrderPanel({
       });
       clearOrderProcessingError();
       setShowConfirmDialog(false);
-    } catch (error) {
-      const fallbackMessage = error instanceof Error ? error.message : "Order failed";
+    } catch (err) {
+      const fallbackMessage = err instanceof Error ? err.message : "Order failed";
       const message = fallbackMessage.includes("PARTIAL_EXIT_NOT_ALLOWED")
         ? "Partial exit is not supported - closes full position."
         : fallbackMessage;

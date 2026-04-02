@@ -20,7 +20,7 @@ async function main() {
       
       const verify = await c.query('SELECT id, email, "onboardingCompleted" FROM "users" WHERE "onboardingCompleted" = true LIMIT 1');
       console.log("VERIFIED ROW:", verify.rows[0]);
-  } catch(e) {
+  } catch (_) {
       console.error("DB Error:", e);
   } finally {
       await c.end();

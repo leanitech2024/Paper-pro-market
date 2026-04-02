@@ -44,7 +44,7 @@ export async function POST(
                 ? `Partially closed ${quantity} units` 
                 : "Position closed successfully"
         });
-    } catch (error) {
-        return handleError(error);
+    } catch (err) {
+        return handleError(err);
     }
 }

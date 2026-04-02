@@ -24,8 +24,8 @@ export function StreamControl() {
       if (!res.ok) throw new Error(data.error);
       
       toast.success(data.message);
-    } catch (error: any) {
-      toast.error("Failed to start stream: " + error.message);
+    } catch (err: any) {
+      toast.error("Failed to start stream: " + err.message);
     } finally {
       setLoading(false);
     }

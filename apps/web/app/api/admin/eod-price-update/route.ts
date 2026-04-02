@@ -21,15 +21,15 @@ export async function GET(req: NextRequest) {
   try {
     const result = await EODPriceUpdateService.updateAllPrices();
     return NextResponse.json(result);
-  } catch (error: any) {
+  } catch (err: any) {
     return NextResponse.json(
-      { error: error.message },
+      { error: err.message },
       { status: 500 }
     );
   }
 }
 
-export async function POST(req: NextRequest) {
+export async function POST(_req: NextRequest) {
   // 🔒 SECURITY: Require authentication
   const session = await auth();
   if (!session?.user) {
@@ -44,9 +44,9 @@ export async function POST(req: NextRequest) {
   try {
     const result = await EODPriceUpdateService.updateAllPrices();
     return NextResponse.json(result);
-  } catch (error: any) {
+  } catch (err: any) {
     return NextResponse.json(
-      { error: error.message },
+      { error: err.message },
       { status: 500 }
     );
   }

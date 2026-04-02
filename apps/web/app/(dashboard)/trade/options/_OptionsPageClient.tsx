@@ -327,8 +327,6 @@ function OptionsPageContent() {
     );
   };
 
-  const hasPanelContent = mode === "strategy" || !!selectedContract;
-
   const headerNode = (
     <TerminalHeader
       underlyingLabel={underlying}

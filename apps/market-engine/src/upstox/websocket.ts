@@ -126,8 +126,8 @@ export class UpstoxWebSocket {
         if (decoded && this.onUpdate) {
           try {
             this.onUpdate(decoded);
-          } catch (error) {
-            logger.error({ err: error }, "Upstox message handler failed");
+          } catch (err) {
+            logger.error({ err:err }, "Upstox message handler failed");
           }
         }
       });
@@ -288,8 +288,8 @@ export class UpstoxWebSocket {
         enums: String,
         bytes: Buffer,
       });
-    } catch (error) {
-      logger.warn({ err: error }, "Failed to decode Upstox protobuf message");
+    } catch (err) {
+      logger.warn({ err: err }, "Failed to decode Upstox protobuf message");
       return null;
     }
   }

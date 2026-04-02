@@ -35,8 +35,8 @@ export async function POST() {
       maxAge: 86400,     // 24-hour TTL — covers the full user session
     });
     return response;
-  } catch (error) {
-    logger.error({ err: error }, "Failed to complete onboarding");
+  } catch (err) {
+    logger.error({ err: err }, "Failed to complete onboarding");
     return NextResponse.json(
       { error: "Internal Server Error" },
       { status: 500 }

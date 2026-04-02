@@ -1,6 +1,5 @@
 "use client";
 import { Stock } from '@paper-market/core';
-import { useMarketStore } from '@/stores/trading/market.store';
 import { parseOptionSymbol, calculateOptionRiskMetrics } from '@paper-market/core';
 
 interface OptionsRiskMetricsProps {

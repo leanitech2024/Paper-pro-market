@@ -5,7 +5,6 @@
 
 import { db } from '@/lib/db';
 import { watchlists, watchlistItems, instruments } from '@paper-market/core/db';
-import { type Watchlist, type NewWatchlist } from '@paper-market/core';
 import { eq, and, sql, inArray } from 'drizzle-orm';
 import { logger } from '@/lib/logger';
 import { cache } from '@/lib/cache';
@@ -106,11 +105,11 @@ export class WatchlistService {
 
     try {
       return await this.createDefaultWatchlist(userId);
-    } catch (error) {
+    } catch (err) {
       const concurrentDefault = await db.query.watchlists.findFirst({
         where: and(eq(watchlists.userId, userId), eq(watchlists.isDefault, true)),
       });
-      if (!concurrentDefault) throw error;
+      if (!concurrentDefault) throw err;
       await this.seedWatchlistIfEmpty(concurrentDefault.id, userId);
       return concurrentDefault;
     }
@@ -137,9 +136,9 @@ export class WatchlistService {
         .orderBy(sql`${watchlists.isDefault} DESC, ${watchlists.createdAt} DESC`);
 
       return userWatchlists;
-    } catch (error) {
-      logger.error({ err: error, userId }, 'Failed to get user watchlists');
-      throw error;
+    } catch (err) {
+      logger.error({ err: err, userId }, 'Failed to get user watchlists');
+      throw err;
     }
   }
 
@@ -182,9 +181,9 @@ export class WatchlistService {
       };
 
       return result;
-    } catch (error) {
-      logger.error({ err: error, watchlistId, userId }, 'Failed to get watchlist with instruments');
-      throw error;
+    } catch (err) {
+      logger.error({ err: err, watchlistId, userId }, 'Failed to get watchlist with instruments');
+      throw err;
     }
   }
 
@@ -205,9 +204,9 @@ export class WatchlistService {
 
       logger.info({ watchlistId: newWatchlist.id, userId, name }, 'Created watchlist');
       return newWatchlist;
-    } catch (error) {
-      logger.error({ err: error, userId, name }, 'Failed to create watchlist');
-      throw error;
+    } catch (err) {
+      logger.error({ err: err, userId, name }, 'Failed to create watchlist');
+      throw err;
     }
   }
 
@@ -253,9 +252,9 @@ export class WatchlistService {
         'Created default watchlist'
       );
       return watchlist;
-    } catch (error) {
-      logger.error({ err: error, userId }, 'Failed to create default watchlist');
-      throw error;
+    } catch (err) {
+      logger.error({ err: err, userId }, 'Failed to create default watchlist');
+      throw err;
     }
   }
 
@@ -313,9 +312,9 @@ export class WatchlistService {
       );
 
       return { seeded: afterCount.count, skipped: false as const };
-    } catch (error) {
-      logger.error({ err: error, watchlistId, userId }, 'Failed to seed empty watchlist');
-      throw error;
+    } catch (err) {
+      logger.error({ err: err, watchlistId, userId }, 'Failed to seed empty watchlist');
+      throw err;
     }
   }
 
@@ -344,9 +343,9 @@ export class WatchlistService {
 
       logger.info({ watchlistId, userId }, 'Deleted watchlist');
       return { success: true };
-    } catch (error) {
-      logger.error({ err: error, watchlistId, userId }, 'Failed to delete watchlist');
-      throw error;
+    } catch (err) {
+      logger.error({ err: err, watchlistId, userId }, 'Failed to delete watchlist');
+      throw err;
     }
   }
 
@@ -400,9 +399,9 @@ export class WatchlistService {
 
       logger.info({ watchlistId, instrumentToken, userId }, 'Added instrument to watchlist');
       return item;
-    } catch (error) {
-      logger.error({ err: error, watchlistId, instrumentToken, userId }, 'Failed to add instrument');
-      throw error;
+    } catch (err) {
+      logger.error({ err: err, watchlistId, instrumentToken, userId }, 'Failed to add instrument');
+      throw err;
     }
   }
 
@@ -438,9 +437,9 @@ export class WatchlistService {
       cache.delete(`watchlist:${watchlistId}:instruments`);
       
       return { success: true };
-    } catch (error) {
-      logger.error({ err: error, watchlistId, instrumentToken, userId }, 'Failed to remove instrument');
-      throw error;
+    } catch (err) {
+      logger.error({ err: err, watchlistId, instrumentToken, userId }, 'Failed to remove instrument');
+      throw err;
     }
   }
 }

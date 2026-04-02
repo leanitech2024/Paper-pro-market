@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { Stock } from "@paper-market/core";
 import { cn } from "@/lib/utils";
 import { TooltipProvider } from '@/components/ui/tooltip';
-import { Search, TrendingDown, TrendingUp, AlertTriangle } from 'lucide-react';
+import { TrendingDown, TrendingUp, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { useTradeExecutionStore } from '@/stores/trading/tradeExecution.store';
@@ -14,7 +14,7 @@ import { useInstrumentPrice } from '@/hooks/useInstrumentPrice';
 import { useMarginPreview } from '@/hooks/useMarginPreview';
 import { getExitQuantity } from '@/utils/trading/position-exit';
 
-import { TradePriceDisplay, formatPrice } from '../shared/trade-price-display';
+import { TradePriceDisplay } from '../shared/trade-price-display';
 import { TradeMarginSummary, formatMoney } from '../shared/trade-margin-summary';
 import { TradeControls } from '../shared/trade-controls';
 import { OrderProcessingDialog, TradeConfirmationDialog } from '../form';
@@ -29,10 +29,10 @@ interface EquityTradingFormProps {
 
 export function EquityTradingForm({
   selectedStock,
-  onStockSelect,
-  instruments,
+  onStockSelect: _onStockSelect,
+  instruments: _instruments,
   sheetMode = false,
-  onOpenSearch,
+  onOpenSearch: _onOpenSearch,
 }: EquityTradingFormProps) {
   const [side, setSide] = useState<'BUY' | 'SELL'>('BUY');
   const [quantity, setQuantity] = useState('1');
@@ -64,7 +64,7 @@ export function EquityTradingForm({
     existingPositionQty
   } = getExitQuantity(positions, selectedStock?.instrumentToken, side, 'equity', inputValue * lotSize);
 
-  const effectiveInputValue = isOppositeExitFlow ? Math.max(1, Math.round(effectiveQuantity / Math.max(1, lotSize))) : inputValue;
+  const _effectiveInputValue = isOppositeExitFlow ? Math.max(1, Math.round(effectiveQuantity / Math.max(1, lotSize))) : inputValue;
 
   const slValue = parseFloat(stopLoss);
   const targetValue = parseFloat(target);
@@ -132,8 +132,8 @@ export function EquityTradingForm({
       toast.success('Trade Sent', { description: `${side} ${effectiveQuantity} units of ${selectedStock.symbol} at market.` });
       setShowConfirmDialog(false);
       setTimeout(() => { setQuantity('1'); setStopLoss(''); setTarget(''); }, 300);
-    } catch (error) {
-      const fallbackMessage = error instanceof Error ? error.message : 'Order placement failed';
+    } catch (err) {
+      const fallbackMessage = err instanceof Error ? err.message : 'Order placement failed';
       const message = fallbackMessage.includes('PARTIAL_EXIT_NOT_ALLOWED')
         ? 'Partial exit is disabled in paper trading mode.'
         : fallbackMessage;

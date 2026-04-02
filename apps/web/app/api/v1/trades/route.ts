@@ -39,7 +39,7 @@ export async function GET(req: NextRequest) {
                 limit,
             },
         });
-    } catch (error) {
-        return handleError(error);
+    } catch (err) {
+        return handleError(err);
     }
 }

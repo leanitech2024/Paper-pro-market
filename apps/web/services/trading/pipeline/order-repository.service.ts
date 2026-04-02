@@ -3,7 +3,6 @@ import type { Instrument, PlaceOrder } from "@paper-market/core";
 import { orders } from "@paper-market/core/db";
 import type { NewOrder } from "@paper-market/core";
 import { db } from "@/lib/db";
-import { ApiError } from "@/lib/errors";
 import { WalletService } from "@/services/accounting/wallet/wallet.service";
 import { MarginReservationService } from "@/services/trading/margin/margin-reservation.service";
 import { buildLedgerIdempotencyKey, resolveLedgerReferenceType } from "@/services/trading/pipeline/order-ledger-keys";

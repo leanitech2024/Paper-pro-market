@@ -148,9 +148,9 @@ export class PriceOracleService {
             let snapshotDetail: SystemQuoteDetail | null = null;
             try {
                 snapshotDetail = await this.getSnapshotDetail(token);
-            } catch (error) {
+            } catch (err) {
                 logger.warn(
-                    { err: error, instrumentToken: token },
+                    { err: err, instrumentToken: token },
                     "Snapshot price lookup failed in PriceOracle"
                 );
             }
@@ -160,9 +160,9 @@ export class PriceOracleService {
 
             const closePrice = toPrice(snapshotDetail?.closePrice);
             if (closePrice !== null) return closePrice;
-        } catch (error) {
+        } catch (err) {
             logger.warn(
-                { err: error, instrumentToken: token },
+                { err: err, instrumentToken: token },
                 "PriceOracle ladder failed"
             );
         }

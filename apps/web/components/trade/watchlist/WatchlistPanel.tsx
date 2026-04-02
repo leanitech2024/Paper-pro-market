@@ -41,7 +41,7 @@ interface WatchlistPanelProps {
   onClearSelection?: () => void;
 }
 
-export function WatchlistPanel({ instruments, onSelect, selectedSymbol, onOpenSearch, onClearSelection }: WatchlistPanelProps) {
+export function WatchlistPanel({ instruments, onSelect, selectedSymbol, onOpenSearch: _onOpenSearch, onClearSelection }: WatchlistPanelProps) {
   const [isCreating, setIsCreating] = useState(false);
   const [newWatchlistName, setNewWatchlistName] = useState('');
   const [hoveredSymbol, setHoveredSymbol] = useState<string | null>(null);
@@ -174,7 +174,7 @@ export function WatchlistPanel({ instruments, onSelect, selectedSymbol, onOpenSe
       setNewWatchlistName('');
       setIsCreating(false);
       toast.success('Watchlist created');
-    } catch (error) {
+    } catch (_) {
         toast.error('Failed to create watchlist');
     }
   };

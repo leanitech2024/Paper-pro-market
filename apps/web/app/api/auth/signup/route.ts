@@ -45,8 +45,8 @@ export async function POST(req: NextRequest) {
 
         try {
             await WatchlistService.ensureDefaultWatchlist(user.id);
-        } catch (error) {
-            console.error("Failed to create default watchlist during signup:", error);
+        } catch (err) {
+            console.error("Failed to create default watchlist during signup:", err);
         }
 
         return NextResponse.json(
@@ -61,8 +61,8 @@ export async function POST(req: NextRequest) {
             },
             { status: 201 }
         );
-    } catch (error) {
-        return handleError(error);
+    } catch (err) {
+        return handleError(err);
     }
 }
 

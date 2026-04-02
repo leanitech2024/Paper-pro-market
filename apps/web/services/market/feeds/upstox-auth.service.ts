@@ -54,9 +54,9 @@ export class UpstoxAuthService {
                 });
 
             logger.info({ userId, expiresAt }, "Upstox token stored successfully");
-        } catch (error) {
-            logger.error({ err: error, userId }, "Failed to handle Upstox callback");
-            throw error;
+        } catch (err) {
+            logger.error({ err: err, userId }, "Failed to handle Upstox callback");
+            throw err;
         }
     }
 
@@ -83,8 +83,8 @@ export class UpstoxAuthService {
             }
 
             return token.accessToken;
-        } catch (error) {
-            logger.error({ err: error, userId }, "Failed to get Upstox token");
+        } catch (err) {
+            logger.error({ err: err, userId }, "Failed to get Upstox token");
             return null;
         }
     }
@@ -112,8 +112,8 @@ export class UpstoxAuthService {
                 connected: !isExpired,
                 expiresAt: token.expiresAt,
             };
-        } catch (error) {
-            logger.error({ err: error, userId }, "Failed to get Upstox status");
+        } catch (err) {
+            logger.error({ err: err, userId }, "Failed to get Upstox status");
             return { connected: false, expiresAt: null };
         }
     }
@@ -128,9 +128,9 @@ export class UpstoxAuthService {
                 .where(eq(upstoxTokens.userId, userId));
 
             logger.info({ userId }, "Upstox disconnected");
-        } catch (error) {
-            logger.error({ err: error, userId }, "Failed to disconnect Upstox");
-            throw error;
+        } catch (err) {
+            logger.error({ err: err, userId }, "Failed to disconnect Upstox");
+            throw err;
         }
     }
 }

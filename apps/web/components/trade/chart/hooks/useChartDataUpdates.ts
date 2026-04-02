@@ -375,8 +375,8 @@ export const useChartDataUpdates = ({
       try {
         const mappedVolume = toMappedVolumeData(volumeData, rawToRenderTimeRef);
         volumeSeries.setData(mappedVolume as any);
-      } catch (error) {
-        console.warn('?? Failed to update volume data:', error);
+      } catch (err) {
+        console.warn('?? Failed to update volume data:', err);
         trackAnalysisEvent({
           name: 'chart_volume_update_failed',
           level: 'warn',

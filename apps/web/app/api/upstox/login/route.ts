@@ -3,7 +3,7 @@ import { UpstoxService } from "@/services/market/feeds/upstox-feed.service";
 import { auth } from "@/lib/auth";
 import { handleError, ApiError } from "@/lib/errors";
 
-export async function GET(req: NextRequest) {
+export async function GET(_req: NextRequest) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
@@ -22,8 +22,8 @@ export async function GET(req: NextRequest) {
     });
 
     return response;
-  } catch (error) {
-    return handleError(error);
+  } catch (err) {
+    return handleError(err);
   }
 }
 

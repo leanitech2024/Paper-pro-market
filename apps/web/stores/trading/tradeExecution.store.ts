@@ -54,7 +54,7 @@ interface TradeExecutionState {
     lotSize: number,
     instrumentMode: InstrumentMode,
     orderType?: "MARKET" | "LIMIT" | "STOP",
-    triggerPrice?: number
+    _triggerPrice?: number
   ) => Promise<void>;
 
   fetchOrders: () => Promise<void>;
@@ -84,7 +84,7 @@ export const useTradeExecutionStore = create<TradeExecutionState>((set, get) => 
     lotSize,
     instrumentMode,
     orderType = "MARKET",
-    triggerPrice
+    _triggerPrice
   ) => {
     let markedProcessing = false;
     try {
@@ -201,11 +201,11 @@ export const useTradeExecutionStore = create<TradeExecutionState>((set, get) => 
       get().fetchOrders();
       useWalletStore.getState().fetchWallet();
       usePositionsStore.getState().fetchPositions();
-    } catch (error: any) {
-      const message = error instanceof Error ? error.message : "Order placement failed";
+    } catch (err: any) {
+      const message = err instanceof Error ? err.message : "Order placement failed";
       set({ orderProcessingError: message });
-      console.error("[TradeExecution] Order placement failed", error);
-      throw error;
+      console.error("[TradeExecution] Order placement failed", err);
+      throw err;
     } finally {
       if (markedProcessing) {
         set((state) => {
@@ -226,8 +226,8 @@ export const useTradeExecutionStore = create<TradeExecutionState>((set, get) => 
       if (data.success) {
         set({ pendingOrders: data.data });
       }
-    } catch (error) {
-      console.error("Fetch Orders Error:", error);
+    } catch (err) {
+      console.error("Fetch Orders Error:", err);
     }
   },
 
@@ -288,8 +288,8 @@ export const useTradeExecutionStore = create<TradeExecutionState>((set, get) => 
         realizedPnL: pnl,
         exitReason,
       });
-    } catch (error) {
-      console.error("Failed to close position:", error);
+    } catch (err) {
+      console.error("Failed to close position:", err);
     }
   },
 

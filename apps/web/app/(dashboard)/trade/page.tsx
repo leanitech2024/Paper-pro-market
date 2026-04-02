@@ -5,14 +5,12 @@ import dynamic from "next/dynamic";
 import { EquityTradeForm } from "@/components/trade/EquityTradeForm";
 import { Stock } from "@paper-market/core";
 import { useMarketStore } from "@/stores/trading/market.store";
-import { useWalletStore } from "@/stores/wallet.store";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { WatchlistPanel } from "@/components/trade/watchlist/WatchlistPanel";
 import { PositionsTable } from "@/components/positions/PositionsTable";
 import { toCanonicalSymbol } from "@paper-market/core";
 import { AdaptiveTradeLayout } from "@/components/trade/layout/AdaptiveTradeLayout";
-import { MobileTradeTopBar } from "@/components/trade/mobile/MobileTradeTopBar";
 import { PositionsCards } from "@/components/trade/mobile/PositionsCards";
 import { useTradeViewport } from "@/hooks/use-trade-viewport";
 import { useSearchStore } from "@/stores/ui/search.store";
@@ -22,15 +20,9 @@ const CandlestickChartComponent = dynamic(
   { ssr: false },
 );
 
-function formatBalance(value: number): string {
-  if (!Number.isFinite(value)) return "--";
-  return `INR ${value.toLocaleString("en-IN", { maximumFractionDigits: 0 })}`;
-}
-
 export default function TradePage() {
   const { isMobile, isDesktop } = useTradeViewport();
   const { stocks, stocksBySymbol } = useMarketStore();
-  const walletBalance = useWalletStore((state) => state.balance);
 
   const [selectedSymbol, setSelectedSymbol] = useState<string | null>(null);
   const [selectedFallback, setSelectedFallback] = useState<Stock | null>(null);

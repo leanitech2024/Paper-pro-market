@@ -61,9 +61,9 @@ class MarketSimulationService {
                 { count: this.prices.size },
                 "MarketSimulationService initialized"
             );
-        } catch (error) {
-            logger.error({ err: error }, "Failed to initialize MarketSimulationService");
-            throw error;
+        } catch (err) {
+            logger.error({ err: err }, "Failed to initialize MarketSimulationService");
+            throw err;
         }
     }
 

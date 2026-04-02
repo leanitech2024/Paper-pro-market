@@ -60,7 +60,7 @@ export class UpstoxProvider implements IMarketDataSource {
         return response.candles.map((c: any[]) => normalizeUpstoxCandle(symbol, c, interval));
     }
 
-    async getOptionChain(symbol: string, expiry: Date): Promise<OptionChain> {
+    async getOptionChain(_symbol: string, _expiry: Date): Promise<OptionChain> {
         // Upstox returns option chain via /option/chain (hypothetical or specific endpoint)
         // If Upstox doesn't support full chain in one go, needed internal logic.
         // Returning empty or throwing "Not Implemented" if Upstox is not the source for Options (TrueData is).

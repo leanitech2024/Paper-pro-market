@@ -5,7 +5,7 @@ import { SEL_COLOR, GREEN_COLOR, RED_COLOR } from "./types";
 import type { PositionDrawing, TwoPointDrawing } from "@/stores/trading/analysis.store";
 
 // ─── Long Position ────────────────────────────────────────────────
-export function renderLongPosition({ drawing, mainSeries, width, height, pointToCoords, selected }: DrawingRendererProps): React.ReactNode {
+export function renderLongPosition({ drawing, mainSeries, width, height: _height, pointToCoords: _pointToCoords, selected }: DrawingRendererProps): React.ReactNode {
   const d = drawing as PositionDrawing;
   const entryY = mainSeries.priceToCoordinate(d.entryPrice) ?? 0;
   const targetY = mainSeries.priceToCoordinate(d.targetPrice) ?? 0;
@@ -22,9 +22,6 @@ export function renderLongPosition({ drawing, mainSeries, width, height, pointTo
   const rr = risk > 0 ? (reward / risk).toFixed(2) : "∞";
   const pctTarget = ((d.targetPrice - d.entryPrice) / d.entryPrice * 100).toFixed(2);
   const pctStop = ((d.stopPrice - d.entryPrice) / d.entryPrice * 100).toFixed(2);
-
-  // Clip dimensions to avoid time-axis bleed
-  const clipHeight = height - 26;
 
   return (
     <g data-id={d.id} clipPath={`url(#chart-clip)`}>
@@ -83,7 +80,7 @@ export function renderLongPosition({ drawing, mainSeries, width, height, pointTo
 }
 
 // ─── Short Position ───────────────────────────────────────────────
-export function renderShortPosition({ drawing, mainSeries, width, height, pointToCoords, selected }: DrawingRendererProps): React.ReactNode {
+export function renderShortPosition({ drawing, mainSeries, width, height: _height, pointToCoords: _pointToCoords, selected }: DrawingRendererProps): React.ReactNode {
   const d = drawing as PositionDrawing;
   const entryY = mainSeries.priceToCoordinate(d.entryPrice) ?? 0;
   const targetY = mainSeries.priceToCoordinate(d.targetPrice) ?? 0;

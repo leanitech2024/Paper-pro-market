@@ -149,7 +149,7 @@ export function GlobalSearchModal({
         await addInstrumentMutation.mutateAsync(stock);
         toast.success(`Added ${stock.symbol} to watchlist`);
       }
-    } catch (error: unknown) {
+    } catch (_: unknown) {
       setAddedInstruments((prev) => {
         const next = new Set(prev);
         if (isAdded) next.add(token);

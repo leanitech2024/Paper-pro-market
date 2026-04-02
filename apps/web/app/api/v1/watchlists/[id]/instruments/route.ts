@@ -44,16 +44,16 @@ export async function POST(
       success: true,
       data: item,
     });
-  } catch (error: any) {
+  } catch (err: any) {
     const { id } = await params;
-    logger.error({ err: error, watchlistId: id }, 'POST /api/v1/watchlists/:id/instruments failed');
+    logger.error({ err: err, watchlistId: id }, 'POST /api/v1/watchlists/:id/instruments failed');
     
-    if (error.message?.includes('not found')) {
-      return NextResponse.json({ error: error.message }, { status: 404 });
+    if (err.message?.includes('not found')) {
+      return NextResponse.json({ error: err.message }, { status: 404 });
     }
 
-    if (error.message?.includes('full')) {
-      return NextResponse.json({ error: error.message }, { status: 400 });
+    if (err.message?.includes('full')) {
+      return NextResponse.json({ error: err.message }, { status: 400 });
     }
 
     return NextResponse.json(

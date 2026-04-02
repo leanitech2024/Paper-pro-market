@@ -4,7 +4,6 @@ import { useMemo } from 'react';
 import { useJournalEntries } from '@/hooks/use-journal-entries';
 import { calculatePerformanceMetrics } from '@paper-market/core';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { PieChart as PieChartIcon } from 'lucide-react';
 
 export function WinLossChart() {

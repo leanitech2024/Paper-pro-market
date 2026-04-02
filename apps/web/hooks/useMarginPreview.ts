@@ -5,6 +5,7 @@ export function useMarginPreview(payload: Record<string, any> | null) {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!payload?.instrumentToken || !payload?.symbol || !payload?.side || !payload?.quantity || !payload.orderType) {
       setRequiredMargin(0);

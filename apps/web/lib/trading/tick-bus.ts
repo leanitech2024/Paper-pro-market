@@ -11,7 +11,6 @@ declare global {
 import type { NormalizedTick } from "@paper-market/core";
 import { isValidTick } from "@paper-market/core";
 import { logger } from "@/lib/logger";
-import { systemMetricsService } from "@/services/metrics/system-metrics.service";
 
 const MAX_TICK_LISTENERS = 50;
 
@@ -115,9 +114,9 @@ class TickBus {
                 for (const handler of this.listeners) {
                     try {
                         handler(t);
-                    } catch (error) {
+                    } catch (err) {
                         // L-3 FIX: Use structured logger, not console.error.
-                        logger.error({ err: error }, "TickBus listener error");
+                        logger.error({ err: err }, "TickBus listener error");
                     }
                 }
             }

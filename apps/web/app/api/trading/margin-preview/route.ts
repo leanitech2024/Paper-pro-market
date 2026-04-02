@@ -70,8 +70,8 @@ export async function POST(req: NextRequest) {
     const requiredMargin = await MarginCalculatorService.calculateRequiredMargin(orderPayload as any, instrument);
 
     return NextResponse.json({ requiredMargin });
-  } catch (error) {
-    logger.error({ err: error }, "Failed to calculate margin preview");
+  } catch (err) {
+    logger.error({ err: err }, "Failed to calculate margin preview");
     return NextResponse.json(
       { error: "Internal server error", code: "INTERNAL_ERROR" },
       { status: 500 }

@@ -15,7 +15,7 @@
 // ═══════════════════════════════════════════════════════════
 
 import { UpstoxService } from "@/services/market/feeds/upstox-feed.service";
-import { subDays, subMonths, subWeeks, subYears } from "date-fns";
+import { subDays, subMonths, subYears } from "date-fns";
 import { toUnixSeconds } from "./time";
 
 export interface CandleFetchParams {

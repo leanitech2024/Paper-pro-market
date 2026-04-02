@@ -18,7 +18,7 @@ async function main() {
     const res = await client.query('UPDATE public.users SET "onboardingCompleted" = true RETURNING id, email');
     console.log(`Backfilled onboardingCompleted = true for ${res.rowCount} users.`);
     console.log("Affected users:", res.rows.map(r => r.email));
-  } catch (error) {
+  } catch (_) {
     console.error("Failed to backfill database:", error);
   } finally {
     await client.end();

@@ -36,7 +36,7 @@ export default function UserActions({ userId, isActive }: UserActionsProps) {
 
       toast.success(action === "reset" ? "Balance reset" : "User deactivated");
       router.refresh();
-    } catch (error) {
+    } catch (_) {
       toast.error("Something went wrong");
     } finally {
       setLoading(false);

@@ -1,7 +1,6 @@
 import { create } from 'zustand';
 import { subscribeWithSelector } from 'zustand/middleware';
 import { UserPosition as Position } from '@paper-market/core';
-import { useTradeExecutionStore } from './tradeExecution.store';
 import { toast } from 'sonner';
 import { toCanonicalSymbol, toSymbolKey } from '@paper-market/core';
 
@@ -46,8 +45,8 @@ export const usePositionsStore = create<PositionsState>()(subscribeWithSelector(
       } else {
         set({ error: data.error || 'Failed to fetch positions' });
       }
-    } catch (error) {
-      console.error('Failed to fetch positions:', error);
+    } catch (err) {
+      console.error('Failed to fetch positions:', err);
       set({ error: 'Network error fetching positions' });
     } finally {
        if (!background) {
@@ -109,10 +108,10 @@ export const usePositionsStore = create<PositionsState>()(subscribeWithSelector(
         return true;
       }
       return false;
-    } catch (error) {
-      console.error('Failed to close position:', error);
+    } catch (err) {
+      console.error('Failed to close position:', err);
       toast.error('Failed to Close Position', {
-        description: error instanceof Error ? error.message : 'Unknown error'
+        description: err instanceof Error ? err.message : 'Unknown error'
       });
       return false;
     }

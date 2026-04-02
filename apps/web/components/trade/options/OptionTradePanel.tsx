@@ -213,8 +213,8 @@ export function OptionTradePanel({ contract, underlyingPrice, daysToExpiry, onCl
       toast.success("Order placed", { description: `${side} ${totalQuantity} ${contract.symbol}` });
       clearOrderProcessingError();
       setConfirmOpen(false);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Order failed";
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Order failed";
       const normalized = message.includes("PARTIAL_EXIT_NOT_ALLOWED")
         ? "Partial exit is disabled in paper trading mode."
         : message;

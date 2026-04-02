@@ -1,7 +1,6 @@
 import { performance } from "node:perf_hooks";
 import type { PlaceOrder } from "@paper-market/core";
 import { logger } from "@/lib/logger";
-import { MarginCalculatorService } from "@/services/trading/margin/margin-calculator.service";
 import { OrderExecutorService } from "@/services/trading/execution/order-executor.service";
 import { OrderRepositoryService } from "@/services/trading/pipeline/order-repository.service";
 import { OrderValidatorService } from "@/services/trading/pipeline/order-validator.service";

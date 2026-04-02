@@ -21,7 +21,7 @@ interface DrawingManagerProps {
 }
 
 export function DrawingManager({ chart, mainSeries, width, height, data, symbol }: DrawingManagerProps) {
-  const { activeTool, selectedDrawingIds, globalHideState, hotkeysEnabled, deleteSelectedDrawings } = useAnalysisStore();
+  const { activeTool, selectedDrawingIds, globalHideState } = useAnalysisStore();
   
   const symbolDrawings = useAnalysisStore((s) => s.symbolState[symbol]?.drawings);
   const drawings = symbolDrawings || [];

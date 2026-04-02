@@ -12,7 +12,6 @@ import { instrumentRepository } from "@/lib/instruments/repository";
 import { requireInstrumentTokenForIdentityLookup } from "@/lib/trading/token-identity-guard";
 
 const IST_TIME_ZONE = "Asia/Kolkata";
-const MS_PER_DAY = 24 * 60 * 60 * 1000;
 const TRUE_VALUES = new Set(["1", "true", "yes", "on"]);
 const ALLOW_AFTER_HOURS_ORDER_STAGING =
   process.env.NODE_ENV !== "production" &&
@@ -21,8 +20,6 @@ const ALLOW_AFTER_HOURS_ORDER_STAGING =
       .trim()
       .toLowerCase()
   );
-const PAPER_TRADING_MODE =
-  String(process.env.PAPER_TRADING_MODE ?? "true").trim().toLowerCase() !== "false";
 
 export type OrderValidationResult = {
   instrument: Instrument;
@@ -32,20 +29,6 @@ export type OrderValidationResult = {
   now: Date;
   validationMs: number;
 };
-
-function toIstDayNumber(date: Date): number {
-  const parts = new Intl.DateTimeFormat("en-US", {
-    timeZone: IST_TIME_ZONE,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).formatToParts(date);
-
-  const year = Number(parts.find((part) => part.type === "year")?.value || 0);
-  const month = Number(parts.find((part) => part.type === "month")?.value || 0);
-  const day = Number(parts.find((part) => part.type === "day")?.value || 0);
-  return Date.UTC(year, month - 1, day);
-}
 
 function getIstClock(now: Date): { day: number; hour: number; minute: number } {
   const parts = new Intl.DateTimeFormat("en-IN", {

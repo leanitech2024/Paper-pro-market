@@ -56,8 +56,8 @@ export const useJournalStore = create<JournalState>((set) => ({
           }));
         set({ entries: mappedEntries });
       }
-    } catch (error) {
-      console.error("Failed to fetch journal", error);
+    } catch (err) {
+      console.error("Failed to fetch journal", err);
     } finally {
       set({ isLoading: false });
     }
@@ -77,14 +77,14 @@ export const useJournalStore = create<JournalState>((set) => ({
       if (data.success) {
         set({ ledgerEntries: data.data.entries });
       }
-    } catch (error) {
-      console.error("Failed to fetch ledger", error);
+    } catch (err) {
+      console.error("Failed to fetch ledger", err);
     } finally {
       set({ isLedgerLoading: false });
     }
   },
 
   addJournalEntry: (entry) => set((state) => ({ entries: [...state.entries, entry] })),
-  updateJournalOnExit: (id, exitData) => { },
+  updateJournalOnExit: (_id, _exitData) => { },
   resetJournal: () => set({ entries: [], ledgerEntries: [] }),
 }));

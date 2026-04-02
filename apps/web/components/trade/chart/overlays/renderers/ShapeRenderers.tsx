@@ -1,7 +1,7 @@
 "use client";
 import React from "react";
 import type { DrawingRendererProps, PointCoords } from "./types";
-import { drawingStroke, SEL_COLOR, DRAW_COLOR } from "./types";
+import { SEL_COLOR, DRAW_COLOR } from "./types";
 import type { TwoPointDrawing, ThreePointDrawing, MultiPointDrawing } from "@/stores/trading/analysis.store";
 
 // ─── Rectangle ────────────────────────────────────────────────────

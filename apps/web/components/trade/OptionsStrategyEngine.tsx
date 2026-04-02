@@ -436,10 +436,10 @@ export function OptionsStrategyEngine({ underlying, instruments }: Props) {
                 throw new Error(data?.error?.message || "Failed to generate strategy preview");
             }
             setPreview(data.data as PreviewResponse);
-        } catch (error) {
+        } catch (err) {
             setPreview(null);
             toast.error("Strategy preview failed", {
-                description: error instanceof Error ? error.message : "Unable to preview strategy",
+                description: err instanceof Error ? err.message : "Unable to preview strategy",
             });
         } finally {
             setIsPreviewing(false);
@@ -470,9 +470,9 @@ export function OptionsStrategyEngine({ underlying, instruments }: Props) {
             toast.success("Strategy order submitted", {
                 description: `${preview.legs.length} legs routed for ${STRATEGY_LABELS[strategy]}.`,
             });
-        } catch (error) {
+        } catch (err) {
             toast.error("Strategy execution failed", {
-                description: error instanceof Error ? error.message : "Unable to execute strategy",
+                description: err instanceof Error ? err.message : "Unable to execute strategy",
             });
         } finally {
             setIsExecuting(false);

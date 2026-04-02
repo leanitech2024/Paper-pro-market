@@ -1,11 +1,11 @@
 "use client";
 import React from "react";
 import type { DrawingRendererProps } from "./types";
-import { SEL_COLOR, DRAW_COLOR } from "./types";
+import { SEL_COLOR } from "./types";
 import type { TwoPointDrawing } from "@/stores/trading/analysis.store";
 
 // ─── Price Range Measurer ─────────────────────────────────────────
-export function renderPriceRange({ drawing, pointToCoords, mainSeries, selected, isDraft }: DrawingRendererProps): React.ReactNode {
+export function renderPriceRange({ drawing, pointToCoords, mainSeries: _mainSeries, selected: _selected, isDraft }: DrawingRendererProps): React.ReactNode {
   const d = drawing as TwoPointDrawing;
   const c1 = pointToCoords(d.p1);
   const c2 = pointToCoords(d.p2);
@@ -14,7 +14,6 @@ export function renderPriceRange({ drawing, pointToCoords, mainSeries, selected,
   const priceDiff = d.p2.price - d.p1.price;
   const pctChange = d.p1.price !== 0 ? ((priceDiff / d.p1.price) * 100).toFixed(2) : "0";
   const color = priceDiff >= 0 ? "#089981" : "#F23645";
-  const midX = (c1.x + c2.x) / 2;
   const midY = (c1.y + c2.y) / 2;
 
   return (
@@ -80,7 +79,7 @@ export function renderDateRange({ drawing, pointToCoords, data, height, selected
 }
 
 // ─── Date and Price Range Measurer ────────────────────────────────
-export function renderDatePriceRange({ drawing, pointToCoords, data, mainSeries, width, height, selected, isDraft }: DrawingRendererProps): React.ReactNode {
+export function renderDatePriceRange({ drawing, pointToCoords, data, mainSeries: _mainSeries, width: _width, height: _height, selected: _selected, isDraft }: DrawingRendererProps): React.ReactNode {
   const d = drawing as TwoPointDrawing;
   const c1 = pointToCoords(d.p1);
   const c2 = pointToCoords(d.p2);

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { ledgerEntries, ledgerAccounts, writeAheadJournal } from "@paper-market/core/db";
+import { ledgerEntries, ledgerAccounts } from "@paper-market/core/db";
 import { eq, and, desc, or, inArray, count } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { handleError } from "@/lib/errors";
@@ -13,7 +13,7 @@ const JournalQuerySchema = z.object({
   referenceType: z.string().optional(),
 });
 
-export async function GET(req: Request) {
+export async function GET(_req: Request) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
@@ -25,7 +25,7 @@ export async function GET(req: Request) {
     }
 
     const userId = session.user.id;
-    const { searchParams } = new URL(req.url);
+    const { searchParams } = new URL(_req.url);
     const validated = JournalQuerySchema.parse(Object.fromEntries(searchParams));
 
     const offset = (validated.page - 1) * validated.limit;
@@ -100,7 +100,7 @@ export async function GET(req: Request) {
         },
       },
     });
-  } catch (error) {
-    return handleError(error);
+  } catch (err) {
+    return handleError(err);
   }
 }

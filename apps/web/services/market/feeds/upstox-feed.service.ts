@@ -1,6 +1,5 @@
 import { db } from "@/lib/db";
 import { upstoxTokens, instruments } from "@paper-market/core/db";
-import { type NewUpstoxToken } from "@paper-market/core";
 import { eq, gt, desc } from "drizzle-orm";
 import { logger } from "@/lib/logger";
 import { ApiError } from "@/lib/errors";
@@ -124,8 +123,8 @@ export class UpstoxService {
 
       logger.info({ userId }, "Upstox token generated and saved");
       return accessToken;
-    } catch (error: any) {
-      logger.error({ err: error, userId }, "Upstox Token Generation Failed");
+    } catch (err: any) {
+      logger.error({ err: err, userId }, "Upstox Token Generation Failed");
       throw new ApiError("Failed to authenticate with Upstox", 502, "UPSTOX_AUTH_FAILED");
     }
   }
@@ -219,8 +218,8 @@ export class UpstoxService {
         this.cachedToken = record.accessToken;
         this.expiry = new Date(record.expiresAt).getTime();
         return this.cachedToken;
-      } catch (error) {
-        logger.error({ err: error }, "Failed to resolve Upstox system token");
+      } catch (err) {
+        logger.error({ err: err }, "Failed to resolve Upstox system token");
         this.cachedToken = null;
         this.expiry = 0;
         return null;
@@ -341,8 +340,8 @@ export class UpstoxService {
 
           logger.info({ count: Object.keys(retry.quotes).length }, "Fetched snapshot quotes (retry)");
           return retry.quotes;
-      } catch (error: any) {
-          logger.error({ err: error }, "Failed to fetch market quotes");
+      } catch (err: any) {
+          logger.error({ err: err }, "Failed to fetch market quotes");
           return {};
       }
   }
@@ -438,8 +437,8 @@ export class UpstoxService {
 
           logger.info({ count: Object.keys(retry.quotes).length }, "Fetched detailed snapshot quotes (retry)");
           return retry.quotes;
-      } catch (error: any) {
-          logger.error({ err: error }, "Failed to fetch detailed market quotes");
+      } catch (err: any) {
+          logger.error({ err: err }, "Failed to fetch detailed market quotes");
           // Fallback to LTP-only path so daily update does not fail completely.
           const ltpQuotes = await this.fetchQuotesWithToken(token, instrumentKeys);
           const out: Record<string, SystemQuoteDetail> = {};
@@ -684,10 +683,10 @@ export class UpstoxService {
                             } else {
                                 console.log('⚠️ No intraday candles returned');
                             }
-                        } catch (error) {
+                        } catch (err) {
                             // Don't fail the whole request if intraday fetch fails
-                            console.error('❌ Failed to fetch intraday data:', error);
-                            logger.warn({ instrumentKey, error }, "Failed to fetch intraday data for merge");
+                            console.error('❌ Failed to fetch intraday data:', err);
+                            logger.warn({ instrumentKey, err }, "Failed to fetch intraday data for merge");
                         }
                     }
                     
@@ -708,9 +707,9 @@ export class UpstoxService {
                 
                 console.warn("⚠️ Upstox API returned no candles:", { instrumentKey, unit, interval, fromDate, toDate, response: data });
                 return [];
-            } catch (error) {
-                console.error("❌ Historical Data Fetch Failed:", error);
-                logger.error({ instrumentKey, interval, error }, "Historical fetch exception");
+            } catch (err) {
+                console.error("❌ Historical Data Fetch Failed:", err);
+                logger.error({ instrumentKey, interval, err }, "Historical fetch exception");
                 return [];
             }
         })();
@@ -731,7 +730,7 @@ export class UpstoxService {
     * @param query - search query (e.g. RELIANCE)
     * @param segment - optional segment (e.g. equity) - unused in simple search
     */
-   static async searchInstruments(query: string, segment?: string): Promise<any[]> {
+  static async searchInstruments(query: string, _segment?: string): Promise<any[]> {
        const token = await this.getSystemToken();
        if (!token) throw new Error("No token");
 
@@ -752,8 +751,8 @@ export class UpstoxService {
                return data.data;
            }
            return [];
-       } catch (error) {
-           logger.error({ err: error, query }, "Instrument Search Failed");
+       } catch (err) {
+           logger.error({ err: err, query }, "Instrument Search Failed");
            return [];
        }
    }
@@ -786,8 +785,8 @@ export class UpstoxService {
                 cache.set(cacheKey, instrument.token, { ttl: 86400000 }); // 24 hours
                 return instrument.token;
             }
-        } catch (e) {
-            logger.error({ err: e, symbol }, "Instrument DB Lookup Failed");
+        } catch (err) {
+            logger.error({ err: err, symbol }, "Instrument DB Lookup Failed");
         }
         
         // 4. Fallback
@@ -837,8 +836,8 @@ export class UpstoxService {
                 return data.data.candles;
             }
             return [];
-        } catch (error) {
-            console.error("Intraday Data Fetch Failed", error);
+        } catch (err) {
+            console.error("Intraday Data Fetch Failed", err);
             return [];
         }
     }

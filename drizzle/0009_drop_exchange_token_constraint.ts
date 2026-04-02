@@ -1,5 +1,4 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, uniqueIndex } from "drizzle-orm/pg-core";
 
 export async function up(db: any) {
   // Drop the constraint that is causing sync failures

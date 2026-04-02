@@ -12,7 +12,7 @@ import { auth } from "@/lib/auth";
  * - No business logic in route handler
  * - Call service layer for all operations
  */
-export async function GET(req: Request) {
+export async function GET(_req: Request) {
     try {
         // 1. Authenticate user
         const session = await auth();
@@ -47,8 +47,8 @@ export async function GET(req: Request) {
             },
         });
 
-    } catch (error) {
-        return handleError(error);
+    } catch (err) {
+        return handleError(err);
     }
 }
 

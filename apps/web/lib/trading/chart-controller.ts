@@ -100,9 +100,9 @@ export class ChartController {
                         }
 
                         this.pendingUpdate = null;
-                    } catch (error) {
+                    } catch (err) {
                         // Series destroyed during RAF callback
-                        console.warn(`⚠️ ChartController [${this.chartId}]: Series destroyed during update`, error);
+                        console.warn(`⚠️ ChartController [${this.chartId}]: Series destroyed during update`, err);
                     }
                 }
                 this.rafId = null;
@@ -151,9 +151,9 @@ export class ChartController {
         try {
             series.setData(sortedData);
             console.log(`📊 ChartController [${this.chartId}]: Set ${sortedData.length} candles`);
-        } catch (error) {
+        } catch (err) {
             // Series was destroyed mid-call (rapid stock switching)
-            console.warn(`⚠️ ChartController [${this.chartId}]: Series destroyed during setData`, error);
+            console.warn(`⚠️ ChartController [${this.chartId}]: Series destroyed during setData`, err);
         }
     }
 

@@ -35,7 +35,7 @@ export async function POST(
         isActive: result.isActive,
       },
     });
-  } catch (error) {
-    return handleError(error);
+  } catch (err) {
+    return handleError(err);
   }
 }

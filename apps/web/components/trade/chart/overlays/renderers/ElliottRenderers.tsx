@@ -1,7 +1,7 @@
 "use client";
 import React from "react";
 import type { DrawingRendererProps, PointCoords } from "./types";
-import { SEL_COLOR, DRAW_COLOR, ELLIOTT_LABELS } from "./types";
+import { SEL_COLOR, ELLIOTT_LABELS } from "./types";
 import type { MultiPointDrawing } from "@/stores/trading/analysis.store";
 
 /** Shared Elliott wave renderer — connected lines with labeled circles at each point (TradingView style) */

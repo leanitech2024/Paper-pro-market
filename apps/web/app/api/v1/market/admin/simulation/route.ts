@@ -6,7 +6,7 @@ import { handleError, ApiError } from "@/lib/errors";
 /**
  * Start the market simulation.
  */
-export async function POST(req: NextRequest) {
+export async function POST(_req: NextRequest) {
     try {
         const session = await auth();
         if (!session?.user) {
@@ -22,15 +22,15 @@ export async function POST(req: NextRequest) {
                 status: marketTickJob.getStatus(),
             },
         });
-    } catch (error) {
-        return handleError(error);
+    } catch (err) {
+        return handleError(err);
     }
 }
 
 /**
  * Stop the market simulation.
  */
-export async function DELETE(req: NextRequest) {
+export async function DELETE(_req: NextRequest) {
     try {
         const session = await auth();
         if (!session?.user) {
@@ -45,15 +45,15 @@ export async function DELETE(req: NextRequest) {
                 message: "Market simulation stopped",
             },
         });
-    } catch (error) {
-        return handleError(error);
+    } catch (err) {
+        return handleError(err);
     }
 }
 
 /**
  * Get simulation status.
  */
-export async function GET(req: NextRequest) {
+export async function GET(_req: NextRequest) {
     try {
         const status = marketTickJob.getStatus();
 
@@ -61,7 +61,7 @@ export async function GET(req: NextRequest) {
             success: true,
             data: status,
         });
-    } catch (error) {
-        return handleError(error);
+    } catch (err) {
+        return handleError(err);
     }
 }

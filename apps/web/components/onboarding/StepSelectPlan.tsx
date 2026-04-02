@@ -180,7 +180,7 @@ export function StepSelectPlan(_props: StepSelectPlanProps) {
       });
 
       rzp.open();
-    } catch (error) {
+    } catch (_) {
       toast.error("An error occurred. Please try again.");
       setIsSubmitting(false);
       setSelectedPlan(null);

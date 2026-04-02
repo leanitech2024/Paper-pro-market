@@ -137,8 +137,8 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       isOnboarding,
       origin
     );
-  } catch (error) {
-    logger.error({ err: error }, "Razorpay GET callback: unexpected error");
+  } catch (err) {
+    logger.error({ err: err }, "Razorpay GET callback: unexpected error");
     return NextResponse.redirect(failureRedirect, { status: 302 });
   }
 }
@@ -173,8 +173,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       isOnboarding,
       origin
     );
-  } catch (error) {
-    logger.error({ err: error }, "Razorpay POST callback: unexpected error");
+  } catch (err) {
+    logger.error({ err: err }, "Razorpay POST callback: unexpected error");
     return NextResponse.redirect(failureRedirect, { status: 302 });
   }
 }

@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { ZodError } from "zod";
 import { logger } from "./logger";
-import { config } from "./config";
 
 export class ApiError extends Error {
     public readonly statusCode: number;

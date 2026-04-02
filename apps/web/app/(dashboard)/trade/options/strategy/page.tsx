@@ -311,10 +311,10 @@ function OptionsStrategyBuilderContent() {
           throw new Error(response?.error?.message || "Preview unavailable");
         }
         if (!cancelled) setPreview(response.data as StrategyPreviewResponse);
-      } catch (error) {
+      } catch (err) {
         if (!cancelled) {
           setPreview(null);
-          setPreviewError(error instanceof Error ? error.message : "Preview unavailable");
+          setPreviewError(err instanceof Error ? err.message : "Preview unavailable");
         }
       } finally {
         if (!cancelled) setIsPreviewing(false);
@@ -344,9 +344,9 @@ function OptionsStrategyBuilderContent() {
         throw new Error(response?.error?.message || "Execution failed");
       }
       toast.success("Strategy executed");
-    } catch (error) {
+    } catch (err) {
       toast.error("Strategy execution failed", {
-        description: error instanceof Error ? error.message : "Unknown error",
+        description: err instanceof Error ? err.message : "Unknown error",
       });
     } finally {
       setIsExecuting(false);

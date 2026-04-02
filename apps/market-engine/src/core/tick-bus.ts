@@ -116,8 +116,8 @@ class TickBus {
                 this.listeners.forEach(handler => {
                     try {
                         handler(t);
-                    } catch (error) {
-                        console.error('❌ TickBus listener error:', error);
+                    } catch (err) {
+                        console.error('❌ TickBus listener error:', err);
                     }
                 });
             });

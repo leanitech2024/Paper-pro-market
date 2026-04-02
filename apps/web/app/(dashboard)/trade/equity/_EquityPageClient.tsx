@@ -2,51 +2,25 @@
 
 import { useEffect, useMemo, useRef, useState, Suspense } from "react";
 import dynamic from "next/dynamic";
-import { useRouter } from "next/navigation";
-import { useSession } from "next-auth/react";
 import { EquityTradeForm } from "@/components/trade/EquityTradeForm";
 import { Stock } from "@paper-market/core";
 import { useMarketStore } from "@/stores/trading/market.store";
-import { useWalletStore } from "@/stores/wallet.store";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { GlobalSearchModal } from "@/components/trade/search/GlobalSearchModal";
 import { WatchlistPanel } from "@/components/trade/watchlist/WatchlistPanel";
 import { AdaptiveTradeLayout } from "@/components/trade/layout/AdaptiveTradeLayout";
 import { useTradeViewport } from "@/hooks/use-trade-viewport";
 import { PositionsTable } from "@/components/positions/PositionsTable";
 import { BottomBar } from "@/components/trade/options/BottomBar";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+
+
 import { ChevronLeft, Search } from "lucide-react";
 
 const CandlestickChartComponent = dynamic(
   () => import("@/components/trade/CandlestickChart").then((mod) => ({ default: mod.CandlestickChart })),
   { ssr: false },
 );
-
-function formatBalance(value: number): string {
-  if (!Number.isFinite(value)) return "--";
-  return `INR ${value.toLocaleString("en-IN", { maximumFractionDigits: 0 })}`;
-}
-
-function formatPrice(value?: number): string {
-  if (!Number.isFinite(value) || Number(value) <= 0) return "--";
-  return Number(value).toLocaleString("en-IN", { maximumFractionDigits: 2, minimumFractionDigits: 2 });
-}
-
-function formatChangePercent(value?: number): string {
-  if (!Number.isFinite(value)) return "--";
-  const v = Number(value);
-  return `${v > 0 ? "+" : ""}${v.toFixed(2)}%`;
-}
 
 const panelClass =
   "rounded-[28px] border border-slate-200/80 bg-white dark:border-white/[0.08] dark:bg-[#0c1322]";
@@ -58,10 +32,7 @@ const headerBorderClass = "border-b border-slate-200/80 dark:border-white/[0.08]
 
 export default function EquityPage({ initialSymbol }: { initialSymbol?: string }) {
   const { isMobile, isDesktop } = useTradeViewport();
-  const router = useRouter();
-  const { data: session } = useSession();
   const { getCurrentInstruments, stocksBySymbol } = useMarketStore();
-  const walletBalance = useWalletStore((state) => state.balance);
 
   const [searchModalOpen, setSearchModalOpen] = useState(false);
   const [showOrderForm, setShowOrderForm] = useState(false);
@@ -132,10 +103,6 @@ export default function EquityPage({ initialSymbol }: { initialSymbol?: string }
   const handleClearSelection = () => {
     setSelectedSymbol(null);
     setSelectedFallback(null);
-  };
-
-  const navigateFromProfile = (path: string) => {
-    router.push(path);
   };
 
   const chartNode = (
@@ -375,4 +342,3 @@ export default function EquityPage({ initialSymbol }: { initialSymbol?: string }
     </>
   );
 }
-

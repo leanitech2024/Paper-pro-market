@@ -1,6 +1,3 @@
-import { and, eq, gte } from "drizzle-orm";
-import { db } from "@/lib/db";
-import { orders } from "@paper-market/core/db";
 import type { Instrument } from "@paper-market/core";
 import { ApiError } from "@/lib/errors";
 import { logger } from "@/lib/logger";
@@ -8,18 +5,12 @@ import { UpstoxService } from "@/services/market/feeds/upstox-feed.service";
 import { realTimeMarketService } from "@/services/market/feeds/realtime-market.service";
 import { marketSimulation } from "@/services/market/feeds/market-simulation.service";
 import type { PlaceOrder } from "@paper-market/core";
-import { PreTradeRiskService } from "@/services/trading/risk/pretrade-risk.service";
 
 const STALE_TICK_MAX_AGE_SECONDS = 8;
 const OPTION_MIN_OI = 500;
-const DUPLICATE_WINDOW_MS = 2000;
 const OPTION_QUOTE_TIMEOUT_MS = 1200;
 const PAPER_TRADING_MODE =
     String(process.env.PAPER_TRADING_MODE ?? "true").trim().toLowerCase() !== "false";
-const DISABLE_CONCENTRATION_CHECK =
-    String(process.env.DISABLE_CONCENTRATION_CHECK ?? (PAPER_TRADING_MODE ? "true" : "false"))
-        .trim()
-        .toLowerCase() === "true";
 
 export type TradingSafetyValidationResult = {
     validatedAt: number;
@@ -36,7 +27,7 @@ export class TradingSafetyService {
         userId: string,
         order: PlaceOrder,
         instrument: Instrument,
-        options: TradingSafetyValidationOptions = {}
+        _options: TradingSafetyValidationOptions = {}
     ): Promise<TradingSafetyValidationResult> {
         const now = new Date();
         this.validateExpiry(instrument, now);
@@ -255,5 +246,3 @@ export class TradingSafetyService {
     }
 
 }
-
-

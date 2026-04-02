@@ -24,7 +24,7 @@ export async function GET(
             success: true,
             data: quote,
         });
-    } catch (error) {
-        return handleError(error);
+    } catch (err) {
+        return handleError(err);
     }
 }

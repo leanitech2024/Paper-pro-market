@@ -30,11 +30,11 @@ export class PaymentService {
                 description
             );
             logger.info({ userId, amount }, `Funds deducted via WalletService: ${description}`);
-        } catch (error: any) {
-            if (error?.code === "INSUFFICIENT_FUNDS") {
+        } catch (err: any) {
+            if (err?.code === "INSUFFICIENT_FUNDS") {
                 throw new ApiError("Insufficient funds", 400, "INSUFFICIENT_FUNDS");
             }
-            throw error;
+            throw err;
         }
     }
 

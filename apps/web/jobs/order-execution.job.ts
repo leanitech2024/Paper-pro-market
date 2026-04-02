@@ -73,8 +73,8 @@ class OrderExecutionJob {
                     "Order execution checkpoint"
                 );
             }
-        } catch (error) {
-            logger.error({ err: error, tickCount: this.tickCount }, "Order execution tick failed");
+        } catch (err) {
+            logger.error({ err: err, tickCount: this.tickCount }, "Order execution tick failed");
             // Continue to next tick despite error
         }
     }

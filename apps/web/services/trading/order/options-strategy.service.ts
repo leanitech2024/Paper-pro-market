@@ -368,9 +368,9 @@ export class OptionsStrategyService {
                     status: "PLACED",
                     orderId: order.id,
                 });
-            } catch (error) {
-                if (!(error instanceof ApiError) || error.code !== "DUPLICATE_ORDER") {
-                    throw error;
+            } catch (err) {
+                if (!(err instanceof ApiError) || err.code !== "DUPLICATE_ORDER") {
+                    throw err;
                 }
 
                 const [existing] = await db

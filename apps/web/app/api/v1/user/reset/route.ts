@@ -131,9 +131,9 @@ export async function POST(req: NextRequest) {
                 balance: Number(RESET_BALANCE),
             },
         });
-    } catch (error) {
-        logger.error({ err: error }, "[RESET] Account reset failed");
-        return handleError(error);
+    } catch (err) {
+        logger.error({ err: err }, "[RESET] Account reset failed");
+        return handleError(err);
     }
 }
 

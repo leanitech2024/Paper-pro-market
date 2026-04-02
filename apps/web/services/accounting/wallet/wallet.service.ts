@@ -1,4 +1,4 @@
-import { and, asc, count, desc, eq, gt, gte, inArray, lte, or, sql } from "drizzle-orm";
+import { and, count, desc, eq, gt, gte, inArray, lte, or, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { db } from "@/lib/db";
 import { ledgerAccounts, ledgerEntries, wallets } from "@paper-market/core/db";
@@ -184,8 +184,8 @@ export class WalletService {
                     .values({ userId })
                     .returning();
                 created = true;
-            } catch (error: any) {
-                if (error?.code === "23505") {
+            } catch (err: any) {
+                if (err?.code === "23505") {
                     const existing = await executor
                         .select()
                         .from(wallets)
@@ -193,7 +193,7 @@ export class WalletService {
                         .limit(1);
                     wallet = existing[0];
                 } else {
-                    throw error;
+                    throw err;
                 }
             }
         }
@@ -222,8 +222,8 @@ export class WalletService {
                     }
                 }
             }
-        } catch (error) {
-            logger.error({ err: error, userId }, "Failed to fetch MTM Redis overlay");
+        } catch (err) {
+            logger.error({ err: err, userId }, "Failed to fetch MTM Redis overlay");
         }
 
         return wallet;
@@ -354,7 +354,7 @@ export class WalletService {
                     },
                     "WALLET_LEDGER_CREDIT"
                 );
-            } catch (error) {
+            } catch (err) {
                 if (shouldJournal && preparedJournalId) {
                     // C-5 FIX: Use undefined (global db) not executor — if executor
                     // is a rolling-back transaction, the abort write would be
@@ -362,10 +362,10 @@ export class WalletService {
                     await WriteAheadJournalService.abort(
                         preparedJournalId,
                         undefined,
-                        error instanceof Error ? error.message : "WALLET_CREDIT_FAILED"
+                        err instanceof Error ? err.message : "WALLET_CREDIT_FAILED"
                     );
                 }
-                throw error;
+                throw err;
             }
         };
 
@@ -459,16 +459,16 @@ export class WalletService {
                 },
                 "WALLET_LEDGER_PROCEEDS"
             );
-        } catch (error) {
+        } catch (err) {
             if (shouldJournal && preparedJournalId) {
                 // C-5 FIX: abort must use global db, not tx.
                 await WriteAheadJournalService.abort(
                     preparedJournalId,
                     undefined,
-                    error instanceof Error ? error.message : "WALLET_PROCEEDS_FAILED"
+                    err instanceof Error ? err.message : "WALLET_PROCEEDS_FAILED"
                 );
             }
-            throw error;
+            throw err;
         }
     }
 
@@ -568,16 +568,16 @@ export class WalletService {
                 },
                 "WALLET_LEDGER_DEBIT"
             );
-        } catch (error) {
+        } catch (err) {
             if (shouldJournal && preparedJournalId) {
                 // C-5 FIX: abort must use global db, not tx.
                 await WriteAheadJournalService.abort(
                     preparedJournalId,
                     undefined,
-                    error instanceof Error ? error.message : "WALLET_DEBIT_FAILED"
+                    err instanceof Error ? err.message : "WALLET_DEBIT_FAILED"
                 );
             }
-            throw error;
+            throw err;
         }
     }
 
@@ -685,16 +685,16 @@ export class WalletService {
                 },
                 "WALLET_MARGIN_UNBLOCKED"
             );
-        } catch (error) {
+        } catch (err) {
             if (shouldJournal && preparedJournalId) {
                 // C-5 FIX: abort must use global db, not tx.
                 await WriteAheadJournalService.abort(
                     preparedJournalId,
                     undefined,
-                    error instanceof Error ? error.message : "WALLET_MARGIN_UNBLOCK_FAILED"
+                    err instanceof Error ? err.message : "WALLET_MARGIN_UNBLOCK_FAILED"
                 );
             }
-            throw error;
+            throw err;
         }
     }
 

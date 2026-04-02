@@ -39,8 +39,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
             { error: 'Paid plans require payment via Razorpay', code: 'PAYMENT_REQUIRED' },
             { status: 402 }
         );
-    } catch (error) {
-        logger.error({ err: error }, 'Failed to upgrade subscription');
+    } catch (err) {
+        logger.error({ err: err }, 'Failed to upgrade subscription');
         return NextResponse.json({ error: 'Internal server error', code: 'INTERNAL_ERROR' }, { status: 500 });
     }
 }

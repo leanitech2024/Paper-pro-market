@@ -65,8 +65,6 @@ export function FuturesTradeForm({ selectedStock, onStockSelect, instruments, on
 
   const fetchWallet = useWalletStore((state) => state.fetchWallet);
   const balance = useWalletStore((state) => state.availableBalance);
-  const walletEquity = useWalletStore((state) => state.equity);
-  const blockedBalance = useWalletStore((state) => state.blockedBalance);
 
   const positions = usePositionsStore((state) => state.positions);
   const fetchPositions = usePositionsStore((state) => state.fetchPositions);
@@ -207,8 +205,8 @@ export function FuturesTradeForm({ selectedStock, onStockSelect, instruments, on
       setQuantity("1");
       setStopLoss("");
       setTarget("");
-    } catch (error) {
-      const fallbackMessage = error instanceof Error ? error.message : "Order placement failed";
+    } catch (err) {
+      const fallbackMessage = err instanceof Error ? err.message : "Order placement failed";
       const message = fallbackMessage.includes("PARTIAL_EXIT_NOT_ALLOWED")
         ? "Partial exit is disabled in paper trading mode."
         : fallbackMessage;

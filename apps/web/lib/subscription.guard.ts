@@ -9,8 +9,8 @@ export async function requireActiveSubscription(userId: string): Promise<boolean
   try {
     const plan = await SubscriptionService.getEffectivePlan(userId);
     return plan.status !== 'expired';
-  } catch (error) {
-    logger.error({ err: error, userId }, "Failed to validate subscription in guard");
+  } catch (err) {
+    logger.error({ err: err, userId }, "Failed to validate subscription in guard");
     // Fail closed
     return false;
   }

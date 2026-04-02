@@ -23,8 +23,8 @@ export async function GET() {
       success: true,
       data: instruments,
     });
-  } catch (error) {
-    logger.error({ err: error }, 'GET /api/v1/instruments failed');
+  } catch (err) {
+    logger.error({ err: err }, 'GET /api/v1/instruments failed');
     return NextResponse.json(
       { error: 'Failed to fetch instruments' },
       { status: 500 }

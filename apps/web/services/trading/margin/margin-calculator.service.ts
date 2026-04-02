@@ -172,7 +172,7 @@ export class MarginCalculatorService {
                 });
             }
 
-            case "OPTION":
+            case "OPTION": {
                 if (quantity > 0) { // Long option
                     return calculateLongOptionMargin(markPrice, Math.abs(quantity));
                 }
@@ -184,6 +184,7 @@ export class MarginCalculatorService {
                     underlyingPrice,
                     quantity: safeQty,
                 });
+            }
 
             default:
                 return 0;

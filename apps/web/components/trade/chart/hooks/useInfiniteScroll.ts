@@ -74,10 +74,10 @@ export const useInfiniteScroll = ({
               clearTimeout(lockTimeout);
               releaseLock();
             });
-        } catch (error) {
+        } catch (err) {
           clearTimeout(lockTimeout);
           releaseLock();
-          console.error('Infinite scroll load-more threw synchronously:', error);
+          console.error('Infinite scroll load-more threw synchronously:', err);
           trackAnalysisEvent({
             name: 'chart_load_more_failed_sync',
             level: 'warn',

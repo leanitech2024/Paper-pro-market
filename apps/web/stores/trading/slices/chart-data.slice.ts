@@ -177,8 +177,8 @@ export const createChartDataSlice: MarketSlice<any> = (set, get) => ({
           } else {
               console.error('📊 API returned error:', data.error);
           }
-      } catch (e) {
-          console.error("Fetch More History Failed", e);
+      } catch (err) {
+          console.error("Fetch More History Failed", err);
       } finally {
           set({ isFetchingHistory: false, isInitialLoad: false });
       }
@@ -293,8 +293,8 @@ export const createChartDataSlice: MarketSlice<any> = (set, get) => ({
         } else {
             console.error("Failed to fetch history:", data.error);
         }
-    } catch (e) {
-        console.error("Chart data fetch error", e);
+    } catch (err) {
+        console.error("Chart data fetch error", err);
     } finally {
         if (get().currentRequestId === requestId) {
             set({ isFetchingHistory: false, isInitialLoad: false });

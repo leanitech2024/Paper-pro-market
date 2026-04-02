@@ -1,7 +1,6 @@
 "use client";
 import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -29,12 +28,12 @@ import {
 import { useOrdersStore } from '@/stores/trading/orders.store';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
-import { Search, ArrowUpDown, History, TrendingUp, TrendingDown, Download, X } from 'lucide-react';
+import { Search, ArrowUpDown, History, Download, X } from 'lucide-react';
 import { formatExpiryLabel, daysToExpiry, isExpired } from '@paper-market/core';
 import Spinner from '@/components/ui/spinner';
 
 const OrdersPage = () => {
-  const { trades, isLoading, hasFetched, error, fetchOrders, cancelOrder } = useOrdersStore();
+  const { trades, hasFetched, error, fetchOrders, cancelOrder } = useOrdersStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<'date' | 'pnl'>('date');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
@@ -144,7 +143,7 @@ const OrdersPage = () => {
     setCancellingOrderId(orderId);
     try {
       await cancelOrder(orderId);
-    } catch (error) {
+    } catch (_) {
       // Error is handled in the store which triggers a toast notification
     } finally {
       setCancellingOrderId(null);

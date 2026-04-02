@@ -13,7 +13,6 @@ import {
   Tooltip,
   ReferenceLine
 } from 'recharts';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { TrendingUp } from 'lucide-react';
 import { format } from 'date-fns';
 

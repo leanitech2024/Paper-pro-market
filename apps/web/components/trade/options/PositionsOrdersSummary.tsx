@@ -6,7 +6,6 @@ import { useTradeExecutionStore } from "@/stores/trading/tradeExecution.store";
 import { useWalletStore } from "@/stores/wallet.store";
 import { useMarketStore } from "@/stores/trading/market.store";
 import { cn } from "@/lib/utils";
-import { toast } from "sonner";
 import { UserPosition as Position } from "@paper-market/core";
 import { PartialCloseDialog } from "@/components/positions/PartialCloseDialog";
 
@@ -78,7 +77,6 @@ export function PositionsOrdersSummary() {
   const fetchPositions = usePositionsStore((state) => state.fetchPositions);
   const pendingOrders = useTradeExecutionStore((state) => state.pendingOrders);
   const fetchOrders = useTradeExecutionStore((state) => state.fetchOrders);
-  const executeTrade = useTradeExecutionStore((state) => state.executeTrade);
   const blockedBalance = useWalletStore((state) => state.blockedBalance);
   const balance = useWalletStore((state) => state.balance);
   const quotesByInstrument = useMarketStore((state) => state.quotesByInstrument);

@@ -269,8 +269,8 @@ export class MarketFeedSupervisor extends EventEmitter {
 
       this.reconnectAttempts = 0;
       console.log("Reconnect successful");
-    } catch (error) {
-      console.error("Reconnect failed:", error);
+    } catch (err) {
+      console.error("Reconnect failed:", err);
     } finally {
       this.reconnectInProgress = false;
       this.syncConnectionState();

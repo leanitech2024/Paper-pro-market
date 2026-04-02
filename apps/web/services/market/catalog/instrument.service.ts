@@ -42,8 +42,8 @@ export class InstrumentService {
                 .orderBy(instruments.tradingsymbol);
 
             return results;
-        } catch (error) {
-            logger.error({ err: error, query }, "InstrumentService.search failed");
+        } catch (err) {
+            logger.error({ err: err, query }, "InstrumentService.search failed");
             throw new ApiError("Failed to search instruments", 500, "SEARCH_FAILED");
         }
     }
@@ -66,8 +66,8 @@ export class InstrumentService {
                 .orderBy(instruments.tradingsymbol);
 
             return results;
-        } catch (error) {
-            logger.error({ err: error }, "InstrumentService.getAll failed");
+        } catch (err) {
+            logger.error({ err: err }, "InstrumentService.getAll failed");
             throw new ApiError("Failed to fetch instruments", 500, "FETCH_FAILED");
         }
     }
@@ -88,9 +88,9 @@ export class InstrumentService {
             }
 
             return instrument;
-        } catch (error) {
-            if (error instanceof ApiError) throw error;
-            logger.error({ err: error, tradingsymbol }, "InstrumentService.getBySymbol failed");
+        } catch (err) {
+            if (err instanceof ApiError) throw err;
+            logger.error({ err: err, tradingsymbol }, "InstrumentService.getBySymbol failed");
             throw new ApiError("Failed to fetch instrument", 500, "DB_ERROR");
         }
     }
@@ -133,8 +133,8 @@ export class InstrumentService {
 
             const results = await query;
             return results;
-        } catch (error) {
-            logger.error({ err: error, params }, "InstrumentService.filter failed");
+        } catch (err) {
+            logger.error({ err: err, params }, "InstrumentService.filter failed");
             throw new ApiError("Failed to filter instruments", 500, "FILTER_FAILED");
         }
     }
@@ -172,8 +172,8 @@ export class InstrumentService {
 
                 logger.info({ count: data.length }, "Instruments upserted");
                 return { count: data.length };
-            } catch (error) {
-                logger.error({ err: error }, "InstrumentService.bulkUpsert failed");
+            } catch (err) {
+                logger.error({ err: err }, "InstrumentService.bulkUpsert failed");
                 throw new ApiError("Bulk insert failed", 500, "BULK_INSERT_FAILED");
             }
         });

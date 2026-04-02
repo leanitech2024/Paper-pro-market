@@ -23,8 +23,8 @@ export async function GET() {
       { success: true, data: watchlists },
       { headers: { 'Cache-Control': 'private, max-age=30' } }
     );
-  } catch (error) {
-    logger.error({ err: error }, 'GET /api/v1/watchlists failed');
+  } catch (err) {
+    logger.error({ err: err }, 'GET /api/v1/watchlists failed');
     return NextResponse.json({ error: 'Failed to fetch watchlists' }, { status: 500 });
   }
 }
@@ -33,14 +33,14 @@ export async function GET() {
  * POST /api/v1/watchlists
  * Create a new watchlist
  */
-export async function POST(req: Request) {
+export async function POST(_req: Request) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const body = await req.json();
+    const body = await _req.json();
     const { name } = body;
 
     if (!name || typeof name !== 'string' || name.trim().length === 0) {
@@ -59,8 +59,8 @@ export async function POST(req: Request) {
       success: true,
       data: watchlist,
     });
-  } catch (error) {
-    logger.error({ err: error }, 'POST /api/v1/watchlists failed');
+  } catch (err) {
+    logger.error({ err: err }, 'POST /api/v1/watchlists failed');
     return NextResponse.json(
       { error: 'Failed to create watchlist' },
       { status: 500 }

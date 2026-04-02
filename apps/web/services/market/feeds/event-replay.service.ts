@@ -7,7 +7,6 @@ import {
     lte,
     or,
     sql,
-    gt,
 } from "drizzle-orm";
 import { db } from "@/lib/db";
 import {
@@ -17,7 +16,7 @@ import {
     trades,
     users,
 } from "@paper-market/core/db";
-import { wallets, positions, orders } from "@paper-market/core/db";
+import { wallets, positions } from "@paper-market/core/db";
 import type { LedgerAccountType } from "@paper-market/core";
 import { ApiError } from "@/lib/errors";
 import { logger } from "@/lib/logger";

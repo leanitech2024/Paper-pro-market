@@ -35,10 +35,7 @@ type ProjectedPosition = {
 };
 
 const EPSILON = 0.000001;
-const IST_TIME_ZONE = "Asia/Kolkata";
-const MS_PER_DAY = 24 * 60 * 60 * 1000;
 const DEFAULT_ACCOUNT_LEVERAGE = Number(process.env.MAX_ACCOUNT_LEVERAGE ?? "5");
-const DEFAULT_MAX_POSITION_NOTIONAL = Number(process.env.MAX_POSITION_NOTIONAL_PER_SYMBOL ?? "2000000");
 const DEFAULT_MAX_DERIVATIVE_NOTIONAL = Number(process.env.MAX_DERIVATIVE_NOTIONAL ?? "5000000");
 const DEFAULT_CONCENTRATION_LIMIT = Number(process.env.MAX_SINGLE_INSTRUMENT_CONCENTRATION ?? "0.40");
 const DEFAULT_MARGIN_BUFFER = Number(process.env.MIN_MARGIN_BUFFER_RATIO ?? "1.25");
@@ -59,41 +56,8 @@ function clampPositive(value: number, fallback: number): number {
     return value;
 }
 
-function toIstDayNumber(date: Date): number {
-    const parts = new Intl.DateTimeFormat("en-US", {
-        timeZone: IST_TIME_ZONE,
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit",
-    }).formatToParts(date);
-
-    const year = Number(parts.find((part) => part.type === "year")?.value || 0);
-    const month = Number(parts.find((part) => part.type === "month")?.value || 0);
-    const day = Number(parts.find((part) => part.type === "day")?.value || 0);
-    return Date.UTC(year, month - 1, day);
-}
-
-function getDaysToExpiry(expiry: Date, now: Date): number {
-    const expiryDay = toIstDayNumber(expiry);
-    const today = toIstDayNumber(now);
-    return Math.round((expiryDay - today) / MS_PER_DAY);
-}
-
 function isDerivative(instrumentType: string): boolean {
     return instrumentType === "FUTURE" || instrumentType === "OPTION";
-}
-
-function isIncreasingExposure(currentQty: number, projectedQty: number): boolean {
-    if (Math.abs(projectedQty) <= EPSILON) return false;
-    if (Math.abs(currentQty) <= EPSILON) return true;
-
-    const currentSign = Math.sign(currentQty);
-    const projectedSign = Math.sign(projectedQty);
-    if (currentSign !== projectedSign) {
-        return Math.abs(projectedQty) > EPSILON;
-    }
-
-    return Math.abs(projectedQty) > Math.abs(currentQty) + EPSILON;
 }
 
 async function resolveOptionUnderlyingPrice(instrumentToken: string, fallbackPrice: number): Promise<number> {
@@ -178,9 +142,6 @@ export class PreTradeRiskService {
             .reduce((sum, item) => sum + item.notional, 0);
 
         const projectedCurrent = projected.find((item) => item.instrumentToken === instrument.instrumentToken);
-        const currentBefore = currentPositions.find((item) => item.instrumentToken === instrument.instrumentToken);
-        const currentQty = currentBefore?.quantity ?? 0;
-        const projectedQty = projectedCurrent?.quantity ?? 0;
         const projectedCurrentNotional = projectedCurrent?.notional ?? 0;
 
         const effectiveLeverage = equity > EPSILON ? totalNotional / equity : Number.POSITIVE_INFINITY;

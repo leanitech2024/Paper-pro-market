@@ -4,7 +4,6 @@ import { type NewPosition, type Trade, type ProductType } from "@paper-market/co
 import { logger } from "@/lib/logger";
 import { ApiError } from "@/lib/errors";
 import { eq, and } from "drizzle-orm";
-import type { PgTransaction } from "drizzle-orm/pg-core";
 import { requireInstrumentTokenForIdentityLookup } from "@/lib/trading/token-identity-guard";
 import { realTimeMarketService } from "@/services/market/feeds/realtime-market.service";
 import { instrumentStore } from "@/stores/instrument.store";
@@ -131,9 +130,9 @@ export class PositionService {
                     logger.debug({ userId: trade.userId, symbol: trade.symbol }, "Position updated");
                 }
             }
-        } catch (error) {
-            logger.error({ err: error, trade }, "Failed to update position");
-            throw error;
+        } catch (err) {
+            logger.error({ err: err, trade }, "Failed to update position");
+            throw err;
         }
     }
 
@@ -148,9 +147,9 @@ export class PositionService {
                 .where(eq(positions.userId, userId));
 
             return results;
-        } catch (error) {
-            logger.error({ err: error, userId }, "Failed to get positions");
-            throw error;
+        } catch (err) {
+            logger.error({ err: err, userId }, "Failed to get positions");
+            throw err;
         }
     }
 
@@ -213,9 +212,9 @@ export class PositionService {
                     };
                 return mappedPosition;
             });
-        } catch (error) {
-            logger.error({ err: error, userId }, "Failed to get positions with PnL");
-            throw error;
+        } catch (err) {
+            logger.error({ err: err, userId }, "Failed to get positions with PnL");
+            throw err;
         }
     }
 
@@ -379,9 +378,9 @@ export class PositionService {
                 closedQuantity: closeQuantity,
                 side: oppositeSide
             };
-        } catch (error) {
-            if (error instanceof ApiError) throw error;
-            logger.error({ err: error, userId, positionId }, "Failed to close position");
+        } catch (err) {
+            if (err instanceof ApiError) throw err;
+            logger.error({ err: err, userId, positionId }, "Failed to close position");
             throw new ApiError("Failed to close position", 500, "POSITION_CLOSE_FAILED");
         }
     }

@@ -1,5 +1,4 @@
 
-import { MarketIntegrationError } from "../types";
 
 export class RequestRateLimiter {
     private tokens: Map<string, number> = new Map();
