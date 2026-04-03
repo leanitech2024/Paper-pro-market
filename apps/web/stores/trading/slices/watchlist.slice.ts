@@ -201,9 +201,9 @@ export const createWatchlistSlice: MarketSlice<any> = (set, get) => ({
         }));
         set({ searchResults: results });
       }
-    } catch (_: unknown) {
-      if (error instanceof Error && error.name === 'AbortError') return; // expected, silent
-      console.error('Search failed', error);
+    } catch (err: unknown) {
+      if (err instanceof Error && err.name === 'AbortError') return; // expected, silent
+      console.error('Search failed', err);
     } finally {
       if (!signal.aborted) {
         set({ isSearching: false });

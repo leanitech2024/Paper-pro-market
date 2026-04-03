@@ -1,4 +1,4 @@
-import { NormalizedTick, Candle, CandleUpdate } from './types.js';
+import { NormalizedTick, RealtimeCandle as Candle, CandleUpdate } from './market-data.types.js';
 import { EventEmitter } from 'events';
 
 // ═══════════════════════════════════════════════════════════

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { tickBus } from '@/lib/trading/tick-bus';
+import { tickBus } from '@paper-market/core';
+
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';

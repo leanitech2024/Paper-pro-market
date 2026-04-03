@@ -53,3 +53,5 @@ export * from "./utils/performance-utils.js";
 
 // Trading Universe & Configuration
 export * from "./trading/universe.js";
+export * from "./market/tick-bus.js";
+export * from "./market/candle-engine.js";

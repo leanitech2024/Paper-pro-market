@@ -5,7 +5,7 @@ import {
   feedHealthService,
   recordFeedPrice,
 } from "@/services/market/feeds/feed-health.service";
-import { tickBus } from "@/lib/trading/tick-bus";
+import { tickBus } from "@paper-market/core";
 import type { NormalizedTick } from "@paper-market/core";
 
 // ═══════════════════════════════════════════════════════════

@@ -1,5 +1,5 @@
-import { NormalizedTick } from './types.js';
-import { isValidTick } from '@paper-market/core';
+import { NormalizedTick } from './market-data.types.js';
+import { isValidTick } from './tick-validation.js';
 
 const MAX_TICK_LISTENERS = 50;
 

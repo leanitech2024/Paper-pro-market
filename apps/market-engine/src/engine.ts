@@ -1,8 +1,7 @@
 import { db } from './lib/db.js';
 import { instruments } from './lib/schema.js';
 import { marketFeedSupervisor } from './core/market-feed-supervisor.js';
-import { tickBus } from './core/tick-bus.js';
-import { candleEngine } from './core/candle-engine.js';
+import { tickBus, candleEngine } from '@paper-market/core';
 import { UpstoxAdapter } from './upstox/adapter.js';
 import { logger } from './lib/logger.js';
 import { startLtpCacheWriter } from './lib/ltp-cache-writer.js';

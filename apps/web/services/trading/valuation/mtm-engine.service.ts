@@ -3,7 +3,7 @@ import { db } from "@/lib/db";
 import { instruments, positions, wallets } from "@paper-market/core/db";
 import { logger } from "@/lib/logger";
 import { toInstrumentKey } from "@paper-market/core";
-import { tickBus } from "@/lib/trading/tick-bus";
+import { tickBus } from "@paper-market/core";
 import type { NormalizedTick } from "@paper-market/core";
 import { eventBus } from "@/lib/event-bus";
 import { maintenanceMarginService } from "@/services/trading/valuation/maintenance-margin.service";

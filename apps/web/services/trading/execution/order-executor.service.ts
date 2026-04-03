@@ -818,8 +818,8 @@ export class OrderExecutorService {
                 logger.info(metricsPayload, "ORDER_EXECUTION_TIMING");
             }
             return true;
-        } catch (_: unknown) {
-            const apiErr = error instanceof ApiError ? error : null;
+        } catch (err: unknown) {
+            const apiErr = err instanceof ApiError ? err : null;
             if (apiErr?.code === "INSUFFICIENT_FUNDS") {
                 logger.warn({ orderId: order.id }, "Execution failed: Insufficient Funds");
                 await OrderStateMachineService.transition(order.id, "PROCESSING", "REJECTED");
@@ -827,7 +827,7 @@ export class OrderExecutorService {
             }
             if (apiErr?.code === "TRANSITION_FAILED" || apiErr?.code === "INVALID_STATE_TRANSITION") {
                 logger.debug(
-                    { err: error, orderId: order.id },
+                    { err: err, orderId: order.id },
                     "Order already left PROCESSING; skipping execution"
                 );
                 return false;
@@ -837,7 +837,7 @@ export class OrderExecutorService {
             // restore to OPEN so the next tick can retry. Without this the order stays
             // stuck in PROCESSING permanently with no recovery path.
             logger.error(
-                { err: error, orderId: order.id },
+                { err: err, orderId: order.id },
                 "Unexpected execution error — restoring order to OPEN for retry"
             );
             await db.update(orders)
@@ -849,7 +849,7 @@ export class OrderExecutorService {
                 .catch((restoreErr) =>
                     logger.error({ err: restoreErr, orderId: order.id }, "Failed to restore PROCESSING order to OPEN")
                 );
-            throw error;
+            throw err;
         }
     }
 

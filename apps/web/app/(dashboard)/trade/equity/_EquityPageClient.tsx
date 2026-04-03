@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, Suspense } from "react";
+import { useEffect, useMemo, useState, Suspense } from "react";
 import dynamic from "next/dynamic";
 import { EquityTradeForm } from "@/components/trade/EquityTradeForm";
 import { Stock } from "@paper-market/core";
@@ -38,7 +38,6 @@ export default function EquityPage({ initialSymbol }: { initialSymbol?: string }
   const [showOrderForm, setShowOrderForm] = useState(false);
   const [mobileOrderOpen, setMobileOrderOpen] = useState(false);
   const [mobilePanel, setMobilePanel] = useState<"watchlist" | "chart">("watchlist");
-  const hasAutoSelectedInitialStockRef = useRef(false);
 
   const currentInstruments = getCurrentInstruments("equity");
   const [selectedSymbol, setSelectedSymbol] = useState<string | null>(initialSymbol || null);
@@ -55,20 +54,8 @@ export default function EquityPage({ initialSymbol }: { initialSymbol?: string }
     return stocksBySymbol[selectedSymbol] || selectedFallback;
   }, [selectedSymbol, selectedFallback, stocksBySymbol]);
 
-  useEffect(() => {
-    if (selectedSymbol) {
-      hasAutoSelectedInitialStockRef.current = true;
-      return;
-    }
-    if (hasAutoSelectedInitialStockRef.current) return;
-    if (currentInstruments.length === 0) return;
-    if (isMobile) return;
-
-    const first = currentInstruments[0];
-    setSelectedSymbol(first.symbol);
-    setSelectedFallback(first);
-    hasAutoSelectedInitialStockRef.current = true;
-  }, [currentInstruments, isMobile, selectedSymbol]);
+  // NOTE: No auto-select. Chart should appear only after user clicks a stock
+  // (unless an initialSymbol is explicitly provided).
 
   useEffect(() => {
     if (!selectedSymbol) return;

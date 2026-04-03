@@ -125,7 +125,7 @@
       "idx": 17,
       "version": "7",
       "when": 1771494335326,
-      "tag": "0017_abandoned_firebird",
+      "tag": "0028_abandoned_firebird",
       "breakpoints": true
     },
     {
@@ -189,6 +189,41 @@
       "version": "7",
       "when": 1774329697141,
       "tag": "0026_careless_radioactive_man",
+      "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1775120581275,
+      "tag": "0027_add_instrumentToken_to_oms",
+      "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1775120581275,
+      "tag": "0029_watchlist_indexes",
+      "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1775120581275,
+      "tag": "0030_auth_indexes",
+      "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1775120581275,
+      "tag": "0031_wallet_non_negative_check",
+      "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1775120581275,
+      "tag": "0032_product_type_sl_target_leverage",
       "breakpoints": true
     }
   ]

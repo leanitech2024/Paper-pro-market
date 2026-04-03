@@ -13,6 +13,7 @@ import { useMarketStore } from "@/stores/trading/market.store";
 import { useSearchStore } from "@/stores/ui/search.store";
 import { Search, Plus, Trash2, FolderPlus, FolderOpen, AlertCircle, X, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { toInstrumentKey } from "@paper-market/core";
 import { toast } from "sonner";
 
 function formatPrice(val: number): string {
@@ -58,9 +59,10 @@ export default function WatchlistPage() {
 
   const instruments = useMemo(() => {
     return rawInstruments.map((inst) => {
-      const sp = selectPrice(inst.symbol);
+      const instrumentKey = inst.instrumentToken ? toInstrumentKey(inst.instrumentToken) : "";
+      const sp = instrumentKey ? selectPrice(instrumentKey) : selectPrice(inst.symbol);
       const livePrice = (sp && sp > 0) ? sp : inst.price;
-      const quote = selectQuote(inst.symbol);
+      const quote = instrumentKey ? selectQuote(instrumentKey) : selectQuote(inst.symbol);
       const change = quote?.change || inst.change || 0;
       const changePercent = quote?.changePercent || inst.changePercent || 0;
 
@@ -292,4 +294,4 @@ export default function WatchlistPage() {
       </div>
     </div>
   );
-}
+}

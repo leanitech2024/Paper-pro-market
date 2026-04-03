@@ -3,7 +3,7 @@ import { ApiError, handleError } from "@/lib/errors";
 import { logger } from "@/lib/logger";
 import { db } from "@/lib/db";
 import { instruments } from "@paper-market/core/db";
-import { inArray } from "drizzle-orm";
+import { inArray, or } from "drizzle-orm";
 import { toInstrumentKey } from "@paper-market/core";
 import { resolveUpstoxPreviousClose } from "@/lib/market/upstox-quote-normalization";
 import { auth } from "@/lib/auth";
@@ -50,7 +50,7 @@ function toUpstoxRequestInstrumentKey(raw: string): string {
     return `${prefix}|${suffix.toUpperCase()}`;
 }
 
-function parseJsonSafe(text: string): any | null {
+function parseJsonSafe(text: string): unknown {
     if (!text) return null;
     try {
         return JSON.parse(text);
@@ -65,6 +65,41 @@ function normalizeErrorMessage(error: unknown): string {
         if (msg.length > 0) return msg;
     }
     return "Failed to fetch quotes";
+}
+
+/**
+ * After buildQuoteLookup() produces an ISIN-keyed map, re-key every entry that
+ * has a corresponding requested trading-symbol variant so that toRequestedKeyPayload
+ * can resolve it by the original key (e.g. NSE_EQ|RELIANCE → NSE_EQ|INE002A01018).
+ */
+function applySymbolKeyRemapping(
+    lookup: Map<string, { last: number; close: number }>,
+    symbolToIsinMap: Map<string, string>,
+    symbolToIsinFromDB: Map<string, string>
+): void {
+    // 1. Upstox sometimes responds with text symbols instead of ISINs for equities.
+    // If the lookup contains a quote under a text symbol, mirror it to its ISIN.
+    for (const [symbolKey, isinKey] of symbolToIsinFromDB.entries()) {
+        const hit = lookup.get(symbolKey) ?? lookup.get(symbolKey.replace("|", ":"));
+        if (hit) {
+            lookup.set(isinKey, hit);
+            lookup.set(isinKey.replace("|", ":"), hit);
+        }
+    }
+
+    // 2. Map whatever is in the lookup back to the requested instrument keys
+    for (const [requestedKey, isinKey] of symbolToIsinMap.entries()) {
+        const isinNorm = toInstrumentKey(isinKey);
+        const hit =
+            lookup.get(isinNorm) ??
+            lookup.get(isinNorm.replace("|", ":")) ??
+            lookup.get(isinNorm.replace(":", "|"));
+        if (hit) {
+            lookup.set(requestedKey, hit);
+            lookup.set(requestedKey.replace("|", ":"), hit);
+            lookup.set(requestedKey.replace(":", "|"), hit);
+        }
+    }
 }
 
 function buildQuoteLookup(quotes: UpstoxQuoteMap): Map<string, { last: number; close: number }> {
@@ -98,73 +133,89 @@ function buildQuoteLookup(quotes: UpstoxQuoteMap): Map<string, { last: number; c
 const ISIN_SUFFIX_RE = /^[A-Z]{2}[A-Z0-9]{8,14}$/;
 
 /**
- * For equity keys whose suffix is a trading symbol (e.g. NSE_EQ|RELIANCE),
- * look up the actual ISIN-based instrumentToken in the DB and return a map:
- *   requestedKey → isinKey  (e.g. "NSE_EQ|RELIANCE" → "NSE_EQ|INE002A01018")
- * Keys whose suffix is already an ISIN are passed through unchanged.
+ * For equity keys, resolve the relation between trading symbols and ISINs.
+ * Returns:
+ *  - symbolToIsinMap: requestedKey -> isinKey (for sending to Upstox API)
+ *  - symbolToIsinFromDB: textSymbolKey -> isinKey (for reverse mapping Upstox responses to ISINs)
  */
 async function resolveSymbolKeysToIsins(
     instrumentKeys: string[]
-): Promise<Map<string, string>> {
-    // out[requestedKey] = isinKey (may equal requestedKey if already ISIN)
-    const out = new Map<string, string>();
+): Promise<{ symbolToIsinMap: Map<string, string>; symbolToIsinFromDB: Map<string, string> }> {
+    const symbolToIsinMap = new Map<string, string>();
+    const symbolToIsinFromDB = new Map<string, string>();
 
-    const symbolNameKeys: Array<{ key: string; segment: string; symbol: string }> = [];
-    const isinKeys: string[] = [];
+    const textSymbols: string[] = [];
+    const isinTokens: string[] = [];
+    const pendingRequests = new Set<string>();
 
     for (const raw of instrumentKeys) {
         const key = toInstrumentKey(raw);
         if (!key) continue;
         const pipe = key.indexOf("|");
-        if (pipe === -1) { out.set(key, key); continue; }
-        const segment = key.slice(0, pipe);   // e.g. "NSE_EQ"
-        const suffix  = key.slice(pipe + 1);  // e.g. "RELIANCE" or "INE002A01018"
-        if (ISIN_SUFFIX_RE.test(suffix)) {
-            // Already ISIN — use as-is
-            isinKeys.push(key);
-            out.set(key, key);
-        } else if (segment === "NSE_EQ" || segment === "BSE_EQ") {
-            // Text trading symbol — needs DB resolution
-            symbolNameKeys.push({ key, segment, symbol: suffix });
+        if (pipe === -1) { symbolToIsinMap.set(key, key); continue; }
+
+        const segment = key.slice(0, pipe);
+        const suffix = key.slice(pipe + 1);
+
+        if (segment === "NSE_EQ" || segment === "BSE_EQ") {
+            pendingRequests.add(key);
+            if (ISIN_SUFFIX_RE.test(suffix)) {
+                isinTokens.push(key);
+            } else {
+                textSymbols.push(suffix);
+            }
         } else {
-            // Index / FO — pass through
-            out.set(key, key);
+            symbolToIsinMap.set(key, key);
         }
     }
 
-    if (symbolNameKeys.length === 0) return out;
+    if (textSymbols.length > 0 || isinTokens.length > 0) {
+        try {
+            const conditions = [];
+            if (textSymbols.length > 0) conditions.push(inArray(instruments.tradingsymbol, textSymbols));
+            if (isinTokens.length > 0) conditions.push(inArray(instruments.instrumentToken, isinTokens));
 
-    try {
-        const tradingSymbols = symbolNameKeys.map((x) => x.symbol);
-        const rows = await db
-            .select({
-                instrumentToken: instruments.instrumentToken,
-                tradingsymbol: instruments.tradingsymbol,
-                segment: instruments.segment,
-            })
-            .from(instruments)
-            .where(inArray(instruments.tradingsymbol, tradingSymbols));
+            const rows = await db
+                .select({
+                    instrumentToken: instruments.instrumentToken,
+                    tradingsymbol: instruments.tradingsymbol,
+                    segment: instruments.segment,
+                })
+                .from(instruments)
+                .where(or(...conditions));
 
-        // Build lookup: "NSE_EQ:RELIANCE" → "NSE_EQ|INE002A01018"
-        const dbLookup = new Map<string, string>();
-        for (const row of rows) {
-            const seg = String(row.segment || "").toUpperCase();
-            const sym = String(row.tradingsymbol || "").toUpperCase();
-            const token = String(row.instrumentToken || "");
-            if (seg && sym && token) dbLookup.set(`${seg}:${sym}`, token);
+            for (const row of rows) {
+                const seg = String(row.segment || "").toUpperCase();
+                const sym = String(row.tradingsymbol || "").toUpperCase();
+                const token = String(row.instrumentToken || "");
+                if (seg && sym && token) {
+                    const symbolKey = `${seg}|${sym}`;
+                    symbolToIsinFromDB.set(symbolKey, token);
+                    symbolToIsinFromDB.set(`${seg}:${sym}`, token);
+                }
+            }
+        } catch (err) {
+            logger.warn({ err: err }, "Failed to resolve equity mappings from DB");
         }
-
-        for (const { key, segment, symbol } of symbolNameKeys) {
-            const isinKey = dbLookup.get(`${segment}:${symbol}`);
-            out.set(key, isinKey ?? key); // fall back to original if not found
-        }
-    } catch (err) {
-        logger.warn({ err: err }, "Failed to resolve symbol keys to ISINs");
-        // Fall back: map each unresolved key to itself
-        for (const { key } of symbolNameKeys) if (!out.has(key)) out.set(key, key);
     }
 
-    return out;
+    for (const reqKey of pendingRequests) {
+        const pipe = reqKey.indexOf("|");
+        const segment = reqKey.slice(0, pipe);
+        const suffix = reqKey.slice(pipe + 1);
+
+        if (ISIN_SUFFIX_RE.test(suffix)) {
+            // Already standard ISIN
+            symbolToIsinMap.set(reqKey, reqKey);
+        } else {
+            // Needs translation to send to upstream
+            let resolvedIsin = symbolToIsinFromDB.get(reqKey);
+            if (!resolvedIsin) resolvedIsin = symbolToIsinFromDB.get(`${segment}:${suffix}`);
+            symbolToIsinMap.set(reqKey, resolvedIsin ?? reqKey);
+        }
+    }
+
+    return { symbolToIsinMap, symbolToIsinFromDB };
 }
 
 function toRequestedKeyPayload(
@@ -222,7 +273,19 @@ export async function POST(req: NextRequest) {
             throw new ApiError("Unauthorized", 401, "UNAUTHORIZED");
         }
 
-        const body = await req.json();
+        let body: unknown = {};
+        try {
+            const rawText = await req.text();
+            if (rawText && rawText.trim().length > 0) {
+                body = JSON.parse(rawText);
+            }
+        } catch {
+            return NextResponse.json(
+                { success: false, error: "Invalid JSON body" },
+                { status: 400 }
+            );
+        }
+
         const payload = z.object({
             symbols: z.array(z.string()).max(100).optional(),
             instrumentKeys: z.array(z.string()).max(100).optional()
@@ -245,9 +308,8 @@ export async function POST(req: NextRequest) {
             );
         }
 
-        // Resolve text-symbol equity keys (e.g. NSE_EQ|RELIANCE) to ISIN keys (NSE_EQ|INE002A01018).
-        // Upstox's market-quote API only accepts ISIN-based keys for equities.
-        const symbolToIsinMap = await resolveSymbolKeysToIsins(instrumentKeys);
+        // Resolve mappings so we can send ISINs to Upstox and reverse-map its text symbol responses back to ISINs.
+        const { symbolToIsinMap, symbolToIsinFromDB } = await resolveSymbolKeysToIsins(instrumentKeys);
 
         // Build the upstream request keys: use the ISIN key where available, else the original.
         // Also apply Upstox mixed-case formatting for indices.
@@ -282,13 +344,23 @@ export async function POST(req: NextRequest) {
         });
 
         const rawText = await response.text();
-        const upstream = parseJsonSafe(rawText);
+        const upstream = parseJsonSafe(rawText) as { status?: string; data?: UpstoxQuoteMap; message?: string } | null;
         const upstreamStatus = upstream?.status;
         const upstreamData = (upstream?.data || {}) as UpstoxQuoteMap;
 
         if (response.ok && upstreamStatus !== "error" && Object.keys(upstreamData).length > 0) {
             const lookup = buildQuoteLookup(upstreamData);
-            // Also index by the isin keys from symbolToIsinMap so toRequestedKeyPayload can match
+            // Re-key ISIN entries back to requested symbol keys (primary path)
+            applySymbolKeyRemapping(lookup, symbolToIsinMap, symbolToIsinFromDB);
+
+            // TEMP DEBUG — remove after fix confirmed
+            logger.info({
+              upstreamKeys: Object.keys(upstreamData).slice(0, 3),
+              lookupSize: lookup.size,
+              symbolToIsinEntries: Array.from(symbolToIsinMap.entries()).slice(0, 3),
+              instrumentKeys: instrumentKeys.slice(0, 3),
+            }, "DEBUG quotes lookup");
+
             const responsePayload = toRequestedKeyPayload(instrumentKeys, lookup, symbolToIsinMap);
             if (Object.keys(responsePayload).length > 0) {
                 return NextResponse.json({
@@ -323,6 +395,8 @@ export async function POST(req: NextRequest) {
         }
 
         const ltpLookup = buildQuoteLookup(ltpAsQuotes);
+        // Re-key ISIN entries back to requested symbol keys (LTP fallback path)
+        applySymbolKeyRemapping(ltpLookup, symbolToIsinMap, symbolToIsinFromDB);
         const fallbackPayload = toRequestedKeyPayload(instrumentKeys, ltpLookup, symbolToIsinMap);
 
         if (Object.keys(fallbackPayload).length > 0) {
@@ -336,7 +410,19 @@ export async function POST(req: NextRequest) {
             });
         }
 
-        // Both primary and fallback failed
+        // If the request was technically successful but we got no usable data,
+        // return an empty response instead of failing to prevent constant 502s.
+        if (response.ok || response.status === 404 || response.status === 204) {
+            return NextResponse.json({
+                success: true,
+                data: {},
+                count: 0,
+                source: "empty",
+                timestamp: new Date().toISOString(),
+            });
+        }
+
+        // Both primary and fallback failed, and response was not OK
         const msg =
             (typeof upstream?.message === "string" && upstream.message.trim()) ||
             `${response.status} ${response.statusText}`.trim() ||
@@ -358,4 +444,3 @@ export async function POST(req: NextRequest) {
         );
     }
 }
-

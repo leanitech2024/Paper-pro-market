@@ -1,5 +1,5 @@
 import { NormalizedTick } from "@paper-market/core";
-import { tickBus } from "@/lib/trading/tick-bus";
+import { tickBus } from "@paper-market/core";
 
 const MAX_CACHE_SIZE = 5000;
 

@@ -109,13 +109,13 @@ export class UpstoxClient {
 
             return data.data as T;
 
-        } catch (_: unknown) {
+        } catch (err: unknown) {
             throw new MarketIntegrationError(
-                error instanceof Error ? error.message : "Network Request Failed",
+                err instanceof Error ? err.message : "Network Request Failed",
                 "NETWORK_ERROR",
                 502,
                 "UPSTOX",
-                error
+                err
             );
         }
     }

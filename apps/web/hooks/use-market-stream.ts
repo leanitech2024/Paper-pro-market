@@ -327,9 +327,27 @@ export const useMarketStream = () => {
     useEffect(() => {
         let cancelled = false;
         const poll = async () => {
-            if (cancelled || wsRef.current?.isConnected()) return;
+            if (cancelled) return;
             const keys = collectDesiredKeys();
-            if (keys.length > 0) await refreshQuotesFromApi(keys);
+            if (keys.length === 0) return;
+
+            const now = Date.now();
+            const quotesByInstrument = useMarketStore.getState().quotesByInstrument;
+            const staleMs = 30_000;
+
+            const missingOrStale = keys.filter((k) => {
+                const normalized = toInstrumentKey(k);
+                const quote = quotesByInstrument[normalized] || quotesByInstrument[k];
+                if (!quote || !Number.isFinite(Number(quote.price)) || Number(quote.price) <= 0) {
+                    return true;
+                }
+                const ts = Number(quote.timestamp || 0);
+                return !Number.isFinite(ts) || now - ts > staleMs;
+            });
+
+            if (missingOrStale.length > 0) {
+                await refreshQuotesFromApi(missingOrStale);
+            }
         };
         void poll();
         const interval = setInterval(() => void poll(), QUOTE_REFRESH_INTERVAL_MS);

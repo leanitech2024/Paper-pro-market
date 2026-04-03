@@ -1,0 +1,24 @@
+{
+  "entry": [
+    "apps/web/app/**/*.{ts,tsx}",
+    "apps/market-engine/src/index.ts"
+  ],
+  "project": [
+    "apps/web/**/*.{ts,tsx}",
+    "apps/market-engine/**/*.{ts,ts}",
+    "packages/core/**/*.{ts}"
+  ],
+  "ignore": [
+    "**/.next/**",
+    "**/dist/**",
+    "**/drizzle/**",
+    "**/node_modules/**"
+  ],
+  "ignoreDependencies": [
+    "eslint",
+    "eslint-config-next",
+    "tailwindcss",
+    "postcss",
+    "autoprefixer"
+  ]
+}

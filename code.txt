@@ -1,0 +1,2858 @@
+
+===== apps/web/jobs/market-tick.job.ts =====
+import { marketSimulation } from "@/services/market/feeds/market-simulation.service";
+import { logger } from "@/lib/logger";
+import { SlTargetEngineService } from "@/services/trading/execution/sl-target-engine.service";
+
+class MarketTickJob {
+    private intervalId: NodeJS.Timeout | null = null;
+    private tickCount: number = 0;
+    private isRunning: boolean = false;
+
+    /**
+     * Start the market tick job.
+     * Idempotent - safe to call multiple times.
+     */
+    async start(): Promise<void> {
+        if (this.isRunning) {
+            logger.warn("MarketTickJob already running");
+            return;
+        }
+
+        try {
+            // Initialize the simulation service
+            await marketSimulation.initialize();
+
+            // Start the tick interval
+            this.intervalId = setInterval(() => {
+                void this.executeTick();
+            }, 1000);
+
+            this.isRunning = true;
+            logger.info("MarketTickJob started");
+        } catch (err) {
+            logger.error({ err: err }, "Failed to start MarketTickJob");
+            throw err;
+        }
+    }
+
+    /**
+     * Stop the market tick job.
+     */
+    stop(): void {
+        if (this.intervalId) {
+            clearInterval(this.intervalId);
+            this.intervalId = null;
+        }
+
+        this.isRunning = false;
+        this.tickCount = 0;
+        logger.info("MarketTickJob stopped");
+    }
+
+    /**
+     * Get the current status of the job.
+     */
+    getStatus(): { isRunning: boolean; tickCount: number; symbolCount: number } {
+        return {
+            isRunning: this.isRunning,
+            tickCount: this.tickCount,
+            symbolCount: marketSimulation.getSymbolCount(),
+        };
+    }
+
+    /**
+     * Execute a single tick.
+     * Logs every 10 ticks.
+     */
+    private async executeTick(): Promise<void> {
+        try {
+            marketSimulation.tick();
+            this.tickCount++;
+
+            // Log every 10 ticks
+            if (this.tickCount % 10 === 0) {
+                logger.info(
+                    {
+                        tickCount: this.tickCount,
+                        symbolCount: marketSimulation.getSymbolCount(),
+                    },
+                    "Market tick checkpoint"
+                );
+            }
+
+            await SlTargetEngineService.checkAndExecute();
+            await SlTargetEngineService.misSquareOff();
+        } catch (err) {
+            logger.error({ err: err, tickCount: this.tickCount }, "Market tick failed");
+        }
+    }
+}
+
+declare global {
+    var __marketTickJob: MarketTickJob | undefined;
+}
+
+const globalState = globalThis as unknown as {
+    __marketTickJob?: MarketTickJob;
+};
+
+export const marketTickJob =
+    globalState.__marketTickJob || new MarketTickJob();
+
+globalState.__marketTickJob = marketTickJob;
+
+
+
+
+
+===== apps/web/services/trading/execution/order-executor.service.ts =====
+import { db } from "@/lib/db";
+import { orders, positions, trades } from "@paper-market/core/db";
+import { type NewTrade, type LedgerReferenceType, type WriteAheadOperationType, type ProductType, type PlaceOrder } from "@paper-market/core";
+import { logger } from "@/lib/logger";
+import { ApiError } from "@/lib/errors";
+import { performance } from "node:perf_hooks";
+import { mtmEngineService } from "@/services/trading/valuation/mtm-engine.service";
+import { PositionService } from "@/services/trading/positions/position.service";
+import { MarginCalculatorService } from "@/services/trading/margin/margin-calculator.service";
+import { and, asc, eq, ne, sql } from "drizzle-orm";
+import { requireInstrumentTokenForIdentityLookup } from "@/lib/trading/token-identity-guard";
+import { FillEngineService } from "@/services/trading/execution/fill-engine.service";
+import { assertTradingEnabled, isTradingEnabled } from "@/lib/system-control";
+import { LedgerService } from "@/services/accounting/ledger/ledger.service";
+import { WriteAheadJournalService } from "@/services/accounting/ledger/write-ahead-journal.service";
+import { instrumentStore } from "@/stores/instrument.store";
+import { eventBus } from "@/lib/event-bus";
+import { resolveEffectiveLeverage } from "@paper-market/core";
+import { SlTargetChildOrderService } from "@/services/trading/execution/sl-target-child-order.service";
+import { buildLedgerIdempotencyKey, resolveLedgerReferenceType } from "@/services/trading/pipeline/order-ledger-keys";
+import { WalletService } from "@/services/accounting/wallet/wallet.service";
+import { OrderStateMachineService } from "@/services/trading/pipeline/order-state-machine.service";
+
+export class OrderExecutorService {
+    private static round2(value: number): number {
+        return Math.round(value * 100) / 100;
+    }
+
+    private static resolveWajOperationType(
+        order: typeof orders.$inferSelect
+    ): WriteAheadOperationType {
+        if (order.rejectionReason === "FORCED_LIQUIDATION") return "LIQUIDATION";
+        if (order.exitReason === "EXPIRY") return "EXPIRY_SETTLEMENT";
+        return "TRADE_EXECUTION";
+    }
+
+    private static resolveOptionPremiumReferenceType(
+        side: "BUY" | "SELL",
+        closingQuantity: number,
+        openingQuantity: number
+    ): LedgerReferenceType {
+        // Keep lifecycle observability explicit: opening premium legs vs realized close legs.
+        if (closingQuantity > 0 && openingQuantity === 0) {
+            return "OPTION_REALIZED_PNL";
+        }
+        return side === "BUY" ? "OPTION_PREMIUM_DEBIT" : "OPTION_PREMIUM_CREDIT";
+    }
+
+    /**
+     * Execute all open orders by checking market conditions.
+     * This should be called periodically (e.g., every tick).
+     *
+     * C-8 FIX: Orders are claimed atomically via UPDATE status='PROCESSING'
+     * before execution. Concurrent callers (tick events, cron) will each see a
+     * disjoint set of orders and can never double-fill the same order.
+     */
+    static async executeOpenOrders(): Promise<number> {
+        try {
+            if (!isTradingEnabled()) {
+                return 0;
+            }
+
+            // Recovery: reset any orders that have been stuck in PROCESSING for
+            // more than 30 seconds back to OPEN so they can be retried. This handles
+            // cases where a previous execution attempt crashed mid-flight (e.g. a
+            // process restart, or a trading halt that was subsequently cleared).
+            const staleThreshold = new Date(Date.now() - 30_000);
+            const staleProcessing = await db
+                .update(orders)
+                .set({ status: "OPEN", updatedAt: new Date() })
+                .where(
+                    and(
+                        eq(orders.status, "PROCESSING"),
+                        sql`${orders.updatedAt} < ${staleThreshold}`
+                    )
+                )
+                .returning({ id: orders.id });
+
+            if (staleProcessing.length > 0) {
+                logger.warn(
+                    { count: staleProcessing.length, ids: staleProcessing.map((o) => o.id) },
+                    "Recovered stale PROCESSING orders back to OPEN"
+                );
+            }
+
+            // Atomically claim a batch of OPEN orders by flipping them to
+            // PROCESSING. Only this caller will see these exact rows; any
+            // concurrent caller will skip them (they are no longer OPEN).
+            const batchSize = 100;
+            const claimCandidates = db
+                .select({ id: orders.id })
+                .from(orders)
+                .where(
+                    and(
+                        eq(orders.status, "OPEN"),
+                        sql`${orders.childOrderType} IS NULL`
+                    )
+                )
+                .orderBy(asc(orders.createdAt))
+                .limit(batchSize);
+
+            const claimedOrders = await OrderStateMachineService.batchTransition(claimCandidates, "OPEN", "PROCESSING");
+
+            if (claimedOrders.length === 0) return 0;
+
+            let executedCount = 0;
+
+            const reopenOrder = async (orderId: string) => {
+                try {
+                    await OrderStateMachineService.transition(orderId, "PROCESSING", "OPEN");
+                } catch (err) {
+                    if (err instanceof ApiError && (err.code === "TRANSITION_FAILED" || err.code === "INVALID_STATE_TRANSITION")) {
+                        logger.debug(
+                            { err: err, orderId },
+                            "Order already left PROCESSING; skipping reopen"
+                        );
+                        return;
+                    }
+                    throw err;
+                }
+            };
+
+            for (const order of claimedOrders) {
+                try {
+                    const executed = await this.tryExecuteOrder(order);
+                    if (executed) {
+                        executedCount++;
+                    } else {
+                        // Not fillable right now -- restore to OPEN so the next
+                        // tick can retry.
+                        await reopenOrder(order.id);
+                    }
+                } catch (err) {
+                    logger.error(
+                        { err: err, orderId: order.id },
+                        "Failed to execute individual order"
+                    );
+                    // Restore to OPEN on unexpected error so the order is not
+                    // silently dropped.
+                    await reopenOrder(order.id);
+                }
+            }
+
+            if (executedCount > 0) {
+                logger.info({ executedCount }, "Orders executed");
+            }
+
+            return executedCount;
+        } catch (err) {
+            logger.error({ err: err }, "Failed to execute open orders");
+            throw new ApiError("Execution engine failed", 500, "EXECUTION_FAILED");
+        }
+    }
+
+    /**
+     * Try to execute a single order based on market conditions.
+     */
+    static async tryExecuteOrder(
+        order: typeof orders.$inferSelect,
+        options: { force?: boolean; leverage?: number } = {}
+    ): Promise<boolean> {
+        const startMs = performance.now();
+        let marginMs = 0;
+        let ledgerMs = 0;
+        let executionMs = 0;
+
+        assertTradingEnabled({ force: options.force, context: "OrderExecutorService.tryExecuteOrder" });
+        const instrumentToken = requireInstrumentTokenForIdentityLookup({
+            context: "OrderExecutorService.tryExecuteOrder",
+            instrumentToken: order.instrumentToken,
+            symbol: order.symbol,
+        });
+
+        if (!instrumentStore.isReady()) {
+            await instrumentStore.initialize();
+        }
+        if (!instrumentStore.isReady()) {
+            throw new ApiError("Instrument store not ready", 503, "INSTRUMENT_STORE_NOT_READY");
+        }
+        const instrument = instrumentStore.getByToken(instrumentToken);
+        if (!instrument) {
+            throw new ApiError(`Instrument not found: ${instrumentToken}`, 404, "INSTRUMENT_NOT_FOUND");
+        }
+
+        const fillDecision = await FillEngineService.resolveFill(order, instrument);
+        if (process.env.NODE_ENV !== "production" && fillDecision.resolvedBy !== "FILL_ENGINE_V1") {
+            throw new Error("OrderExecutorService fill price must come from FillEngineService");
+        }
+
+        const executionPrice = fillDecision.executionPrice;
+        const fillQuantity = fillDecision.fillableQuantity;
+        const priceSource = String(fillDecision.source || "NONE");
+
+        const fillable = Boolean(executionPrice && fillQuantity > 0) && fillDecision.shouldFill;
+        if (!fillable) {
+            logger.debug(
+                {
+                    orderId: order.id,
+                    symbol: order.symbol,
+                    reason: fillDecision.reason,
+                    source: fillDecision.source,
+                    tickPrice: fillDecision.tickPrice,
+                },
+                "Order not fillable on current tick"
+            );
+            return false;
+        }
+
+        if (process.env.NODE_ENV !== "production" && fillQuantity !== order.quantity) {
+            throw new Error("OrderExecutorService partial fills are not enabled yet; expected full fill quantity");
+        }
+        const finalExecutionPrice = Number(executionPrice);
+
+        try {
+            const transactionStartMs = performance.now();
+            await db.transaction(async (tx) => {
+                // Prefer the persisted order.leverage (set at placement time by the user).
+                // Fall back to options.leverage for forced/liquidation/expiry paths that
+                // construct synthetic orders without a persisted leverage value.
+                const resolvedLeverage = resolveEffectiveLeverage(
+                    (order as any).leverage ?? options.leverage
+                );
+                const resolvedProductType: ProductType =
+                    order.productType === "MIS" ? "MIS" : "CNC";
+
+                const orderPayload = order.orderType === "LIMIT"
+                    ? {
+                        instrumentToken,
+                        symbol: order.symbol,
+                        side: order.side,
+                        quantity: fillQuantity,
+                        orderType: "LIMIT" as const,
+                        limitPrice: Number(order.limitPrice || executionPrice),
+                        productType: resolvedProductType,
+                            leverage: resolvedLeverage,
+                    }
+                    : {
+                        instrumentToken,
+                        symbol: order.symbol,
+                        side: order.side,
+                        quantity: fillQuantity,
+                        orderType: "MARKET" as const,
+                        productType: resolvedProductType,
+                            leverage: resolvedLeverage,
+                    };
+
+                // ─── ACQUIRE ROW-LEVEL LOCK FIRST ────────────────────────────
+                // This must be the very first DB operation inside the transaction.
+                // Both the margin calculation and PnL calculation below depend on
+                // previousQuantity/averagePrice — locking here prevents concurrent
+                // fills (tick executor + liquidation) from reading stale position data
+                // and computing incorrect closingQty / realizedPnl / marginDelta.
+                const [existingPositionBefore] = await tx
+                    .select({
+                        quantity: positions.quantity,
+                        averagePrice: positions.averagePrice,
+                    })
+                    .from(positions)
+                    .where(
+                        and(
+                            eq(positions.userId, order.userId),
+                            eq(positions.instrumentToken, instrumentToken)
+                        )
+                    )
+                    .for('update')
+                    .limit(1);
+
+                const marginStartMs = performance.now();
+                const marginRequired = await MarginCalculatorService.calculateRequiredMargin(
+                    orderPayload,
+                    instrument
+                );
+                marginMs = performance.now() - marginStartMs;
+                const ledgerReferenceType = resolveLedgerReferenceType(order);
+                const reservedMargin = Number(order.reservedMargin ?? 0);
+
+                const previousQuantity = Number(existingPositionBefore?.quantity ?? 0);
+                const previousAveragePrice = Number(existingPositionBefore?.averagePrice ?? finalExecutionPrice);
+                const tradeDelta = order.side === "BUY" ? fillQuantity : -fillQuantity;
+                const projectedQuantity = previousQuantity + tradeDelta;
+
+                let openingQuantity = 0;
+                let closingQuantity = 0;
+                if (previousQuantity === 0 || Math.sign(previousQuantity) === Math.sign(tradeDelta)) {
+                    openingQuantity = Math.abs(tradeDelta);
+                } else {
+                    closingQuantity = Math.min(Math.abs(previousQuantity), Math.abs(tradeDelta));
+                    openingQuantity = Math.max(0, Math.abs(tradeDelta) - Math.abs(previousQuantity));
+                }
+
+                const marginPerUnit = fillQuantity > 0 ? marginRequired / fillQuantity : 0;
+                const marginToBlock = Math.max(0, this.round2(marginPerUnit * openingQuantity));
+                const marginToRelease = Math.max(0, this.round2(marginPerUnit * closingQuantity));
+                const marginBlockDelta = Math.max(0, this.round2(marginToBlock - reservedMargin));
+                const marginReserveReleaseDelta = Math.max(0, this.round2(reservedMargin - marginToBlock));
+
+                // D-1 FIX: Use LedgerService BigInt arithmetic for PnL so the result
+                // matches the precision of the ledger itself. Floating-point
+                // Math.round((price - avg) * qty * 100) / 100 can produce systematic
+                // rounding error on large price × quantity products (e.g. options premiums).
+                const realizedPnlString: string = (() => {
+                    if (closingQuantity <= 0) return "0";
+                    const direction = previousQuantity > 0 ? 1 : -1;
+                    const priceDelta = LedgerService.subtract(
+                        finalExecutionPrice.toString(),
+                        previousAveragePrice.toString()
+                    );
+                    const gross = LedgerService.multiplyByInteger(priceDelta, closingQuantity);
+                    // Apply direction: long position profit = positive delta, short = negative delta
+                    return direction === 1 ? gross : LedgerService.subtract("0", gross);
+                })();
+                const realizedPnl = parseFloat(realizedPnlString);
+
+                let optionMarginToBlock = 0;
+                let optionMarginToRelease = 0;
+                if (instrument.instrumentType === "OPTION") {
+                    const previousShortQty = Math.max(0, -previousQuantity);
+                    const nextShortQty = Math.max(0, -projectedQuantity);
+                    const previousShortMargin = await MarginCalculatorService.calculateOptionShortMarginForQuantity(
+                        instrument,
+                        previousShortQty,
+                        finalExecutionPrice
+                    );
+                    const nextShortMargin = await MarginCalculatorService.calculateOptionShortMarginForQuantity(
+                        instrument,
+                        nextShortQty,
+                        finalExecutionPrice
+                    );
+                    optionMarginToBlock = Math.max(0, this.round2(nextShortMargin - previousShortMargin));
+                    optionMarginToRelease = Math.max(0, this.round2(previousShortMargin - nextShortMargin));
+                }
+                const optionMarginBlockDelta = Math.max(0, this.round2(optionMarginToBlock - reservedMargin));
+                const optionReserveReleaseDelta = Math.max(0, this.round2(reservedMargin - optionMarginToBlock));
+
+                const plannedLedgerKeys: string[] = [];
+
+                if (instrument.instrumentType === "FUTURE") {
+                    if (marginBlockDelta > 0) {
+                        plannedLedgerKeys.push(buildLedgerIdempotencyKey(order, "MARGIN_BLOCK_OPEN"));
+                    }
+                    if (marginReserveReleaseDelta > 0) {
+                        plannedLedgerKeys.push(buildLedgerIdempotencyKey(order, "MARGIN_RELEASE_RESERVE"));
+                    }
+                    if (marginToRelease > 0) {
+                        plannedLedgerKeys.push(buildLedgerIdempotencyKey(order, "MARGIN_RELEASE_CLOSE"));
+                    }
+                    if (closingQuantity > 0 && realizedPnl > 0) {
+                        plannedLedgerKeys.push(buildLedgerIdempotencyKey(order, "REALIZED_PNL_CREDIT"));
+                    }
+                    if (closingQuantity > 0 && realizedPnl < 0) {
+                        plannedLedgerKeys.push(buildLedgerIdempotencyKey(order, "REALIZED_PNL_DEBIT"));
+                    }
+                    plannedLedgerKeys.push(buildLedgerIdempotencyKey(order, "MARGIN_RELEASE_REMAINDER"));
+                } else if (instrument.instrumentType === "OPTION") {
+                    const premiumLeg = order.side === "BUY"
+                        ? "OPTION_PREMIUM_DEBIT"
+                        : "OPTION_PREMIUM_CREDIT";
+                    plannedLedgerKeys.push(buildLedgerIdempotencyKey(order, premiumLeg));
+                    if (optionMarginBlockDelta > 0) {
+                        plannedLedgerKeys.push(buildLedgerIdempotencyKey(order, "OPTION_MARGIN_BLOCK"));
+                    }
+                    if (optionReserveReleaseDelta > 0) {
+                        plannedLedgerKeys.push(buildLedgerIdempotencyKey(order, "MARGIN_RELEASE_RESERVE"));
+                    }
+                    if (optionMarginToRelease > 0) {
+                        plannedLedgerKeys.push(buildLedgerIdempotencyKey(order, "OPTION_MARGIN_RELEASE"));
+                    }
+                } else if (order.side === "BUY") {
+                    plannedLedgerKeys.push(buildLedgerIdempotencyKey(order, "BUY_DEBIT"));
+                } else if (instrument.instrumentType === "EQUITY") {
+                    plannedLedgerKeys.push(buildLedgerIdempotencyKey(order, "SELL_PROCEEDS"));
+                }
+
+                const preparedJournal = await WriteAheadJournalService.prepare(
+                    {
+                        journalId: order.id,
+                        operationType: this.resolveWajOperationType(order),
+                        userId: order.userId,
+                        referenceId: order.id,
+                        payload: {
+                            orderId: order.id,
+                            userId: order.userId,
+                            instrumentToken,
+                            side: order.side,
+                            orderType: order.orderType,
+                            fillQuantity,
+                            executionPrice: finalExecutionPrice,
+                            priceSource,
+                            marginRequired,
+                            exitReason: order.exitReason,
+                            rejectionReason: order.rejectionReason,
+                            idempotencyKeys: plannedLedgerKeys,
+                        },
+                    },
+                    tx
+                );
+
+                try {
+                    const ledgerStartMs = performance.now();
+                    const ledgerSequences: number[] = [];
+                    const newTrade: NewTrade = {
+                        orderId: order.id,
+                        userId: order.userId,
+                        symbol: order.symbol,
+                        instrumentToken,
+                        side: order.side,
+                        quantity: fillQuantity,
+                        price: finalExecutionPrice.toString(),
+                        executedAt: new Date(),
+                    };
+
+                    await OrderStateMachineService.transition(order.id, "PROCESSING", "FILLED", tx, {
+                        executionPrice: finalExecutionPrice.toString(),
+                        executedAt: new Date(),
+                    });
+
+                    const [trade] = await tx.insert(trades).values(newTrade).returning();
+
+                    if (instrument.instrumentType === "FUTURE") {
+                        if (marginBlockDelta > 0) {
+                            await WalletService.debitBalance(
+                                order.userId,
+                                marginBlockDelta,
+                                "MARGIN_BLOCK",
+                                trade.id,
+                                tx,
+                                `Margin Block ${order.symbol}`,
+                                {
+                                    ledgerReferenceType,
+                                    skipWaj: true,
+                                    skipWalletSync: true,
+                                    sequenceCollector: ledgerSequences,
+                                    idempotencyKey: buildLedgerIdempotencyKey(order, "MARGIN_BLOCK_OPEN"),
+                                }
+                            );
+                        }
+                        if (marginReserveReleaseDelta > 0) {
+                            await WalletService.releaseMarginBlock(
+                                order.userId,
+                                marginReserveReleaseDelta,
+                                trade.id,
+                                tx,
+                                `Margin Release (Reserve Adjust) ${order.symbol}`,
+                                {
+                                    ledgerReferenceType,
+                                    skipWaj: true,
+                                    skipWalletSync: true,
+                                    sequenceCollector: ledgerSequences,
+                                    idempotencyKey: buildLedgerIdempotencyKey(order, "MARGIN_RELEASE_RESERVE"),
+                                }
+                            );
+                        }
+
+                        await PositionService.updatePosition(tx, trade);
+
+                        if (marginToRelease > 0) {
+                            await WalletService.releaseMarginBlock(
+                                order.userId,
+                                marginToRelease,
+                                trade.id,
+                                tx,
+                                `Margin Release ${order.symbol}`,
+                                {
+                                    ledgerReferenceType,
+                                    skipWaj: true,
+                                    skipWalletSync: true,
+                                    sequenceCollector: ledgerSequences,
+                                    idempotencyKey: buildLedgerIdempotencyKey(order, "MARGIN_RELEASE_CLOSE"),
+                                }
+                            );
+                        }
+
+                        if (closingQuantity > 0 && Math.abs(realizedPnl) > 0) {
+                            const realizedAmount = Math.abs(realizedPnl);
+                            if (realizedPnl > 0) {
+                                await WalletService.creditBalance(
+                                    order.userId,
+                                    realizedAmount,
+                                    "TRADE",
+                                    trade.id,
+                                    `Realized PnL Credit ${order.symbol}`,
+                                    tx,
+                                    {
+                                        ledgerReferenceType,
+                                        skipWaj: true,
+                                        skipWalletSync: true,
+                                        sequenceCollector: ledgerSequences,
+                                        idempotencyKey: buildLedgerIdempotencyKey(order, "REALIZED_PNL_CREDIT"),
+                                    }
+                                );
+                            } else {
+                                await WalletService.debitBalance(
+                                    order.userId,
+                                    realizedAmount,
+                                    "TRADE",
+                                    trade.id,
+                                    tx,
+                                    `Realized PnL Debit ${order.symbol}`,
+                                    {
+                                        ledgerReferenceType,
+                                        skipWaj: true,
+                                        skipWalletSync: true,
+                                        sequenceCollector: ledgerSequences,
+                                        idempotencyKey: buildLedgerIdempotencyKey(order, "REALIZED_PNL_DEBIT"),
+                                        isSettlement: true,
+                                    }
+                                );
+                            }
+                        }
+
+                        const [remainingOpenPosition] = await tx
+                            .select({ id: positions.id })
+                            .from(positions)
+                            .where(
+                                and(
+                                    eq(positions.userId, order.userId),
+                                    ne(positions.quantity, 0)
+                                )
+                            )
+                            .limit(1);
+
+                        if (!remainingOpenPosition) {
+                            const snapshot = await LedgerService.reconstructUserEquity(order.userId, tx);
+                            if (LedgerService.compare(snapshot.marginBlocked, "0") > 0) {
+                                await WalletService.releaseMarginBlock(
+                                    order.userId,
+                                    snapshot.marginBlocked,
+                                    trade.id,
+                                    tx,
+                                    "Margin Release All After Full Exit",
+                                    {
+                                        ledgerReferenceType,
+                                        skipWaj: true,
+                                        skipWalletSync: true,
+                                        sequenceCollector: ledgerSequences,
+                                        idempotencyKey: buildLedgerIdempotencyKey(order, "MARGIN_RELEASE_REMAINDER"),
+                                    }
+                                );
+                            }
+                        }
+                    } else if (instrument.instrumentType === "EQUITY") {
+                        if (order.side === "BUY") {
+                            if (reservedMargin > 0) {
+                                await WalletService.releaseMarginBlock(
+                                    order.userId,
+                                    reservedMargin,
+                                    trade.id,
+                                    tx,
+                                    `Margin Release (Consume) ${order.symbol}`,
+                                    {
+                                        ledgerReferenceType,
+                                        skipWaj: true,
+                                        skipWalletSync: true,
+                                        sequenceCollector: ledgerSequences,
+                                        idempotencyKey: buildLedgerIdempotencyKey(order, "MARGIN_RELEASE_RESERVE"),
+                                    }
+                                );
+                            }
+                            await WalletService.debitBalance(
+                                order.userId,
+                                marginRequired,
+                                "TRADE",
+                                trade.id,
+                                tx,
+                                `Buy ${order.symbol}`,
+                                {
+                                    ledgerReferenceType,
+                                    skipWaj: true,
+                                    skipWalletSync: true,
+                                    sequenceCollector: ledgerSequences,
+                                    idempotencyKey: buildLedgerIdempotencyKey(order, "BUY_DEBIT"),
+                                }
+                            );
+                        } else {
+                            const proceeds = LedgerService.multiplyByInteger(
+                                finalExecutionPrice.toString(),
+                                fillQuantity
+                            );
+                            await WalletService.creditProceeds(
+                                order.userId,
+                                proceeds,
+                                trade.id,
+                                tx,
+                                `Sell ${order.symbol}`,
+                                {
+                                    ledgerReferenceType,
+                                    skipWaj: true,
+                                    skipWalletSync: true,
+                                    sequenceCollector: ledgerSequences,
+                                    idempotencyKey: buildLedgerIdempotencyKey(order, "SELL_PROCEEDS"),
+                                }
+                            );
+                        }
+
+                        await PositionService.updatePosition(tx, trade);
+                    } else if (instrument.instrumentType === "OPTION") {
+                        const premiumAmount = LedgerService.multiplyByInteger(
+                            finalExecutionPrice.toString(),
+                            fillQuantity
+                        );
+                        const premiumLeg = order.side === "BUY"
+                            ? "OPTION_PREMIUM_DEBIT"
+                            : "OPTION_PREMIUM_CREDIT";
+                        const premiumReferenceType = this.resolveOptionPremiumReferenceType(
+                            order.side,
+                            closingQuantity,
+                            openingQuantity
+                        );
+
+                        if (order.side === "BUY") {
+                            if (optionReserveReleaseDelta > 0) {
+                                await WalletService.releaseMarginBlock(
+                                    order.userId,
+                                    optionReserveReleaseDelta,
+                                    trade.id,
+                                    tx,
+                                    `Margin Release (Consume) ${order.symbol}`,
+                                    {
+                                        ledgerReferenceType: premiumReferenceType,
+                                        skipWaj: true,
+                                        skipWalletSync: true,
+                                        sequenceCollector: ledgerSequences,
+                                        idempotencyKey: buildLedgerIdempotencyKey(order, "MARGIN_RELEASE_RESERVE"),
+                                    }
+                                );
+                            }
+                            await WalletService.debitBalance(
+                                order.userId,
+                                premiumAmount,
+                                "OPTION_PREMIUM_DEBIT",
+                                trade.id,
+                                tx,
+                                `Option Premium Debit ${order.symbol}`,
+                                {
+                                    ledgerReferenceType: premiumReferenceType,
+                                    skipWaj: true,
+                                    skipWalletSync: true,
+                                    sequenceCollector: ledgerSequences,
+                                    idempotencyKey: buildLedgerIdempotencyKey(order, premiumLeg),
+                                }
+                            );
+                        } else {
+                            await WalletService.creditProceeds(
+                                order.userId,
+                                premiumAmount,
+                                trade.id,
+                                tx,
+                                `Option Premium Credit ${order.symbol}`,
+                                {
+                                    ledgerReferenceType: premiumReferenceType,
+                                    skipWaj: true,
+                                    skipWalletSync: true,
+                                    sequenceCollector: ledgerSequences,
+                                    idempotencyKey: buildLedgerIdempotencyKey(order, premiumLeg),
+                                }
+                            );
+                        }
+
+                        await PositionService.updatePosition(tx, trade);
+
+                        if (optionMarginBlockDelta > 0) {
+                            await WalletService.debitBalance(
+                                order.userId,
+                                optionMarginBlockDelta,
+                                "OPTION_MARGIN_BLOCK",
+                                trade.id,
+                                tx,
+                                `Option Margin Block ${order.symbol}`,
+                                {
+                                    ledgerReferenceType: "OPTION_MARGIN_BLOCK",
+                                    skipWaj: true,
+                                    skipWalletSync: true,
+                                    sequenceCollector: ledgerSequences,
+                                    idempotencyKey: buildLedgerIdempotencyKey(order, "OPTION_MARGIN_BLOCK"),
+                                }
+                            );
+                        }
+
+                        if (optionReserveReleaseDelta > 0 && order.side === "SELL") {
+                            await WalletService.releaseMarginBlock(
+                                order.userId,
+                                optionReserveReleaseDelta,
+                                trade.id,
+                                tx,
+                                `Option Margin Release (Reserve Adjust) ${order.symbol}`,
+                                {
+                                    ledgerReferenceType: "OPTION_MARGIN_RELEASE",
+                                    skipWaj: true,
+                                    skipWalletSync: true,
+                                    sequenceCollector: ledgerSequences,
+                                    idempotencyKey: buildLedgerIdempotencyKey(order, "MARGIN_RELEASE_RESERVE"),
+                                }
+                            );
+                        }
+
+                        if (optionMarginToRelease > 0) {
+                            const snapshot = await LedgerService.reconstructUserEquity(order.userId, tx);
+                            const blocked = Number(snapshot.marginBlocked);
+                            const safeRelease = Number.isFinite(blocked)
+                                ? Math.min(optionMarginToRelease, blocked)
+                                : optionMarginToRelease;
+
+                            if (safeRelease > 0) {
+                                await WalletService.releaseMarginBlock(
+                                    order.userId,
+                                    safeRelease,
+                                    trade.id,
+                                    tx,
+                                    `Option Margin Release ${order.symbol}`,
+                                    {
+                                        ledgerReferenceType: "OPTION_MARGIN_RELEASE",
+                                        skipWaj: true,
+                                        skipWalletSync: true,
+                                        sequenceCollector: ledgerSequences,
+                                        idempotencyKey: buildLedgerIdempotencyKey(order, "OPTION_MARGIN_RELEASE"),
+                                    }
+                                );
+                            }
+                        }
+                    } else {
+                        throw new ApiError(
+                            `Unsupported instrumentType for execution: ${instrument.instrumentType}`,
+                            400,
+                            "INVALID_INSTRUMENT_TYPE"
+                        );
+                    }
+
+                    // Removed O(N) wallet ledger sync per execution. Delta updates handle cache now.
+
+                    // Spawn SL / Target child orders if present on the parent.
+                    // Only for opening orders (not child SL/Target orders themselves).
+                    if (!order.childOrderType && (order.stopLossPrice || order.targetPrice)) {
+                        await SlTargetChildOrderService.spawnChildOrders(
+                            { ...order, executionPrice: finalExecutionPrice.toString() },
+                            finalExecutionPrice,
+                            tx
+                        );
+                    }
+                    ledgerMs = performance.now() - ledgerStartMs;
+                    await WriteAheadJournalService.commit(preparedJournal.journalId, tx, {
+                        ledgerSequences,
+                        mutationMeta: {
+                            orderId: order.id,
+                            tradeId: trade.id,
+                            priceSource,
+                        },
+                    });
+                } catch (mutationError) {
+                    // C-5 FIX: Do NOT pass `tx` here. The outer transaction is
+                    // about to roll back — any writes inside tx (including the
+                    // abort UPDATE) will be discarded, leaving the WAJ entry
+                    // permanently PREPARED. Pass undefined so the abort goes
+                    // through the global db connection outside this transaction.
+                    await WriteAheadJournalService.abort(
+                        preparedJournal.journalId,
+                        undefined,
+                        mutationError instanceof Error ? mutationError.message : "EXECUTION_MUTATION_FAILED"
+                    );
+                    throw mutationError;
+                }
+            });
+            executionMs = performance.now() - transactionStartMs;
+
+            logger.info(
+                {
+                    orderId: order.id,
+                    symbol: order.symbol,
+                    side: order.side,
+                    quantity: fillQuantity,
+                    price: finalExecutionPrice,
+                    source: priceSource,
+                    priceSource,
+                    slippageBps: fillDecision.slippageBps,
+                },
+                "Order executed"
+            );
+            eventBus.emit("order.executed", {
+                orderId: order.id,
+                userId: order.userId,
+                instrumentToken,
+                quantity: fillQuantity,
+                price: finalExecutionPrice,
+            });
+            eventBus.emit("position.changed", {
+                userId: order.userId,
+                instrumentToken,
+                reason: "ORDER_EXECUTED",
+            });
+            try {
+                await mtmEngineService.refreshUserNow(order.userId);
+            } catch (refreshError) {
+                logger.warn(
+                    { err: refreshError, orderId: order.id, userId: order.userId },
+                    "MTM refresh after execution failed"
+                );
+            }
+
+            const totalMs = performance.now() - startMs;
+            const metricsPayload = {
+                event: "ORDER_EXECUTION_TIMING",
+                orderId: order.id,
+                userId: order.userId,
+                instrumentToken,
+                order_validation_ms: 0,
+                margin_ms: Number(marginMs.toFixed(2)),
+                ledger_ms: Number(ledgerMs.toFixed(2)),
+                execution_ms: Number(executionMs.toFixed(2)),
+                total_ms: Number(totalMs.toFixed(2)),
+            };
+            
+            // Fix execution logging noise by sampling 10% of standard executions.
+            // Slow paths are always logged.
+            if (totalMs > 500) {
+                logger.error(metricsPayload, "ORDER_EXECUTION_TIMING");
+            } else if (totalMs > 250) {
+                logger.warn(metricsPayload, "ORDER_EXECUTION_TIMING");
+            } else if (Math.random() < 0.1) {
+                logger.info(metricsPayload, "ORDER_EXECUTION_TIMING");
+            }
+            return true;
+        } catch (err: unknown) {
+            const apiErr = err instanceof ApiError ? err : null;
+            if (apiErr?.code === "INSUFFICIENT_FUNDS") {
+                logger.warn({ orderId: order.id }, "Execution failed: Insufficient Funds");
+                await OrderStateMachineService.transition(order.id, "PROCESSING", "REJECTED");
+                return false;
+            }
+            if (apiErr?.code === "TRANSITION_FAILED" || apiErr?.code === "INVALID_STATE_TRANSITION") {
+                logger.debug(
+                    { err: err, orderId: order.id },
+                    "Order already left PROCESSING; skipping execution"
+                );
+                return false;
+            }
+
+            // C-3 FIX: For any other unexpected error (DB timeout, network blip, etc.)
+            // restore to OPEN so the next tick can retry. Without this the order stays
+            // stuck in PROCESSING permanently with no recovery path.
+            logger.error(
+                { err: err, orderId: order.id },
+                "Unexpected execution error — restoring order to OPEN for retry"
+            );
+            await db.update(orders)
+                .set({
+                    status: "OPEN",
+                    updatedAt: new Date(),
+                })
+                .where(and(eq(orders.id, order.id), eq(orders.status, "PROCESSING")))
+                .catch((restoreErr) =>
+                    logger.error({ err: restoreErr, orderId: order.id }, "Failed to restore PROCESSING order to OPEN")
+                );
+            throw err;
+        }
+    }
+
+    /**
+     * Orchestrate immediate market execution if allowed by context.
+     */
+    static async maybeExecute(
+        order: typeof orders.$inferSelect,
+        payload: PlaceOrder,
+        context: { stageAfterHours: boolean },
+        options: { force?: boolean }
+    ): Promise<void> {
+        if (payload.orderType !== "MARKET" || context.stageAfterHours) return;
+
+        const requiresImmediateSettlementFill = payload.exitReason === "EXPIRY";
+        try {
+            if (order.status === "OPEN") {
+                await OrderStateMachineService.transition(order.id, "OPEN", "PROCESSING");
+            }
+            logger.info({ orderId: order.id }, "Executing MARKET order immediately");
+            const executed = await this.tryExecuteOrder(order, {
+                force: options.force,
+                leverage: payload.leverage,
+            });
+            if (requiresImmediateSettlementFill && !executed) {
+                throw new ApiError("Expiry settlement execution failed", 503, "EXPIRY_EXECUTION_FAILED");
+            }
+        } catch (err) {
+            logger.error({ err: err, orderId: order.id }, "Failed to execute MARKET order");
+            await db.update(orders)
+                .set({ status: "OPEN", updatedAt: new Date() })
+                .where(and(eq(orders.id, order.id), eq(orders.status, "PROCESSING")))
+                .catch((restoreErr) =>
+                    logger.error({ err: restoreErr, orderId: order.id }, "Failed to restore order to OPEN")
+                );
+            if (requiresImmediateSettlementFill) {
+                throw err;
+            }
+        }
+    }
+}
+
+
+
+
+
+
+===== apps/web/services/trading/pipeline/order-pipeline.service.ts =====
+import { performance } from "node:perf_hooks";
+import type { PlaceOrder } from "@paper-market/core";
+import { logger } from "@/lib/logger";
+import { OrderExecutorService } from "@/services/trading/execution/order-executor.service";
+import { OrderRepositoryService } from "@/services/trading/pipeline/order-repository.service";
+import { OrderValidatorService } from "@/services/trading/pipeline/order-validator.service";
+import { OrderRiskService } from "@/services/trading/risk/order-risk.service";
+import { MarginReservationService } from "@/services/trading/margin/margin-reservation.service";
+import { bootstrapUserLedgerState } from "@/services/accounting/ledger/ledger-bootstrap.service";
+import crypto from "crypto";
+
+export class OrderPipelineService {
+  static async placeOrder(
+    userId: string,
+    payload: PlaceOrder,
+    options: { force?: boolean; isClosingOrder?: boolean } = {}
+  ) {
+    const startMs = performance.now();
+    let marginMs = 0;
+    let executionMs = 0;
+
+    payload.idempotencyKey = payload.idempotencyKey ?? crypto.randomUUID();
+
+    // Ensure ledger accounts + cash snapshots exist before any margin/ledger activity.
+    await bootstrapUserLedgerState(userId);
+
+    const validation = await OrderValidatorService.validate(userId, payload, options);
+
+    await OrderRiskService.validateTradingSafety(userId, payload, validation.instrument, {
+      isForcedRiskFlow: validation.isForcedRiskFlow,
+      isClosingOrder: options.isClosingOrder,
+      stageAfterHours: validation.stageAfterHours,
+    });
+
+    await OrderRiskService.checkRiskLimits(userId, payload, validation.instrument, {
+      isClosingOrder: options.isClosingOrder,
+      stageAfterHours: validation.stageAfterHours,
+    });
+
+    if (validation.stageAfterHours) {
+      logger.warn(
+        {
+          event: "ORDER_STAGED_AFTER_HOURS",
+          userId,
+          instrumentToken: validation.instrument.instrumentToken,
+          orderType: payload.orderType,
+        },
+        "ORDER_STAGED_AFTER_HOURS"
+      );
+    }
+
+    const marginStartMs = performance.now();
+    const requiredMargin = await MarginReservationService.calculateMargin(userId, payload, validation.instrument, options);
+    marginMs = performance.now() - marginStartMs;
+
+    if (!options.isClosingOrder) {
+      logger.info(
+        { userId, symbol: payload.symbol, requiredMargin },
+        "Margin calculated"
+      );
+    } else {
+      logger.info({ userId, symbol: payload.symbol }, "Closing order — skipping margin check");
+    }
+
+    // Pass the required margin to creation
+    const isImmediateMarket = payload.orderType === "MARKET" && !validation.stageAfterHours;
+
+    const order = await OrderRepositoryService.createOrder(
+      userId,
+      payload,
+      validation.instrument,
+      requiredMargin,
+      {
+        isClosingOrder: options.isClosingOrder,
+        initialStatus: isImmediateMarket ? "PROCESSING" : "OPEN",
+      }
+    );
+
+    const executionStartMs = performance.now();
+    await OrderExecutorService.maybeExecute(order, payload, validation, options);
+    executionMs = performance.now() - executionStartMs;
+
+    const totalMs = performance.now() - startMs;
+    const metricPayload = {
+      event: "ORDER_PATH_TIMING",
+      userId,
+      orderId: order.id,
+      instrumentToken: validation.instrument.instrumentToken,
+      order_validation_ms: Number(validation.validationMs.toFixed(2)),
+      margin_ms: Number(marginMs.toFixed(2)),
+      ledger_ms: 0,
+      execution_ms: Number(executionMs.toFixed(2)),
+      total_ms: Number(totalMs.toFixed(2)),
+    };
+    if (totalMs > 500) {
+      logger.error(metricPayload, "ORDER_PATH_TIMING");
+    } else if (totalMs > 250) {
+      logger.warn(metricPayload, "ORDER_PATH_TIMING");
+    } else {
+      logger.info(metricPayload, "ORDER_PATH_TIMING");
+    }
+
+    return order;
+  }
+}
+
+
+===== apps/web/components/layout/DashboardLayoutClient.tsx =====
+'use client';
+import { ReactNode, useEffect, useState } from 'react';
+import { Sidebar } from './Sidebar';
+import { usePathname } from 'next/navigation';
+import Link from 'next/link';
+import Logo from '@/components/general/Logo';
+import { CircleUserRound } from 'lucide-react';
+import { useSession } from 'next-auth/react';
+
+import { useWalletStore } from '@/stores/wallet.store';
+import { usePositionsStore } from '@/stores/trading/positions.store';
+import { useMarketStream } from '@/hooks/use-market-stream'; // New Hook
+import { useMarketStore } from '@/stores/trading/market.store';
+import { MarketStatusBar } from '@/components/layout/MarketStatusBar';
+import { MobileBottomNav } from '@/components/layout/MobileBottomNav';
+import { cn } from '@/lib/utils';
+import { toInstrumentKey } from '@paper-market/core';
+import { useSearchStore } from '@/stores/ui/search.store';
+import { GlobalSearchModal } from '@/components/trade/search/GlobalSearchModal';
+import { useSubscriptionStore } from '@/stores/subscription.store';
+
+export default function DashboardLayoutClient({ children }: { children: ReactNode }) {
+  
+
+  useMarketStream();
+  const pathname = usePathname();
+
+  const fetchWallet = useWalletStore((state) => state.fetchWallet);
+  const fetchPositions = usePositionsStore((state) => state.fetchPositions);
+  const fetchSubscription = useSubscriptionStore((state) => state.fetchSubscription);
+  const seedFromSession = useSubscriptionStore((state) => state.seedFromSession);
+  const { data: session } = useSession();
+
+  // Seed store immediately from JWT — shows correct lock state before fetch completes
+  useEffect(() => {
+    if (session?.user?.subscriptionStatus) {
+      seedFromSession(
+        (session.user as { plan?: string }).plan ?? 'free_trial',
+        session.user.subscriptionStatus,
+      );
+    }
+  }, [session, seedFromSession]);
+
+  useEffect(() => {
+    fetchWallet();
+    fetchPositions();
+    fetchSubscription();
+  }, [fetchWallet, fetchPositions, fetchSubscription]);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Don't trigger if user is typing in an input
+      if (
+        e.target instanceof HTMLInputElement ||
+        e.target instanceof HTMLTextAreaElement ||
+        (e.target as HTMLElement).isContentEditable
+      ) {
+        return;
+      }
+
+      if ((e.ctrlKey || e.metaKey) && e.key === "k") {
+        e.preventDefault();
+        const isEquity = pathname?.startsWith("/trade/equity");
+        const isOptions = pathname?.startsWith("/trade/options");
+        const isFutures = pathname?.startsWith("/trade/futures");
+        const mode = isEquity ? "EQUITY" : isOptions ? "OPTION" : isFutures ? "FUTURE" : "ALL";
+        const placeholder =
+          mode === "EQUITY"
+            ? "Search equities..."
+            : mode === "OPTION"
+            ? "Search option contracts..."
+            : mode === "FUTURE"
+            ? "Search futures contracts..."
+            : "Search stocks, indices, commodities...";
+        useSearchStore.getState().openSearch({ mode, placeholder });
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [pathname]);
+
+  return (
+    <DashboardContentWrapper>
+      {children}
+    </DashboardContentWrapper>
+  );
+}
+
+
+
+function DashboardContentWrapper({ children }: { children: ReactNode }) {
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const pathname = usePathname();
+  const isEquityTradeRoute = pathname?.startsWith('/trade/equity');
+  const { isOpen, searchMode, placeholder, onSelect, closeSearch } = useSearchStore();
+  const { data: session } = useSession();
+  const isAdmin = session?.user?.role === 'admin';
+  // Note: session is already consumed in the parent for seeding — these selectors react to store updates
+  const plan = useSubscriptionStore((state) => state.plan);
+  const subscriptionStatus = useSubscriptionStore((state) => state.status);
+
+  return (
+
+    <div className="flex min-h-screen w-full font-sans bg-gradient-to-b from-slate-100 via-white to-slate-100/80 text-slate-950 dark:from-[#09111e] dark:via-[#0b1220] dark:to-[#0b1324] dark:text-slate-50">
+      <GlobalSearchModal
+        open={isOpen}
+        onOpenChange={(open) => !open && closeSearch()}
+        searchMode={searchMode}
+        placeholder={placeholder}
+        onSelectStock={onSelect}
+      />
+      <Sidebar
+        isAdmin={isAdmin}
+        mobileOpen={mobileMenuOpen}
+        setMobileOpen={setMobileMenuOpen}
+        compactHidden={isEquityTradeRoute}
+        disableMobile={isEquityTradeRoute}
+        plan={plan}
+        subscriptionStatus={subscriptionStatus}
+      />
+
+      <div
+        className={cn(
+          'flex-1 flex flex-col transition-all duration-300',
+          isEquityTradeRoute ? 'xl:ml-16' : 'md:ml-16',
+        )}
+      >
+        <MobileFloatingHeader />
+        <div className="hidden md:block w-full overflow-hidden" style={{ contain: 'layout paint' }}>
+          <MarketStatusBar />
+        </div>
+
+        <main className="flex-1 overflow-x-hidden w-full max-w-full pb-20 pt-20 md:pb-0 md:pt-0">
+          {children}
+        </main>
+        <MobileBottomNav />
+      </div>
+    </div>
+  )
+}
+
+function MobileFloatingHeader() {
+  const quotesByInstrument = useMarketStore((state) => state.quotesByInstrument);
+  const selectQuote = useMarketStore((state) => state.selectQuote);
+
+  const niftyKey = toInstrumentKey("NSE_INDEX|NIFTY 50");
+  const bankNiftyKey = toInstrumentKey("NSE_INDEX|NIFTY BANK");
+
+  const niftyQuote =
+    quotesByInstrument[niftyKey] ||
+    selectQuote(niftyKey) ||
+    selectQuote("NIFTY 50");
+  const bankNiftyQuote =
+    quotesByInstrument[bankNiftyKey] ||
+    selectQuote(bankNiftyKey) ||
+    selectQuote("NIFTY BANK");
+
+  const formatPrice = (value: number | undefined) =>
+    Number.isFinite(Number(value)) && Number(value) > 0
+      ? Number(value).toFixed(2)
+      : "--";
+
+  const formatChange = (value: number | undefined) => {
+    if (!Number.isFinite(Number(value))) return "--";
+    const safe = Number(value);
+    const sign = safe > 0 ? "+" : "";
+    return `${sign}${safe.toFixed(2)}%`;
+  };
+
+  return (
+    <div className="fixed left-2 right-2 top-2 z-50 md:hidden">
+      <div className="relative flex items-center gap-2 rounded-2xl border border-border/80 bg-background/90 px-2.5 py-1.5 backdrop-blur dark:border-[#1a2e4f] dark:bg-[#0b172b]/88">
+        <Link
+          href="/dashboard"
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-foreground transition-colors hover:bg-muted/70 dark:hover:bg-white/[0.06]"
+          aria-label="Open dashboard"
+        >
+          <Logo hideText className="scale-[0.62]" />
+        </Link>
+
+        <span className="h-6 w-px shrink-0 bg-border/80 dark:bg-[#1a2e4f]" />
+
+        <div className="min-w-0 flex-1">
+          <div className="grid grid-cols-2 gap-2">
+            <Link href="/trade/equity?symbol=NIFTY%2050" className="min-w-0 flex flex-col hover:opacity-80 transition-opacity cursor-pointer">
+              <p className="truncate text-[9px] uppercase tracking-[0.08em] text-muted-foreground dark:text-slate-400">NIFTY</p>
+              <p className="truncate text-[11px] font-semibold text-foreground dark:text-slate-100">{formatPrice(niftyQuote?.price)}</p>
+              <p
+                className={cn(
+                  "truncate text-[9px]",
+                  Number(niftyQuote?.changePercent || 0) >= 0
+                    ? "text-emerald-600 dark:text-[#2dd4bf]"
+                    : "text-rose-600 dark:text-[#fb7185]"
+                )}
+              >
+                {formatChange(niftyQuote?.changePercent)}
+              </p>
+            </Link>
+            <Link href="/trade/equity?symbol=NIFTY%20BANK" className="min-w-0 border-l border-border/80 pl-2 dark:border-[#1a2e4f] flex flex-col hover:opacity-80 transition-opacity cursor-pointer">
+              <p className="truncate text-[9px] uppercase tracking-[0.08em] text-muted-foreground dark:text-slate-400">BANKNIFTY</p>
+              <p className="truncate text-[11px] font-semibold text-foreground dark:text-slate-100">{formatPrice(bankNiftyQuote?.price)}</p>
+              <p
+                className={cn(
+                  "truncate text-[9px]",
+                  Number(bankNiftyQuote?.changePercent || 0) >= 0
+                    ? "text-emerald-600 dark:text-[#2dd4bf]"
+                    : "text-rose-600 dark:text-[#fb7185]"
+                )}
+              >
+                {formatChange(bankNiftyQuote?.changePercent)}
+              </p>
+            </Link>
+          </div>
+        </div>
+
+        <span className="h-6 w-px shrink-0 bg-border/80 dark:bg-[#1a2e4f]" />
+
+        <Link
+          href="/profile"
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-foreground transition-colors hover:bg-muted/70 dark:hover:bg-white/[0.06]"
+          aria-label="Open profile"
+        >
+          <CircleUserRound className="h-5 w-5 text-foreground dark:text-slate-100" />
+        </Link>
+      </div>
+    </div>
+  );
+}
+
+
+===== apps/web/components/layout/Providers.tsx =====
+"use client";
+
+import { QueryClientProvider } from '@tanstack/react-query';
+import { queryClient } from '@/lib/query-client';
+
+export function Providers({ children }: { children: React.ReactNode }) {
+  return (
+    <QueryClientProvider client={queryClient}>
+      {children}
+    </QueryClientProvider>
+  );
+}
+
+
+===== apps/web/app/(dashboard)/layout.tsx =====
+import DashboardLayoutClient from '@/components/layout/DashboardLayoutClient';
+import { Providers } from '@/components/layout/Providers';
+import { auth } from '@/lib/auth';
+import { SubscriptionService } from '@/services/subscription/subscription.service';
+import { headers } from 'next/headers';
+import { redirect } from 'next/navigation';
+
+export default async function DashboardLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const session = await auth();
+  const userId = session?.user?.id;
+  const role = session?.user?.role;
+  
+  let status = 'active';
+
+  if (userId) {
+    const effectivePlan = await SubscriptionService.getEffectivePlan(userId);
+    status = effectivePlan.status;
+  }
+
+  const isExpired = status === 'expired' && role !== 'admin';
+
+  const headersList = await headers();
+  const pathname = headersList.get('x-pathname') ?? '';
+
+  const EXPIRY_BLOCKED_IN_LAYOUT = [
+    '/trade/equity',
+    '/trade/futures',
+    '/trade/options',
+    '/analytics',
+    '/journal',
+  ];
+
+  const isBlockedRoute = EXPIRY_BLOCKED_IN_LAYOUT.some(r => pathname.startsWith(r));
+
+  if (isExpired && isBlockedRoute) {
+    redirect('/subscription');
+  }
+
+  return (
+    <div data-theme="terminal" className="bg-background min-h-screen text-foreground font-sans ">
+      <Providers>
+        <DashboardLayoutClient>
+          {children}
+        </DashboardLayoutClient>
+      </Providers>
+    </div>
+  );
+}
+
+
+===== apps/web/lib/auth.ts =====
+import NextAuth from "next-auth";
+import { authConfig } from "./auth.config";
+import Credentials from "next-auth/providers/credentials";
+import { compare } from "bcryptjs";
+import { eq } from "drizzle-orm";
+import { LoginSchema } from "@paper-market/core";
+import { db } from "@/lib/db";
+import { users } from "@paper-market/core/db";
+import { WalletService } from "@/services/accounting/wallet/wallet.service";
+import { bootstrapUserLedgerState } from "@/services/accounting/ledger/ledger-bootstrap.service";
+import { WatchlistService } from "@/services/market/catalog/watchlist.service";
+import { SubscriptionService } from "@/services/subscription/subscription.service";
+import { logger } from "@/lib/logger";
+
+export const { handlers, auth, signIn, signOut } = NextAuth({
+  ...authConfig,
+  providers: [
+    ...authConfig.providers,
+    Credentials({
+      async authorize(credentials) {
+        const validated = LoginSchema.safeParse(credentials);
+        if (!validated.success) return null;
+
+        const { email, password } = validated.data;
+
+        const [user] = await db
+          .select()
+          .from(users)
+          .where(eq(users.email, email))
+          .limit(1);
+
+        if (!user || !user.password) return null;
+        if (user.isActive === false) return null;
+
+        const passwordsMatch = await compare(password, user.password);
+        if (!passwordsMatch) return null;
+
+        // Load subscription ONCE at login — stored in JWT, updated via session.update()
+        let subscriptionStatus: string = "unknown";
+        let plan: string = "free_trial";
+        try {
+          const sub = await SubscriptionService.getEffectivePlan(user.id);
+          subscriptionStatus = sub.status;
+          plan = sub.plan;
+        } catch {
+          // Non-fatal — defaults applied
+        }
+
+        return {
+          ...user,
+          role: user.role ?? "user",
+          onboardingCompleted: user.onboardingCompleted,
+          subscriptionStatus,
+          plan,
+        };
+      },
+    }),
+  ],
+  callbacks: {
+    ...authConfig.callbacks,
+
+    async signIn({ user, account, profile }) {
+      if (account?.provider === "google" && profile?.email) {
+        try {
+          const emailStr = String(profile.email);
+
+          const [existingUser] = await db
+            .select({ id: users.id, role: users.role, isActive: users.isActive, onboardingCompleted: users.onboardingCompleted })
+            .from(users)
+            .where(eq(users.email, emailStr))
+            .limit(1);
+
+          if (existingUser && existingUser.isActive === false) {
+            return false;
+          }
+
+          if (!existingUser) {
+            const createdId = await db.transaction(async (tx) => {
+              const [created] = await tx
+                .insert(users)
+                .values({
+                  email: emailStr,
+                  name: profile.name ? String(profile.name) : "User",
+                  image: profile.image ? String(profile.image) : null,
+                  balance: "1000000.00",
+                })
+                .returning({ id: users.id });
+
+              await WalletService.createWallet(created.id, tx);
+              await bootstrapUserLedgerState(created.id, tx);
+              await SubscriptionService.createTrialSubscription(created.id, tx);
+
+              return created.id;
+            });
+
+            try {
+              await WatchlistService.ensureDefaultWatchlist(createdId);
+            } catch (err) {
+              logger.warn(
+                { err: err, userId: createdId },
+                "Failed to create default watchlist during Google sign-in"
+              );
+            }
+
+            user.id = createdId;
+            user.role = "user";
+            user.onboardingCompleted = false;
+            user.subscriptionStatus = "active"; // New users get free trial
+            user.plan = "free_trial";
+          } else {
+            user.id = existingUser.id;
+            user.role = existingUser.role ?? "user";
+            user.onboardingCompleted = existingUser.onboardingCompleted;
+
+            // Load subscription for returning Google users
+            try {
+              const sub = await SubscriptionService.getEffectivePlan(existingUser.id);
+              user.subscriptionStatus = sub.status;
+              user.plan = sub.plan;
+            } catch {
+              user.subscriptionStatus = "unknown";
+              user.plan = "free_trial";
+            }
+          }
+        } catch (err) {
+          logger.error({ err: err }, "Error in Google signIn callback");
+          return false;
+        }
+      }
+      return true;
+    },
+
+    // JWT callback: ZERO DB calls. Pure token manipulation.
+    // Subscription + onboarding status set ONCE at sign-in.
+    // Updated only via session.update() calls from the client.
+    async jwt({ token, user, trigger, session }) {
+      if (user) {
+        token.sub = user.id;
+        token.id = user.id;
+        token.role = user.role;
+        token.onboardingCompleted = user.onboardingCompleted ?? false;
+        token.subscriptionStatus = user.subscriptionStatus;
+        token.plan = user.plan;
+      }
+
+      if (!token.id && token.sub) {
+        token.id = token.sub;
+      }
+
+      if (trigger === "update" && session) {
+        const patch = (session as { user?: Record<string, unknown> } & Record<string, unknown>).user ?? session;
+        if (patch?.onboardingCompleted !== undefined) {
+          token.onboardingCompleted = patch.onboardingCompleted as boolean;
+        }
+        if (patch?.subscriptionStatus !== undefined) {
+          token.subscriptionStatus = patch.subscriptionStatus as string;
+        }
+        if (patch?.plan !== undefined) {
+          token.plan = patch.plan as string;
+        }
+        if (patch?.role !== undefined) {
+          token.role = patch.role as string;
+        }
+      }
+
+      return token;
+    },
+  },
+});
+
+
+===== apps/web/lib/auth.config.ts =====
+import type { NextAuthConfig } from "next-auth";
+import Google from "next-auth/providers/google";
+import { config as appConfig } from "@/lib/config";
+
+// This file must be Edge-compatible (no database adapters here!)
+export const authConfig = {
+    providers: [
+        Google({
+            clientId: appConfig.auth.google.clientId,
+            clientSecret: appConfig.auth.google.clientSecret,
+        }),
+    ],
+    // Force JWT strategy for performance and Edge compatibility
+    session: {
+        strategy: "jwt",
+    },
+    secret: appConfig.auth.secret,
+    trustHost: true,
+    // Let Auth.js v5 use its default cookie names to avoid version conflicts
+    pages: {
+        signIn: "/login",
+    },
+    callbacks: {
+        authorized({ auth, request: { nextUrl } }) {
+            const isLoggedIn = !!auth?.user;
+            const isOnAuth =
+                nextUrl.pathname.startsWith("/login") ||
+                nextUrl.pathname.startsWith("/signup") ||
+                nextUrl.pathname.startsWith("/admin/login");
+
+            // Define all protected routes (requires authentication)
+            const protectedRoutes = [
+                "/dashboard",
+                "/profile",
+                "/trade",
+                "/wallet",
+                "/orders",
+                "/positions",
+                "/analytics",
+                "/watchlist",
+                "/journal",
+                "/settings",
+            ];
+
+            // Allow public access to admin login
+            if (isOnAuth && nextUrl.pathname.startsWith("/admin/login")) {
+                return true;
+            }
+
+            const isProtectedRoute = protectedRoutes.some(route =>
+                nextUrl.pathname.startsWith(route)
+            );
+
+            // Protect authenticated routes
+            if (isProtectedRoute) {
+                if (isLoggedIn) return true;
+                return false; // Redirect to login
+            }
+
+            return true;
+        },
+        async session({ session, token }) {
+            if (session.user) {
+                const tokenId = token.id || token.sub;
+                if (tokenId) {
+                    session.user.id = tokenId as string;
+                }
+                if (token.role) {
+                    session.user.role = token.role as string;
+                }
+                if (token.onboardingCompleted !== undefined) {
+                    session.user.onboardingCompleted = token.onboardingCompleted as boolean;
+                }
+                if (token.subscriptionStatus !== undefined) {
+                    session.user.subscriptionStatus = token.subscriptionStatus as string;
+                }
+                if (token.subscriptionCheckedAt !== undefined) {
+                    session.user.subscriptionCheckedAt = token.subscriptionCheckedAt as number;
+                }
+                if (token.plan !== undefined) {
+                    session.user.plan = token.plan as string;
+                }
+            }
+            return session;
+        },
+        async jwt({ token, user, trigger, session }) {
+            if (user) {
+                if (user.id) {
+                    token.sub = user.id;
+                    token.id = user.id;
+                }
+                if (user.role) {
+                    token.role = user.role;
+                }
+                token.onboardingCompleted = user.onboardingCompleted ?? false;
+                if (user.subscriptionStatus !== undefined) {
+                    token.subscriptionStatus = user.subscriptionStatus;
+                }
+                if (user.subscriptionCheckedAt !== undefined) {
+                    token.subscriptionCheckedAt = user.subscriptionCheckedAt;
+                }
+                if (user.plan !== undefined) {
+                    token.plan = user.plan;
+                }
+            } else if (!token.id && token.sub) {
+                token.id = token.sub;
+            }
+
+            // Handle session.update() calls — merge updated fields into the JWT.
+            // This is the critical fix: auth.config.ts is used by the middleware
+            // (Edge runtime). Without this block, update({ onboardingCompleted: true })
+            // never propagates to the JWT cookie the middleware reads, causing an
+            // infinite redirect loop where the middleware always sees stale false.
+            if (trigger === "update" && session) {
+                const patch = (session as any).user ?? session;
+                if (patch?.onboardingCompleted !== undefined) {
+                    token.onboardingCompleted = patch.onboardingCompleted;
+                }
+                if (patch?.subscriptionStatus !== undefined) {
+                    token.subscriptionStatus = patch.subscriptionStatus;
+                }
+                if (patch?.plan !== undefined) {
+                    token.plan = patch.plan;
+                }
+                if (patch?.role !== undefined) {
+                    token.role = patch.role;
+                }
+            }
+
+            return token;
+        },
+    },
+} satisfies NextAuthConfig;
+
+
+===== apps/web/app/(dashboard)/trade/equity/_EquityPageClient.tsx =====
+"use client";
+
+import { useEffect, useMemo, useState, Suspense } from "react";
+import dynamic from "next/dynamic";
+import { EquityTradeForm } from "@/components/trade/EquityTradeForm";
+import { Stock } from "@paper-market/core";
+import { useMarketStore } from "@/stores/trading/market.store";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
+import { GlobalSearchModal } from "@/components/trade/search/GlobalSearchModal";
+import { WatchlistPanel } from "@/components/trade/watchlist/WatchlistPanel";
+import { AdaptiveTradeLayout } from "@/components/trade/layout/AdaptiveTradeLayout";
+import { useTradeViewport } from "@/hooks/use-trade-viewport";
+import { PositionsTable } from "@/components/positions/PositionsTable";
+import { BottomBar } from "@/components/trade/options/BottomBar";
+
+
+import { ChevronLeft, Search } from "lucide-react";
+
+const CandlestickChartComponent = dynamic(
+  () => import("@/components/trade/CandlestickChart").then((mod) => ({ default: mod.CandlestickChart })),
+  { ssr: false },
+);
+
+const panelClass =
+  "rounded-[28px] border border-slate-200/80 bg-white dark:border-white/[0.08] dark:bg-[#0c1322]";
+const chartPanelClass =
+  "rounded-none border border-slate-200/80 bg-white dark:border-white/[0.08] dark:bg-[#0c1322]";
+const tileClass =
+  "rounded-[24px] border border-slate-200/80 bg-white dark:border-white/[0.08] dark:bg-[#0f1728]";
+const headerBorderClass = "border-b border-slate-200/80 dark:border-white/[0.08]";
+
+export default function EquityPage({ initialSymbol }: { initialSymbol?: string }) {
+  const { isMobile, isDesktop } = useTradeViewport();
+  const { getCurrentInstruments, stocksBySymbol } = useMarketStore();
+
+  const [searchModalOpen, setSearchModalOpen] = useState(false);
+  const [showOrderForm, setShowOrderForm] = useState(false);
+  const [mobileOrderOpen, setMobileOrderOpen] = useState(false);
+  const [mobilePanel, setMobilePanel] = useState<"watchlist" | "chart">("watchlist");
+
+  const currentInstruments = getCurrentInstruments("equity");
+  const [selectedSymbol, setSelectedSymbol] = useState<string | null>(initialSymbol || null);
+  const [selectedFallback, setSelectedFallback] = useState<Stock | null>(null);
+
+  useEffect(() => {
+    if (initialSymbol) {
+      setSelectedSymbol(initialSymbol);
+    }
+  }, [initialSymbol]);
+
+  const selectedStock = useMemo(() => {
+    if (!selectedSymbol) return null;
+    return stocksBySymbol[selectedSymbol] || selectedFallback;
+  }, [selectedSymbol, selectedFallback, stocksBySymbol]);
+
+  // NOTE: No auto-select. Chart should appear only after user clicks a stock
+  // (unless an initialSymbol is explicitly provided).
+
+  useEffect(() => {
+    if (!selectedSymbol) return;
+    if (!stocksBySymbol[selectedSymbol]) return;
+    if (selectedFallback?.symbol !== selectedSymbol) return;
+    setSelectedFallback(null);
+  }, [selectedSymbol, selectedFallback, stocksBySymbol]);
+
+  useEffect(() => {
+    window.triggerTrade = (_side: "BUY" | "SELL") => {
+      if (isMobile) {
+        setMobileOrderOpen(true);
+        return;
+      }
+      setShowOrderForm(true);
+    };
+    return () => {
+      window.triggerTrade = undefined;
+    };
+  }, [isMobile]);
+
+  useEffect(() => {
+    if (isMobile) setMobilePanel("watchlist");
+  }, [isMobile]);
+
+  const handleSelectStock = (stock: Stock) => {
+    setSelectedSymbol(stock.symbol);
+    setSelectedFallback(stock);
+    if (isMobile) setMobilePanel("chart");
+  };
+
+  const handleClearSelection = () => {
+    setSelectedSymbol(null);
+    setSelectedFallback(null);
+  };
+
+  const chartNode = (
+    <div className="h-full w-full">
+      {selectedSymbol ? (
+        <Suspense fallback={<Skeleton className="h-full w-full" />}>
+          <div className="h-full w-full">
+            <CandlestickChartComponent
+              symbol={selectedSymbol}
+              instrumentKey={selectedStock?.instrumentToken}
+              onSearchClick={() => setSearchModalOpen(true)}
+            />
+          </div>
+        </Suspense>
+      ) : !isMobile ? (
+        <div className="h-full overflow-auto p-4">
+          <PositionsTable />
+        </div>
+      ) : (
+        <div className="flex h-full items-center justify-center text-slate-500 dark:text-slate-400">
+          Select a stock to view chart
+        </div>
+      )}
+    </div>
+  );
+
+  const watchlistNode = (
+    <div className="h-full">
+      <WatchlistPanel
+        instruments={currentInstruments}
+        selectedSymbol={selectedSymbol ?? undefined}
+        onSelect={handleSelectStock}
+        onOpenSearch={() => setSearchModalOpen(true)}
+        onClearSelection={handleClearSelection}
+      />
+    </div>
+  );
+
+  const orderPanelNode = selectedStock ? (
+    <div className="h-full min-h-0 overflow-y-auto">
+      <EquityTradeForm
+        selectedStock={selectedStock}
+        onStockSelect={handleSelectStock}
+        instruments={currentInstruments}
+        sheetMode
+        onOpenSearch={() => setSearchModalOpen(true)}
+      />
+    </div>
+  ) : (
+    <div className="flex h-full items-center justify-center p-4 text-xs text-slate-500 dark:text-slate-400">
+      Select a stock to place an order.
+    </div>
+  );
+
+  const tabletWatchlistNode = (
+    <div className="h-full min-h-0 overflow-hidden bg-transparent p-2">
+      <div className={`h-full min-h-0 overflow-hidden ${panelClass} shadow-sm`}>
+        <div
+          className={`${headerBorderClass} px-3 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-slate-500 dark:text-slate-400`}
+        >
+          Watchlist
+        </div>
+        <div className="h-[calc(100%-37px)] min-h-0 overflow-hidden">{watchlistNode}</div>
+      </div>
+    </div>
+  );
+
+  const tabletOrderNode = (
+    <div className="h-full min-h-0 overflow-hidden bg-transparent p-2">
+      <div className={`h-full min-h-0 overflow-hidden ${panelClass} shadow-sm`}>
+        <div
+          className={`${headerBorderClass} px-3 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-slate-500 dark:text-slate-400`}
+        >
+          Order Ticket
+        </div>
+        <div className="h-[calc(100%-37px)] min-h-0 overflow-hidden">{orderPanelNode}</div>
+      </div>
+    </div>
+  );
+
+  const mobileChartNode = (
+    <div className="h-full min-h-0 bg-transparent p-2 pb-3">
+      <div className={`h-full min-h-0 overflow-hidden ${chartPanelClass} shadow-sm`}>
+        {chartNode}
+      </div>
+    </div>
+  );
+
+  const mobileWatchlistNode = (
+    <div className="h-full min-h-0 bg-transparent p-2 pb-3">
+      <div className={`h-full min-h-0 overflow-hidden ${chartPanelClass} shadow-sm`}>
+        <div className={`flex items-center justify-between px-3 py-2 ${headerBorderClass}`}>
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-500 dark:text-slate-400">
+              Watchlist
+            </p>
+            <p className="text-[11px] text-slate-500/80 dark:text-slate-400/80">
+              Tap any stock to open chart
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setSearchModalOpen(true)}
+            className="inline-flex h-8 items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-2.5 text-xs font-medium text-slate-700 transition-colors hover:bg-slate-100 dark:border-white/[0.08] dark:bg-[#10192b] dark:text-slate-100 dark:hover:bg-white/[0.08]"
+          >
+            <Search className="h-3.5 w-3.5" />
+            Search
+          </button>
+        </div>
+        <div className="h-[calc(100%-56px)] min-h-0 overflow-hidden">{watchlistNode}</div>
+      </div>
+    </div>
+  );
+
+  const mobileChartNodeWithHeader = (
+    <div className="h-full min-h-0 bg-transparent p-2 pb-3">
+      <div className={`h-full min-h-0 overflow-hidden ${panelClass} shadow-sm`}>
+        <div className={`flex items-center justify-between px-3 py-2 ${headerBorderClass}`}>
+          <button
+            type="button"
+            onClick={() => setMobilePanel("watchlist")}
+            className="inline-flex h-8 items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-2 text-xs font-medium text-slate-700 transition-colors hover:bg-slate-100 dark:border-white/[0.08] dark:bg-[#10192b] dark:text-slate-100 dark:hover:bg-white/[0.08]"
+          >
+            <ChevronLeft className="h-3.5 w-3.5" />
+            Watchlist
+          </button>
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => window.triggerTrade?.("BUY")}
+              className="h-7 rounded bg-emerald-600 px-3 text-[10px] uppercase font-bold text-white shadow"
+            >
+              Buy
+            </button>
+            <button
+              type="button"
+              onClick={() => window.triggerTrade?.("SELL")}
+              className="h-7 rounded bg-rose-600 px-3 text-[10px] uppercase font-bold text-white shadow"
+            >
+              Sell
+            </button>
+          </div>
+        </div>
+        <div className="h-[calc(100%-49px)] min-h-0 overflow-hidden">{chartNode}</div>
+      </div>
+    </div>
+  );
+
+  const mobileMainNode = mobilePanel === "watchlist" ? mobileWatchlistNode : mobileChartNodeWithHeader;
+
+  // Removed mobileTopBarNode as per user request
+
+  const mobileOrderDrawerNode = (
+    <div className="h-[86vh] min-h-0 overflow-hidden bg-background">
+      <div className="border-b border-slate-200/80 px-4 py-3 dark:border-white/[0.08]">
+        <p className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-500 dark:text-slate-400">
+          Order Ticket
+        </p>
+        <p className="mt-1 text-sm font-semibold text-slate-950 dark:text-slate-100">
+          {selectedStock?.symbol || "EQUITY"}
+        </p>
+      </div>
+      <div className="h-[calc(100%-62px)] min-h-0 overflow-y-auto">{orderPanelNode}</div>
+    </div>
+  );
+
+  return (
+    <>
+      <GlobalSearchModal
+        open={searchModalOpen}
+        onOpenChange={setSearchModalOpen}
+        searchMode="EQUITY"
+        placeholder="Search equities..."
+        onSelectStock={(stock) => {
+          handleSelectStock(stock);
+          setSearchModalOpen(false);
+        }}
+      />
+
+      <div className="h-[calc(100dvh-6rem)] md:h-[calc(100vh-2rem)] min-h-0 overflow-hidden bg-background">
+        <AdaptiveTradeLayout
+          desktopLeft={watchlistNode}
+          desktopLeftWidth="300px"
+          desktopCenter={
+            <div className={`relative h-full min-h-0 ${chartPanelClass}`}>
+              {chartNode}
+              {isDesktop && showOrderForm && selectedStock && selectedSymbol ? (
+                <div className="absolute right-4 top-16 z-50 w-[340px] animate-in fade-in slide-in-from-right-8 duration-200">
+                  <div className={`relative ${tileClass} shadow-2xl`}>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="absolute right-2 top-2 z-10 h-7 w-7 rounded-full bg-slate-100/80 hover:bg-slate-200 dark:bg-white/[0.06] dark:hover:bg-white/[0.12]"
+                      onClick={() => setShowOrderForm(false)}
+                    >
+                      <span className="sr-only">Close</span>
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        className="lucide lucide-x"
+                      >
+                        <path d="M18 6 6 18" />
+                        <path d="m6 6 12 12" />
+                      </svg>
+                    </Button>
+                    <div className="h-auto max-h-[80vh] overflow-y-auto rounded-lg">
+                      <EquityTradeForm
+                        selectedStock={selectedStock}
+                        onStockSelect={handleSelectStock}
+                        instruments={currentInstruments}
+                        onOpenSearch={() => setSearchModalOpen(true)}
+                      />
+                    </div>
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          }
+          tabletTop={mobileChartNode}
+          tabletLeft={tabletWatchlistNode}
+          tabletRight={tabletOrderNode}
+          mobileContent={mobileMainNode}
+          mobileOrderTitle={selectedStock ? `${selectedStock.symbol} equity order ticket` : "Equity order ticket"}
+          mobileOrderOpen={mobileOrderOpen}
+          onMobileOrderOpenChange={setMobileOrderOpen}
+          mobileOrderDrawer={mobileOrderDrawerNode}
+          footer={<BottomBar />}
+        />
+      </div>
+    </>
+  );
+}
+
+
+===== apps/web/stores/trading/positions.store.ts =====
+import { create } from 'zustand';
+import { subscribeWithSelector } from 'zustand/middleware';
+import { UserPosition as Position } from '@paper-market/core';
+import { toast } from 'sonner';
+import { toCanonicalSymbol, toSymbolKey } from '@paper-market/core';
+
+interface PositionsState {
+  positions: Position[];
+  isLoading: boolean;
+  hasFetched: boolean; 
+  error: string | null;
+
+  // Actions
+  fetchPositions: (background?: boolean) => Promise<void>;
+  closePosition: (positionId: string, quantity?: number) => Promise<boolean>;
+  updatePositionPrice: (positionId: string, newPrice: number) => void;
+  updateAllPositionsPrices: (priceUpdates: { [symbol: string]: number }) => void;
+  reset: () => void;
+}
+
+const calculatePnL = (position: Position, currentPrice: number): number => {
+  const { side, entryPrice, quantity } = position;
+  const pnl = (currentPrice - entryPrice) * quantity;
+  return side === 'BUY' ? pnl : -pnl;
+};
+
+export const usePositionsStore = create<PositionsState>()(subscribeWithSelector((set, get) => ({
+  positions: [],
+  isLoading: false,
+  hasFetched: false,
+  error: null,
+
+  fetchPositions: async (background = false) => {
+    if (!background) {
+      set({ isLoading: true, error: null });
+    }
+    try {
+      const res = await fetch('/api/v1/positions');
+      const data = await res.json();
+
+      if (data.success) {
+        // Polling refresh is for structural position fields only.
+        // Live current price is rendered from market quote SSE state.
+        set({ positions: data.data || [] });
+      } else {
+        set({ error: data.error || 'Failed to fetch positions' });
+      }
+    } catch (err) {
+      console.error('Failed to fetch positions:', err);
+      set({ error: 'Network error fetching positions' });
+    } finally {
+       if (!background) {
+           set({ isLoading: false , hasFetched: true });
+       }
+    }
+  },
+
+  updatePositionPrice: (positionId, newPrice) => {
+    set((state) => ({
+      positions: state.positions.map((p) => {
+        if (p.id === positionId) {
+          const pnl = calculatePnL(p, newPrice);
+          return { ...p, currentPrice: newPrice, currentPnL: pnl };
+        }
+        return p;
+      }),
+    }));
+  },
+
+  updateAllPositionsPrices: (priceUpdates) => {
+    const normalizedUpdates: Record<string, number> = {};
+    for (const [symbol, price] of Object.entries(priceUpdates)) {
+      normalizedUpdates[toSymbolKey(toCanonicalSymbol(symbol))] = price;
+    }
+
+    set((state) => ({
+      positions: state.positions.map((position) => {
+        const newPrice = normalizedUpdates[toSymbolKey(toCanonicalSymbol(position.symbol))];
+        if (newPrice !== undefined && newPrice !== position.currentPrice) {
+          const pnl = calculatePnL(position, newPrice);
+          return { ...position, currentPrice: newPrice, currentPnL: pnl };
+        }
+        return position;
+      }),
+    }));
+  },
+
+  closePosition: async (positionId, quantity) => {
+    try {
+      const res = await fetch(`/api/v1/positions/${positionId}/close`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ quantity })
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error?.message || 'Failed to close position');
+      }
+
+      if (data.success) {
+        // Refresh positions to reflect the change
+        await get().fetchPositions();
+        toast.success('Position Closed', {
+          description: data.message || 'Position closed successfully'
+        });
+        return true;
+      }
+      return false;
+    } catch (err) {
+      console.error('Failed to close position:', err);
+      toast.error('Failed to Close Position', {
+        description: err instanceof Error ? err.message : 'Unknown error'
+      });
+      return false;
+    }
+  },
+
+  reset: () =>
+  set({
+    positions: [],
+    error: null,
+    isLoading: false,
+    hasFetched: false, 
+  }),
+})));
+
+
+===== apps/web/app/api/v1/positions/route.ts =====
+import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@/lib/auth";
+import { PositionService } from "@/services/trading/positions/position.service";
+import { OrderExecutorService } from "@/services/trading/execution/order-executor.service";
+import { handleError, ApiError } from "@/lib/errors";
+import { logger } from "@/lib/logger";
+
+/**
+ * Get positions for the authenticated user.
+ */
+export async function GET(_req: NextRequest) {
+    try {
+        const session = await auth();
+        if (!session?.user?.id) {
+            throw new ApiError("Unauthorized", 401, "UNAUTHORIZED");
+        }
+
+        if (session.user.subscriptionStatus === 'expired' && session.user.role !== 'admin') {
+            throw new ApiError("Subscription expired", 403, "FORBIDDEN");
+        }
+
+        const paperMode =
+            String(process.env.PAPER_TRADING_MODE ?? "true").trim().toLowerCase() !== "false";
+        if (paperMode && process.env.NODE_ENV !== "production") {
+            try {
+                await OrderExecutorService.executeOpenOrders();
+            } catch (err) {
+                logger.warn({ err: err }, "Auto-execute open orders failed");
+            }
+        }
+
+        const positions = await PositionService.getUserPositionsWithPnL(session.user.id);
+
+        return NextResponse.json({
+            success: true,
+            data: positions,
+        });
+    } catch (err) {
+        return handleError(err);
+    }
+}
+
+
+
+
+===== apps/web/app/api/v1/market/quotes/route.ts =====
+import { NextRequest, NextResponse } from "next/server";
+import { ApiError, handleError } from "@/lib/errors";
+import { logger } from "@/lib/logger";
+import { db } from "@/lib/db";
+import { instruments } from "@paper-market/core/db";
+import { inArray, or } from "drizzle-orm";
+import { toInstrumentKey } from "@paper-market/core";
+import { resolveUpstoxPreviousClose } from "@/lib/market/upstox-quote-normalization";
+import { auth } from "@/lib/auth";
+import { z } from "zod";
+
+const UPSTOX_API_URL = "https://api.upstox.com/v2";
+
+type UpstoxQuoteMap = Record<string, { last_price?: string | number; close_price?: string | number; [key: string]: unknown }>;
+
+function sanitizeInstrumentKeys(input: unknown): string[] {
+    if (!Array.isArray(input)) return [];
+    const keys = input
+        .filter((k): k is string => typeof k === "string")
+        .map((k) => k.trim())
+        .filter((k) => k.length > 0);
+
+    return Array.from(new Set(keys));
+}
+
+function toUpstoxRequestInstrumentKey(raw: string): string {
+    const normalized = String(raw || "")
+        .trim()
+        .replace(":", "|")
+        .replace(/\s*\|\s*/g, "|")
+        .replace(/\s+/g, " ");
+
+    if (!normalized) return "";
+
+    const [prefixRaw, suffixRaw = ""] = normalized.split("|");
+    const prefix = String(prefixRaw || "").toUpperCase();
+    const suffix = String(suffixRaw || "").trim();
+    if (!suffix) return prefix;
+
+    if (prefix.endsWith("_INDEX")) {
+        const titled = suffix
+            .toLowerCase()
+            .split(" ")
+            .filter(Boolean)
+            .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+            .join(" ");
+        return `${prefix}|${titled}`;
+    }
+
+    return `${prefix}|${suffix.toUpperCase()}`;
+}
+
+function parseJsonSafe(text: string): unknown {
+    if (!text) return null;
+    try {
+        return JSON.parse(text);
+    } catch {
+        return null;
+    }
+}
+
+function normalizeErrorMessage(error: unknown): string {
+    if (error instanceof Error && typeof error.message === "string") {
+        const msg = error.message.trim();
+        if (msg.length > 0) return msg;
+    }
+    return "Failed to fetch quotes";
+}
+
+/**
+ * After buildQuoteLookup() produces an ISIN-keyed map, re-key every entry that
+ * has a corresponding requested trading-symbol variant so that toRequestedKeyPayload
+ * can resolve it by the original key (e.g. NSE_EQ|RELIANCE → NSE_EQ|INE002A01018).
+ */
+function applySymbolKeyRemapping(
+    lookup: Map<string, { last: number; close: number }>,
+    symbolToIsinMap: Map<string, string>,
+    symbolToIsinFromDB: Map<string, string>
+): void {
+    // 1. Upstox sometimes responds with text symbols instead of ISINs for equities.
+    // If the lookup contains a quote under a text symbol, mirror it to its ISIN.
+    for (const [symbolKey, isinKey] of symbolToIsinFromDB.entries()) {
+        const hit = lookup.get(symbolKey) ?? lookup.get(symbolKey.replace("|", ":"));
+        if (hit) {
+            lookup.set(isinKey, hit);
+            lookup.set(isinKey.replace("|", ":"), hit);
+        }
+    }
+
+    // 2. Map whatever is in the lookup back to the requested instrument keys
+    for (const [requestedKey, isinKey] of symbolToIsinMap.entries()) {
+        const isinNorm = toInstrumentKey(isinKey);
+        const hit =
+            lookup.get(isinNorm) ??
+            lookup.get(isinNorm.replace("|", ":")) ??
+            lookup.get(isinNorm.replace(":", "|"));
+        if (hit) {
+            lookup.set(requestedKey, hit);
+            lookup.set(requestedKey.replace("|", ":"), hit);
+            lookup.set(requestedKey.replace(":", "|"), hit);
+        }
+    }
+}
+
+function buildQuoteLookup(quotes: UpstoxQuoteMap): Map<string, { last: number; close: number }> {
+    const out = new Map<string, { last: number; close: number }>();
+
+    for (const [key, quote] of Object.entries(quotes || {})) {
+        const normalizedKey = toInstrumentKey(key);
+        if (!normalizedKey) continue;
+
+        const last = Number(quote?.last_price);
+        if (!Number.isFinite(last) || last <= 0) continue;
+
+        const resolvedClose = resolveUpstoxPreviousClose(quote, last);
+        const close = resolvedClose ?? last;
+
+        out.set(normalizedKey, { last, close });
+        out.set(normalizedKey.replace("|", ":"), { last, close });
+        out.set(normalizedKey.replace(":", "|"), { last, close });
+
+        const sep = normalizedKey.includes(":") ? ":" : normalizedKey.includes("|") ? "|" : "";
+        const suffix = sep ? normalizedKey.split(sep)[1] || "" : normalizedKey;
+        if (suffix) {
+            out.set(`suffix:${suffix.toUpperCase()}`, { last, close });
+        }
+    }
+
+    return out;
+}
+
+// Matches ISIN-like suffixes (e.g. INE002A01018)
+const ISIN_SUFFIX_RE = /^[A-Z]{2}[A-Z0-9]{8,14}$/;
+
+/**
+ * For equity keys, resolve the relation between trading symbols and ISINs.
+ * Returns:
+ *  - symbolToIsinMap: requestedKey -> isinKey (for sending to Upstox API)
+ *  - symbolToIsinFromDB: textSymbolKey -> isinKey (for reverse mapping Upstox responses to ISINs)
+ */
+async function resolveSymbolKeysToIsins(
+    instrumentKeys: string[]
+): Promise<{ symbolToIsinMap: Map<string, string>; symbolToIsinFromDB: Map<string, string> }> {
+    const symbolToIsinMap = new Map<string, string>();
+    const symbolToIsinFromDB = new Map<string, string>();
+
+    const textSymbols: string[] = [];
+    const isinTokens: string[] = [];
+    const pendingRequests = new Set<string>();
+
+    for (const raw of instrumentKeys) {
+        const key = toInstrumentKey(raw);
+        if (!key) continue;
+        const pipe = key.indexOf("|");
+        if (pipe === -1) { symbolToIsinMap.set(key, key); continue; }
+
+        const segment = key.slice(0, pipe);
+        const suffix = key.slice(pipe + 1);
+
+        if (segment === "NSE_EQ" || segment === "BSE_EQ") {
+            pendingRequests.add(key);
+            if (ISIN_SUFFIX_RE.test(suffix)) {
+                isinTokens.push(key);
+            } else {
+                textSymbols.push(suffix);
+            }
+        } else {
+            symbolToIsinMap.set(key, key);
+        }
+    }
+
+    if (textSymbols.length > 0 || isinTokens.length > 0) {
+        try {
+            const conditions = [];
+            if (textSymbols.length > 0) conditions.push(inArray(instruments.tradingsymbol, textSymbols));
+            if (isinTokens.length > 0) conditions.push(inArray(instruments.instrumentToken, isinTokens));
+
+            const rows = await db
+                .select({
+                    instrumentToken: instruments.instrumentToken,
+                    tradingsymbol: instruments.tradingsymbol,
+                    segment: instruments.segment,
+                })
+                .from(instruments)
+                .where(or(...conditions));
+
+            for (const row of rows) {
+                const seg = String(row.segment || "").toUpperCase();
+                const sym = String(row.tradingsymbol || "").toUpperCase();
+                const token = String(row.instrumentToken || "");
+                if (seg && sym && token) {
+                    const symbolKey = `${seg}|${sym}`;
+                    symbolToIsinFromDB.set(symbolKey, token);
+                    symbolToIsinFromDB.set(`${seg}:${sym}`, token);
+                }
+            }
+        } catch (err) {
+            logger.warn({ err: err }, "Failed to resolve equity mappings from DB");
+        }
+    }
+
+    for (const reqKey of pendingRequests) {
+        const pipe = reqKey.indexOf("|");
+        const segment = reqKey.slice(0, pipe);
+        const suffix = reqKey.slice(pipe + 1);
+
+        if (ISIN_SUFFIX_RE.test(suffix)) {
+            // Already standard ISIN
+            symbolToIsinMap.set(reqKey, reqKey);
+        } else {
+            // Needs translation to send to upstream
+            let resolvedIsin = symbolToIsinFromDB.get(reqKey);
+            if (!resolvedIsin) resolvedIsin = symbolToIsinFromDB.get(`${segment}:${suffix}`);
+            symbolToIsinMap.set(reqKey, resolvedIsin ?? reqKey);
+        }
+    }
+
+    return { symbolToIsinMap, symbolToIsinFromDB };
+}
+
+function toRequestedKeyPayload(
+    instrumentKeys: string[],
+    lookup: Map<string, { last: number; close: number }>,
+    symbolToIsinMap?: Map<string, string>
+): UpstoxQuoteMap {
+    const out: UpstoxQuoteMap = {};
+
+    for (const rawKey of instrumentKeys) {
+        const key = toInstrumentKey(rawKey);
+        if (!key) continue;
+
+        const sep = key.includes(":") ? ":" : key.includes("|") ? "|" : "";
+        const suffix = sep ? key.split(sep)[1] || "" : key;
+        // If symbolToIsinMap provided, get the resolved ISIN key for this requested key
+        const isinKey = symbolToIsinMap?.get(key);
+        const isinSuffix = isinKey
+            ? (isinKey.includes("|") ? isinKey.split("|")[1] : isinKey.split(":")[1] || isinKey)
+            : undefined;
+
+        const candidates = [
+            key,
+            key.replace("|", ":"),
+            key.replace(":", "|"),
+            suffix ? `suffix:${suffix.toUpperCase()}` : "",
+            // ISIN key candidates — crucial for text-symbol equity keys
+            isinKey ?? "",
+            isinKey ? isinKey.replace("|", ":") : "",
+            isinKey ? isinKey.replace(":", "|") : "",
+            isinSuffix ? `suffix:${isinSuffix.toUpperCase()}` : "",
+        ].filter(Boolean);
+
+        let quote: { last: number; close: number } | undefined;
+        for (const candidate of candidates) {
+            quote = lookup.get(candidate);
+            if (quote) break;
+        }
+
+        if (!quote) continue;
+
+        out[key] = {
+            last_price: quote.last,
+            close_price: quote.close,
+        };
+    }
+
+    return out;
+}
+
+export async function POST(req: NextRequest) {
+    try {
+        const session = await auth();
+        if (!session?.user?.id) {
+            throw new ApiError("Unauthorized", 401, "UNAUTHORIZED");
+        }
+
+        let body: unknown = {};
+        try {
+            const rawText = await req.text();
+            if (rawText && rawText.trim().length > 0) {
+                body = JSON.parse(rawText);
+            }
+        } catch {
+            return NextResponse.json(
+                { success: false, error: "Invalid JSON body" },
+                { status: 400 }
+            );
+        }
+
+        const payload = z.object({
+            symbols: z.array(z.string()).max(100).optional(),
+            instrumentKeys: z.array(z.string()).max(100).optional()
+        }).parse(body);
+
+        const rawKeys = payload.symbols || payload.instrumentKeys || [];
+        const requestKeys = sanitizeInstrumentKeys(rawKeys);
+        const instrumentKeys = Array.from(
+            new Set(
+                requestKeys
+                    .map((key) => toInstrumentKey(key))
+                    .filter((key) => key.length > 0)
+            )
+        );
+
+        if (requestKeys.length === 0 || instrumentKeys.length === 0) {
+            return NextResponse.json(
+                { success: false, error: "instrumentKeys array is required" },
+                { status: 400 }
+            );
+        }
+
+        // Resolve mappings so we can send ISINs to Upstox and reverse-map its text symbol responses back to ISINs.
+        const { symbolToIsinMap, symbolToIsinFromDB } = await resolveSymbolKeysToIsins(instrumentKeys);
+
+        // Build the upstream request keys: use the ISIN key where available, else the original.
+        // Also apply Upstox mixed-case formatting for indices.
+        const upstreamInstrumentKeys = Array.from(
+            new Set(
+                instrumentKeys
+                    .map((key) => {
+                        const isinKey = symbolToIsinMap.get(key) ?? key;
+                        return toUpstoxRequestInstrumentKey(isinKey);
+                    })
+                    .filter((key) => key.length > 0)
+            )
+        );
+
+        const { UpstoxService } = await import("@/services/market/feeds/upstox-feed.service");
+        const token = await UpstoxService.getSystemToken();
+
+        if (!token) {
+            throw new ApiError("No system token available", 503, "UPSTOX_TOKEN_MISSING");
+        }
+
+        const encodedKeys = upstreamInstrumentKeys
+            .map((k) => encodeURIComponent(k))
+            .join(",");
+        const url = `${UPSTOX_API_URL}/market-quote/quotes?instrument_key=${encodedKeys}`;
+
+        const response = await fetch(url, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+                Accept: "application/json",
+            },
+        });
+
+        const rawText = await response.text();
+        const upstream = parseJsonSafe(rawText) as { status?: string; data?: UpstoxQuoteMap; message?: string } | null;
+        const upstreamStatus = upstream?.status;
+        const upstreamData = (upstream?.data || {}) as UpstoxQuoteMap;
+
+        if (response.ok && upstreamStatus !== "error" && Object.keys(upstreamData).length > 0) {
+            const lookup = buildQuoteLookup(upstreamData);
+            // Re-key ISIN entries back to requested symbol keys (primary path)
+            applySymbolKeyRemapping(lookup, symbolToIsinMap, symbolToIsinFromDB);
+
+            // TEMP DEBUG — remove after fix confirmed
+            logger.info({
+              upstreamKeys: Object.keys(upstreamData).slice(0, 3),
+              lookupSize: lookup.size,
+              symbolToIsinEntries: Array.from(symbolToIsinMap.entries()).slice(0, 3),
+              instrumentKeys: instrumentKeys.slice(0, 3),
+            }, "DEBUG quotes lookup");
+
+            const responsePayload = toRequestedKeyPayload(instrumentKeys, lookup, symbolToIsinMap);
+            if (Object.keys(responsePayload).length > 0) {
+                return NextResponse.json({
+                    success: true,
+                    data: responsePayload,
+                    count: Object.keys(responsePayload).length,
+                    source: "quotes",
+                    timestamp: new Date().toISOString(),
+                });
+            }
+        }
+
+        logger.warn(
+            {
+                status: response.status,
+                statusText: response.statusText,
+                upstreamStatus,
+                upstreamMessage: upstream?.message,
+            },
+            "Quotes endpoint failed, using LTP fallback"
+        );
+
+        const prices = await UpstoxService.getSystemQuotes(upstreamInstrumentKeys);
+        const ltpAsQuotes: UpstoxQuoteMap = {};
+        for (const [key, price] of Object.entries(prices)) {
+            const last = Number(price);
+            if (!Number.isFinite(last) || last <= 0) continue;
+            ltpAsQuotes[key] = {
+                last_price: last,
+                close_price: last,
+            };
+        }
+
+        const ltpLookup = buildQuoteLookup(ltpAsQuotes);
+        // Re-key ISIN entries back to requested symbol keys (LTP fallback path)
+        applySymbolKeyRemapping(ltpLookup, symbolToIsinMap, symbolToIsinFromDB);
+        const fallbackPayload = toRequestedKeyPayload(instrumentKeys, ltpLookup, symbolToIsinMap);
+
+        if (Object.keys(fallbackPayload).length > 0) {
+            logger.info({ count: Object.keys(fallbackPayload).length }, "Quotes served from LTP fallback");
+            return NextResponse.json({
+                success: true,
+                data: fallbackPayload,
+                count: Object.keys(fallbackPayload).length,
+                source: "ltp-fallback",
+                timestamp: new Date().toISOString(),
+            });
+        }
+
+        // If the request was technically successful but we got no usable data,
+        // return an empty response instead of failing to prevent constant 502s.
+        if (response.ok || response.status === 404 || response.status === 204) {
+            return NextResponse.json({
+                success: true,
+                data: {},
+                count: 0,
+                source: "empty",
+                timestamp: new Date().toISOString(),
+            });
+        }
+
+        // Both primary and fallback failed, and response was not OK
+        const msg =
+            (typeof upstream?.message === "string" && upstream.message.trim()) ||
+            `${response.status} ${response.statusText}`.trim() ||
+            "Failed to fetch quotes";
+
+        throw new ApiError(msg, 502, "UPSTOX_QUOTES_FAILED");
+    } catch (err) {
+        logger.error({ err: err }, "Quote fetch error");
+        if (err instanceof ApiError) {
+            return handleError(err);
+        }
+
+        return handleError(
+            new ApiError(
+                normalizeErrorMessage(err),
+                502,
+                "UPSTOX_QUOTES_INTERNAL"
+            )
+        );
+    }
+}
+
+
+===== apps/web/lib/integrations/common/normalizer.ts =====
+
+import { MarketQuote, MarketCandle, OptionChain, OptionChainItem } from "../types";
+
+export function normalizeUpstoxQuote(symbol: string, data: any): MarketQuote {
+    // Upstox typical response: { o, h, l, c, lp, v, ... } or user provided structure
+    // Assuming data is correct Upstox quote shape.
+    // Safety check with safe defaults.
+    return {
+        symbol: symbol,
+        price: Number(data.last_price || data.close || 0),
+        change: Number(data.net_change || 0),
+        changePercent: Number(data.change_percent || 0), // Upstox might not provide this directly in all endpoints
+        volume: Number(data.volume || 0),
+        timestamp: new Date(Number(data.last_trade_time || data.timestamp || Date.now())),
+        dayHigh: Number(data.high || 0),
+        dayLow: Number(data.low || 0),
+        previousClose: Number(data.previous_close || data.ohlc?.close || 0),
+        open: Number(data.open || 0),
+    };
+}
+
+export function normalizeUpstoxCandle(symbol: string, candle: any[], interval: string): MarketCandle {
+    // Upstox candle format array: [timestamp, open, high, low, close, volume, oi]
+    return {
+        symbol: symbol,
+        interval: interval,
+        timestamp: new Date(candle[0]),
+        open: Number(candle[1]),
+        high: Number(candle[2]),
+        low: Number(candle[3]),
+        close: Number(candle[4]),
+        volume: Number(candle[5]),
+    };
+}
+
+export function normalizeTrueDataChain(symbol: string, expiry: Date, data: any[]): OptionChain {
+    // Transforming TrueData flat list into OptionChain items
+    const strikesMap = new Map<number, Partial<OptionChainItem>>();
+
+    for (const item of data) {
+        // TrueData item logic (mocking realistic keys)
+        // item = { symbol: "OS...CE", strike: 19000, type: "CE", ...greeks }
+        const strike = Number(item.strike);
+        const type = item.type; // "CE" or "PE"
+
+        if (!strikesMap.has(strike)) {
+            strikesMap.set(strike, { strikePrice: strike });
+        }
+
+        const entry = strikesMap.get(strike)!;
+        const normalizedItem = {
+            delta: Number(item.greeks?.delta || 0),
+            gamma: Number(item.greeks?.gamma || 0),
+            theta: Number(item.greeks?.theta || 0),
+            vega: Number(item.greeks?.vega || 0),
+            iv: Number(item.iv || 0),
+            // Quote part
+            symbol: item.symbol,
+            price: Number(item.ltp || 0),
+            change: Number(item.change || 0),
+            changePercent: 0,
+            volume: Number(item.volume || 0),
+            timestamp: new Date(),
+            dayHigh: 0,
+            dayLow: 0,
+            previousClose: 0,
+            open: 0,
+        };
+
+        if (type === "CE") {
+            entry.call = normalizedItem;
+        } else {
+            entry.put = normalizedItem;
+        }
+    }
+
+    const strikes: OptionChainItem[] = [];
+    strikesMap.forEach((val) => {
+        if (val.call && val.put && val.strikePrice) {
+            strikes.push(val as OptionChainItem);
+        }
+    });
+
+    return {
+        symbol,
+        expiry,
+        strikes: strikes.sort((a, b) => a.strikePrice - b.strikePrice)
+    };
+}
+
+
+===== apps/web/lib/integrations/upstox/provider.ts =====
+
+import {
+    IMarketDataSource,
+    MarketQuote,
+    MarketCandle,
+    OptionChain,
+    MarketIntegrationError
+} from "../types";
+import { UpstoxClient } from "./client";
+import { normalizeUpstoxQuote, normalizeUpstoxCandle } from "../common/normalizer";
+
+export class UpstoxProvider implements IMarketDataSource {
+    private client: UpstoxClient;
+
+    constructor() {
+        this.client = UpstoxClient.getInstance();
+    }
+
+    async getQuote(symbol: string): Promise<MarketQuote> {
+        // Endpoint: /market-quote/ltp?symbol=...
+        // Providing full quote endpoint if available
+        const response = await this.client.request<any>("GET", "/market-quote/quotes", {
+            symbol: symbol,
+        });
+
+        // Upstox retuns map: { "NSE_EQ|RELIANCE": { ... } }
+        // We assume 'symbol' passed here is formatted correctly for Upstox (e.g. NSE_EQ|RELIANCE)
+        // or we need a symbol mapper. For Phase 3, we assume raw symbol.
+        const quoteData = response[symbol];
+
+        if (!quoteData) {
+            throw new MarketIntegrationError(
+                `Quote not found for symbol: ${symbol}`,
+                "DATA_NOT_FOUND",
+                404,
+                "UPSTOX"
+            );
+        }
+
+        return normalizeUpstoxQuote(symbol, quoteData);
+    }
+
+    async getHistory(symbol: string, interval: string, from: Date, to: Date): Promise<MarketCandle[]> {
+        // Endpoint: /historical-candle/:instrumentKey/:interval/:to_date/:from_date
+        // Upstox interval mapping needs to be handled.
+
+        const fromStr = from.toISOString().split('T')[0];
+        const toStr = to.toISOString().split('T')[0];
+
+        // Mocking the URL structure construction which is path param based in Upstox
+        const endpoint = `/historical-candle/${encodeURIComponent(symbol)}/${interval}/${toStr}/${fromStr}`;
+
+        const response = await this.client.request<any>("GET", endpoint);
+
+        // response.candles is array of arrays
+        if (!Array.isArray(response?.candles)) {
+            return [];
+        }
+
+        return response.candles.map((c: any[]) => normalizeUpstoxCandle(symbol, c, interval));
+    }
+
+    async getOptionChain(_symbol: string, _expiry: Date): Promise<OptionChain> {
+        // Upstox returns option chain via /option/chain (hypothetical or specific endpoint)
+        // If Upstox doesn't support full chain in one go, needed internal logic.
+        // Returning empty or throwing "Not Implemented" if Upstox is not the source for Options (TrueData is).
+
+        // Per requirement: "TrueData: For Options Chain & Greeks"
+        // So Upstox provider might not implement this or return partial.
+
+        throw new MarketIntegrationError(
+            "Upstox Provider does not support Option Chain with Greeks. Use TrueData.",
+            "NOT_SUPPORTED",
+            501,
+            "UPSTOX"
+        );
+    }
+}
+
+

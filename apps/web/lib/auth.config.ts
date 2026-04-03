@@ -63,10 +63,10 @@ export const authConfig = {
             if (session.user) {
                 const tokenId = token.id || token.sub;
                 if (tokenId) {
-                    session.user.id = tokenId;
+                    session.user.id = tokenId as string;
                 }
                 if (token.role) {
-                    session.user.role = token.role;
+                    session.user.role = token.role as string;
                 }
                 if (token.onboardingCompleted !== undefined) {
                     session.user.onboardingCompleted = token.onboardingCompleted as boolean;

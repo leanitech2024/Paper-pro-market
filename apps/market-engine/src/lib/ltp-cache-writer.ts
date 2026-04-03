@@ -1,4 +1,4 @@
-import { tickBus } from "../core/tick-bus.js";
+import { tickBus } from "@paper-market/core";
 import { toInstrumentKey } from "../core/symbol-normalization.js";
 import type { NormalizedTick } from "../core/types.js";
 import { logger } from "./logger.js";

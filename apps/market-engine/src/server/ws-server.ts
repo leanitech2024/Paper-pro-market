@@ -1,8 +1,7 @@
 import WebSocket, { WebSocketServer } from 'ws';
 import type { IncomingMessage, Server as HttpServer } from 'http';
 import { jwtVerify } from 'jose';
-import { tickBus } from '../core/tick-bus.js';
-import { candleEngine } from '../core/candle-engine.js';
+import { tickBus, candleEngine } from '@paper-market/core';
 import { marketFeedSupervisor } from '../core/market-feed-supervisor.js';
 import { logger } from '../lib/logger.js';
 import { toInstrumentKey } from '../core/symbol-normalization.js';

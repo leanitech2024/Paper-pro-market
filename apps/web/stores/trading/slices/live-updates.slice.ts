@@ -1,5 +1,5 @@
 import { MarketSlice, Quote } from "../types";
-import { candleEngine } from "@/lib/trading/candle-engine";
+import { candleEngine } from "@paper-market/core";
 import { toCanonicalSymbol, toInstrumentKey, toSymbolKey } from "@paper-market/core";
 
 const toFiniteNumber = (value: unknown): number =>
