@@ -3,7 +3,7 @@ import { ApiError, handleError } from "@/lib/errors";
 import { logger } from "@/lib/logger";
 import { db } from "@/lib/db";
 import { instruments } from "@paper-market/core/db";
-import { inArray, or } from "drizzle-orm";
+import { inArray } from "drizzle-orm";
 import { toInstrumentKey } from "@paper-market/core";
 import { resolveUpstoxPreviousClose } from "@/lib/market/upstox-quote-normalization";
 import { auth } from "@/lib/auth";
@@ -12,6 +12,23 @@ import { z } from "zod";
 const UPSTOX_API_URL = "https://api.upstox.com/v2";
 
 type UpstoxQuoteMap = Record<string, { last_price?: string | number; close_price?: string | number; [key: string]: unknown }>;
+type QuotesCacheEntry = { expiresAt: number; payload: UpstoxQuoteMap; source: string };
+
+const QUOTES_CACHE_TTL_MS = 5000;
+const quotesCache = new Map<string, QuotesCacheEntry>();
+
+function buildQuotesCacheKey(keys: string[]): string {
+    return keys.slice().sort().join(",");
+}
+
+function pruneQuotesCache(now = Date.now()): void {
+    if (quotesCache.size < 200) return;
+    for (const [key, entry] of quotesCache.entries()) {
+        if (entry.expiresAt <= now) {
+            quotesCache.delete(key);
+        }
+    }
+}
 
 function sanitizeInstrumentKeys(input: unknown): string[] {
     if (!Array.isArray(input)) return [];
@@ -132,6 +149,26 @@ function buildQuoteLookup(quotes: UpstoxQuoteMap): Map<string, { last: number; c
 // Matches ISIN-like suffixes (e.g. INE002A01018)
 const ISIN_SUFFIX_RE = /^[A-Z]{2}[A-Z0-9]{8,14}$/;
 
+function extractSegmentFromInstrumentKey(value: string): string {
+    const raw = String(value || "").trim();
+    if (!raw) return "";
+    const sep = raw.includes("|") ? "|" : raw.includes(":") ? ":" : "";
+    if (!sep) return "";
+    return raw.split(sep)[0]?.toUpperCase() ?? "";
+}
+
+function normalizeInstrumentToken(rawToken: string, fallbackSegment?: string): string {
+    const token = String(rawToken || "").trim();
+    if (!token) return "";
+    if (token.includes("|") || token.includes(":")) {
+        return toInstrumentKey(token);
+    }
+    if (fallbackSegment) {
+        return `${fallbackSegment}|${token}`;
+    }
+    return token;
+}
+
 /**
  * For equity keys, resolve the relation between trading symbols and ISINs.
  * Returns:
@@ -146,6 +183,7 @@ async function resolveSymbolKeysToIsins(
 
     const textSymbols: string[] = [];
     const isinTokens: string[] = [];
+    const isinSuffixes: string[] = [];
     const pendingRequests = new Set<string>();
 
     for (const raw of instrumentKeys) {
@@ -161,6 +199,7 @@ async function resolveSymbolKeysToIsins(
             pendingRequests.add(key);
             if (ISIN_SUFFIX_RE.test(suffix)) {
                 isinTokens.push(key);
+                isinSuffixes.push(suffix);
             } else {
                 textSymbols.push(suffix);
             }
@@ -171,24 +210,51 @@ async function resolveSymbolKeysToIsins(
 
     if (textSymbols.length > 0 || isinTokens.length > 0) {
         try {
-            const conditions = [];
-            if (textSymbols.length > 0) conditions.push(inArray(instruments.tradingsymbol, textSymbols));
-            if (isinTokens.length > 0) conditions.push(inArray(instruments.instrumentToken, isinTokens));
+            const rows: Array<{
+                instrumentToken: string | null;
+                tradingsymbol: string | null;
+                segment: string | null;
+            }> = [];
 
-            const rows = await db
-                .select({
-                    instrumentToken: instruments.instrumentToken,
-                    tradingsymbol: instruments.tradingsymbol,
-                    segment: instruments.segment,
-                })
-                .from(instruments)
-                .where(or(...conditions));
+            if (textSymbols.length > 0) {
+                const symbolRows = await db
+                    .select({
+                        instrumentToken: instruments.instrumentToken,
+                        tradingsymbol: instruments.tradingsymbol,
+                        segment: instruments.segment,
+                    })
+                    .from(instruments)
+                    .where(inArray(instruments.tradingsymbol, textSymbols));
+                rows.push(...symbolRows);
+            }
+
+            const tokenCandidates = Array.from(new Set([...isinTokens, ...isinSuffixes]));
+            if (tokenCandidates.length > 0) {
+                const tokenRows = await db
+                    .select({
+                        instrumentToken: instruments.instrumentToken,
+                        tradingsymbol: instruments.tradingsymbol,
+                        segment: instruments.segment,
+                    })
+                    .from(instruments)
+                    .where(inArray(instruments.instrumentToken, tokenCandidates));
+                rows.push(...tokenRows);
+            }
 
             for (const row of rows) {
-                const seg = String(row.segment || "").toUpperCase();
-                const sym = String(row.tradingsymbol || "").toUpperCase();
-                const token = String(row.instrumentToken || "");
-                if (seg && sym && token) {
+                const segFromRow = String(row.segment || "").toUpperCase().trim();
+                const sym = String(row.tradingsymbol || "").toUpperCase().trim();
+                const rawToken = String(row.instrumentToken || "").trim();
+                const segFromToken = extractSegmentFromInstrumentKey(rawToken);
+                const token = normalizeInstrumentToken(rawToken, segFromRow || segFromToken);
+
+                if (!sym || !token) continue;
+
+                const segmentCandidates = new Set<string>(
+                    [segFromRow, segFromToken].filter(Boolean)
+                );
+
+                for (const seg of segmentCandidates) {
                     const symbolKey = `${seg}|${sym}`;
                     symbolToIsinFromDB.set(symbolKey, token);
                     symbolToIsinFromDB.set(`${seg}:${sym}`, token);
@@ -286,10 +352,12 @@ export async function POST(req: NextRequest) {
             );
         }
 
-        const payload = z.object({
-            symbols: z.array(z.string()).max(100).optional(),
-            instrumentKeys: z.array(z.string()).max(100).optional()
-        }).parse(body);
+    const payload = z.object({
+        symbols: z.array(z.string()).max(100).optional(),
+        instrumentKeys: z.array(z.string()).max(100).optional(),
+        source: z.string().optional(),
+        traceId: z.string().optional(),
+    }).parse(body);
 
         const rawKeys = payload.symbols || payload.instrumentKeys || [];
         const requestKeys = sanitizeInstrumentKeys(rawKeys);
@@ -306,6 +374,22 @@ export async function POST(req: NextRequest) {
                 { success: false, error: "instrumentKeys array is required" },
                 { status: 400 }
             );
+        }
+
+        const requestSource = payload.source || "unknown";
+        const traceId = payload.traceId || "";
+        pruneQuotesCache();
+        const cacheKey = buildQuotesCacheKey(instrumentKeys);
+        const cached = quotesCache.get(cacheKey);
+        if (cached && cached.expiresAt > Date.now()) {
+            return NextResponse.json({
+                success: true,
+                data: cached.payload,
+                count: Object.keys(cached.payload).length,
+                source: cached.source,
+                cached: true,
+                timestamp: new Date().toISOString(),
+            });
         }
 
         // Resolve mappings so we can send ISINs to Upstox and reverse-map its text symbol responses back to ISINs.
@@ -355,6 +439,8 @@ export async function POST(req: NextRequest) {
 
             // TEMP DEBUG — remove after fix confirmed
             logger.info({
+              requestSource,
+              traceId,
               upstreamKeys: Object.keys(upstreamData).slice(0, 3),
               lookupSize: lookup.size,
               symbolToIsinEntries: Array.from(symbolToIsinMap.entries()).slice(0, 3),
@@ -363,6 +449,11 @@ export async function POST(req: NextRequest) {
 
             const responsePayload = toRequestedKeyPayload(instrumentKeys, lookup, symbolToIsinMap);
             if (Object.keys(responsePayload).length > 0) {
+                quotesCache.set(cacheKey, {
+                    expiresAt: Date.now() + QUOTES_CACHE_TTL_MS,
+                    payload: responsePayload,
+                    source: "quotes",
+                });
                 return NextResponse.json({
                     success: true,
                     data: responsePayload,
@@ -401,6 +492,11 @@ export async function POST(req: NextRequest) {
 
         if (Object.keys(fallbackPayload).length > 0) {
             logger.info({ count: Object.keys(fallbackPayload).length }, "Quotes served from LTP fallback");
+            quotesCache.set(cacheKey, {
+                expiresAt: Date.now() + QUOTES_CACHE_TTL_MS,
+                payload: fallbackPayload,
+                source: "ltp-fallback",
+            });
             return NextResponse.json({
                 success: true,
                 data: fallbackPayload,

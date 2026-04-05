@@ -17,6 +17,10 @@ const MAX_HISTORY_REQUESTS_PER_MINUTE = Number(
 const MAX_CONCURRENT_HISTORY_FETCHES = Number(
   process.env.HISTORY_MAX_CONCURRENT_FETCHES ?? 5,
 );
+const HISTORY_CACHE_TTL_MS = Math.max(
+  5000,
+  Number(process.env.HISTORY_CACHE_TTL_MS ?? 60000),
+);
 const HISTORY_STATE_KEY = "__pmHistoryRouteState";
 
 type RateLimitBucket = { count: number; resetAt: number };
@@ -30,6 +34,7 @@ type HistoryRouteMetrics = {
 
 type HistoryRouteState = {
   inflight: Map<string, Promise<CandleResult>>;
+  cache: Map<string, { expiresAt: number; payload: CandleResult }>;
   rateLimitByKey: Map<string, RateLimitBucket>;
   activeFetches: number;
   metrics: HistoryRouteMetrics;
@@ -91,6 +96,7 @@ const getHistoryRouteState = (): HistoryRouteState => {
 
   const state: HistoryRouteState = {
     inflight: new Map<string, Promise<CandleResult>>(),
+    cache: new Map<string, { expiresAt: number; payload: CandleResult }>(),
     rateLimitByKey: new Map<string, RateLimitBucket>(),
     activeFetches: 0,
     metrics: {
@@ -107,6 +113,13 @@ const getHistoryRouteState = (): HistoryRouteState => {
     for (const [key, bucket] of state.rateLimitByKey.entries()) {
       if (bucket.resetAt <= now) {
         state.rateLimitByKey.delete(key);
+      }
+    }
+    if (state.cache.size > 200) {
+      for (const [key, entry] of state.cache.entries()) {
+        if (entry.expiresAt <= now) {
+          state.cache.delete(key);
+        }
       }
     }
 
@@ -212,6 +225,15 @@ export async function GET(req: NextRequest) {
     // NOT Redis — full candle arrays (20–400 KB) are too expensive for Upstash free tier.
     const cacheKey = `${instrumentKey}:${timeframe || "1m"}:${range || "default"}:${toDate || "latest"}`;
 
+    const now = Date.now();
+    const cached = state.cache.get(cacheKey);
+    if (cached && cached.expiresAt > now) {
+      state.metrics.cacheHits += 1;
+      return NextResponse.json({ success: true, data: cached.payload });
+    }
+    if (cached) {
+      state.cache.delete(cacheKey);
+    }
     state.metrics.cacheMisses += 1;
 
     const existing = state.inflight.get(cacheKey);
@@ -236,6 +258,12 @@ export async function GET(req: NextRequest) {
       timeframe,
       range,
       toDate,
+    }).then((data) => {
+      state.cache.set(cacheKey, {
+        expiresAt: Date.now() + HISTORY_CACHE_TTL_MS,
+        payload: data,
+      });
+      return data;
     }).finally(() => {
       state.inflight.delete(cacheKey);
       state.activeFetches = Math.max(0, state.activeFetches - 1);

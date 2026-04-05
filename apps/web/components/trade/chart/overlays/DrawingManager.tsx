@@ -30,10 +30,29 @@ export function DrawingManager({ chart, mainSeries, width, height, data, symbol 
   const svgRef = useRef<SVGSVGElement>(null);
   const textPopoverRef = useRef<HTMLDivElement>(null);
 
-  const { pointToCoords, coordsToPoint } = useChartCoordinates(chart, mainSeries, data);
+  const { pointToCoords, coordsToPoint, snapTime, snapPrice, timeInterval } = useChartCoordinates(chart, mainSeries, data);
   
-  const { localInteraction, setLocalInteraction, handleMouseDown, handleMouseMove, handleMouseUp, textDialog } = 
-    useDrawingInteraction({ symbol, drawings, coordsToPoint, svgRef });
+  const {
+    localInteraction,
+    setLocalInteraction,
+    handleMouseDown,
+    handleMouseMove,
+    handleMouseLeave,
+    handleMouseUp,
+    interactionCursor,
+    textDialog,
+  } =
+    useDrawingInteraction({
+      symbol,
+      drawings,
+      pointToCoords,
+      coordsToPoint,
+      snapTime,
+      snapPrice,
+      timeInterval,
+      height,
+      svgRef,
+    });
     
   const { renderDrawing } = useDrawingRenderer({ width, height, mainSeries, data, pointToCoords, coordsToPoint });
 
@@ -142,7 +161,9 @@ export function DrawingManager({ chart, mainSeries, width, height, data, symbol 
           handleMouseDown(e, isTargetInPopover);
         }}
         onMouseMove={handleMouseMove}
+        onMouseLeave={handleMouseLeave}
         onMouseUp={handleMouseUp}
+        cursor={interactionCursor}
       >
         {/* Committed drawings */}
         {drawings.map((d) => {

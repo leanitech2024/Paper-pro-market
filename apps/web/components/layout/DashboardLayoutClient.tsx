@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import Logo from '@/components/general/Logo';
 import { CircleUserRound } from 'lucide-react';
-import { useSession } from 'next-auth/react';
+import type { Session } from 'next-auth';
 
 import { useWalletStore } from '@/stores/wallet.store';
 import { usePositionsStore } from '@/stores/trading/positions.store';
@@ -19,9 +19,13 @@ import { useSearchStore } from '@/stores/ui/search.store';
 import { GlobalSearchModal } from '@/components/trade/search/GlobalSearchModal';
 import { useSubscriptionStore } from '@/stores/subscription.store';
 
-export default function DashboardLayoutClient({ children }: { children: ReactNode }) {
-  
-
+export default function DashboardLayoutClient({
+  children,
+  session,
+}: {
+  children: ReactNode;
+  session: Session | null;
+}) {
   useMarketStream();
   const pathname = usePathname();
 
@@ -29,7 +33,6 @@ export default function DashboardLayoutClient({ children }: { children: ReactNod
   const fetchPositions = usePositionsStore((state) => state.fetchPositions);
   const fetchSubscription = useSubscriptionStore((state) => state.fetchSubscription);
   const seedFromSession = useSubscriptionStore((state) => state.seedFromSession);
-  const { data: session } = useSession();
 
   // Seed store immediately from JWT — shows correct lock state before fetch completes
   useEffect(() => {
@@ -43,8 +46,16 @@ export default function DashboardLayoutClient({ children }: { children: ReactNod
 
   useEffect(() => {
     fetchWallet();
-    fetchPositions();
-    fetchSubscription();
+    const positionsTimer = setTimeout(() => {
+      fetchPositions();
+    }, 200);
+    const subscriptionTimer = setTimeout(() => {
+      fetchSubscription();
+    }, 400);
+    return () => {
+      clearTimeout(positionsTimer);
+      clearTimeout(subscriptionTimer);
+    };
   }, [fetchWallet, fetchPositions, fetchSubscription]);
 
   useEffect(() => {
@@ -81,7 +92,7 @@ export default function DashboardLayoutClient({ children }: { children: ReactNod
   }, [pathname]);
 
   return (
-    <DashboardContentWrapper>
+    <DashboardContentWrapper session={session}>
       {children}
     </DashboardContentWrapper>
   );
@@ -89,12 +100,17 @@ export default function DashboardLayoutClient({ children }: { children: ReactNod
 
 
 
-function DashboardContentWrapper({ children }: { children: ReactNode }) {
+function DashboardContentWrapper({
+  children,
+  session,
+}: {
+  children: ReactNode;
+  session: Session | null;
+}) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const pathname = usePathname();
   const isEquityTradeRoute = pathname?.startsWith('/trade/equity');
   const { isOpen, searchMode, placeholder, onSelect, closeSearch } = useSearchStore();
-  const { data: session } = useSession();
   const isAdmin = session?.user?.role === 'admin';
   // Note: session is already consumed in the parent for seeding — these selectors react to store updates
   const plan = useSubscriptionStore((state) => state.plan);
@@ -118,6 +134,7 @@ function DashboardContentWrapper({ children }: { children: ReactNode }) {
         disableMobile={isEquityTradeRoute}
         plan={plan}
         subscriptionStatus={subscriptionStatus}
+        user={session?.user ?? null}
       />
 
       <div

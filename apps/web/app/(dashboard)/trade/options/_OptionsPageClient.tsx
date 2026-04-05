@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, Suspense } from "react";
+import { useEffect, useMemo, useRef, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { TerminalHeader } from "@/components/trade/options/TerminalHeader";
 import { OptionChainTable } from "@/components/trade/options/OptionChainTable";
@@ -84,18 +84,27 @@ function OptionsPageContent() {
 
   const [underlying, setUnderlying] = useState("NIFTY");
   const [selectedExpiry, setSelectedExpiry] = useState("");
-  const [contracts, setContracts] = useState<Stock[]>([]);
   const [selectedContract, setSelectedContract] = useState<Stock | null>(null);
   const [initialSide, setInitialSide] = useState<"BUY" | "SELL">("BUY");
   const [mode, setMode] = useState<TradeMode>("single");
   const [mobileOrderOpen, setMobileOrderOpen] = useState(false);
   const [mobileView, setMobileView] = useState<MobileView>("chain");
+  const skipResetRef = useRef(false);
 
   useEffect(() => {
     const requestedUnderlying = String(searchParams.get("underlying") || "").trim().toUpperCase();
     if (!requestedUnderlying) return;
     setUnderlying(requestedUnderlying);
   }, [searchParams]);
+
+  useEffect(() => {
+    if (skipResetRef.current) {
+      skipResetRef.current = false;
+      return;
+    }
+    setSelectedExpiry("");
+    setSelectedContract(null);
+  }, [underlying]);
 
   const fetchOptionChain = useMarketStore((s) => s.fetchOptionChain);
   const chainKey = useMemo(
@@ -109,80 +118,29 @@ function OptionsPageContent() {
   const selectPrice = useMarketStore((s) => s.selectPrice);
   const selectQuote = useMarketStore((s) => s.selectQuote);
 
-  useEffect(() => {
-    if (!underlying) {
-      setContracts([]);
-      setSelectedContract(null);
-      setSelectedExpiry("");
-      return;
-    }
-    let cancelled = false;
-    const load = async () => {
-      const params = new URLSearchParams({ underlying, instrumentType: "OPTION" });
-      const res = await fetch(`/api/v1/instruments/derivatives?${params}`, { cache: "no-store" });
-      const payload = await res.json();
-      const items: Stock[] = payload?.data?.instruments || [];
-      if (!cancelled) setContracts(items);
-    };
-    load().catch(() => {
-      if (!cancelled) setContracts([]);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [underlying]);
-
-  const expiries = useMemo(() => {
-    const keys = new Set<string>();
-    for (const item of contracts) {
-      const key = toDateKey(item.expiryDate);
-      if (key) keys.add(key);
-    }
-    return Array.from(keys).sort();
-  }, [contracts]);
+  const expiries = useMemo(() => optionChain?.expiries ?? [], [optionChain?.expiries]);
 
   useEffect(() => {
     if (expiries.length === 0) {
-      setSelectedExpiry("");
       return;
     }
     if (!selectedExpiry || !expiries.includes(selectedExpiry)) setSelectedExpiry(expiries[0]);
   }, [expiries, selectedExpiry]);
 
-  const filteredContracts = useMemo(
-    () =>
-      selectedExpiry
-        ? contracts.filter((c) => toDateKey(c.expiryDate) === selectedExpiry)
-        : [],
-    [contracts, selectedExpiry],
-  );
-
-  const optionTokenBySymbol = useMemo<Record<string, string>>(() => {
-    const map: Record<string, string> = {};
-    for (const c of filteredContracts) {
-      const sym = String(c.symbol || "").trim();
-      const tok = String(c.instrumentToken || "").trim();
-      if (sym && tok) map[sym] = tok;
-    }
-    return map;
-  }, [filteredContracts]);
-
   useEffect(() => {
-    if (!selectedContract) return;
-    const exists = filteredContracts.some(
-      (c) => c.instrumentToken === selectedContract.instrumentToken,
-    );
-    if (!exists) setSelectedContract(null);
-  }, [filteredContracts, selectedContract]);
+    if (!optionChain?.expiry) return;
+    if (!selectedExpiry) {
+      setSelectedExpiry(optionChain.expiry);
+    }
+  }, [optionChain?.expiry, selectedExpiry]);
 
   useEffect(() => {
     if (!underlying) return;
-    if (optionChain) return;
     const timer = window.setTimeout(() => {
       fetchOptionChain(underlying, selectedExpiry || undefined).catch(() => undefined);
     }, 220);
     return () => window.clearTimeout(timer);
-  }, [fetchOptionChain, optionChain, selectedExpiry, underlying]);
+  }, [fetchOptionChain, selectedExpiry, underlying]);
 
   const chainRows = useMemo<OptionChainRow[]>(() => {
     const strikes = optionChain?.strikes || [];
@@ -192,6 +150,8 @@ function OptionsPageContent() {
         ce: item.ce
           ? {
               symbol: String((item.ce as Record<string, unknown>).symbol || ""),
+              instrumentToken: String((item.ce as Record<string, unknown>).instrumentToken || ""),
+              lotSize: Number((item.ce as Record<string, unknown>).lotSize || 0),
               ltp: Number((item.ce as Record<string, unknown>).ltp || 0),
               oi: Number((item.ce as Record<string, unknown>).oi || 0),
               volume: Number((item.ce as Record<string, unknown>).volume || 0),
@@ -200,6 +160,8 @@ function OptionsPageContent() {
         pe: item.pe
           ? {
               symbol: String((item.pe as Record<string, unknown>).symbol || ""),
+              instrumentToken: String((item.pe as Record<string, unknown>).instrumentToken || ""),
+              lotSize: Number((item.pe as Record<string, unknown>).lotSize || 0),
               ltp: Number((item.pe as Record<string, unknown>).ltp || 0),
               oi: Number((item.pe as Record<string, unknown>).oi || 0),
               volume: Number((item.pe as Record<string, unknown>).volume || 0),
@@ -209,6 +171,17 @@ function OptionsPageContent() {
       .filter((r) => Number.isFinite(r.strike) && r.strike > 0)
       .sort((a, b) => a.strike - b.strike);
   }, [optionChain?.strikes]);
+
+  const optionTokenBySymbol = useMemo<Record<string, string>>(() => {
+    const map: Record<string, string> = {};
+    for (const row of chainRows) {
+      const ceToken = row.ce?.instrumentToken;
+      const peToken = row.pe?.instrumentToken;
+      if (row.ce?.symbol && ceToken) map[row.ce.symbol] = ceToken;
+      if (row.pe?.symbol && peToken) map[row.pe.symbol] = peToken;
+    }
+    return map;
+  }, [chainRows]);
 
   const underlyingQuote = selectQuote(underlying);
   const chainPrice = Number(optionChain?.underlyingPrice || 0);
@@ -238,6 +211,7 @@ function OptionsPageContent() {
   const daysToExpiry = getDaysToExpiry(selectedExpiry);
 
   const handleSearchSelect = (stock: Stock) => {
+    skipResetRef.current = true;
     setUnderlying(resolveUnderlying(stock));
     const exp = toDateKey(stock.expiryDate);
     if (exp) setSelectedExpiry(exp);
@@ -255,24 +229,54 @@ function OptionsPageContent() {
   };
 
   const handleSelectChainSymbol = (symbol: string, side: "BUY" | "SELL" = "BUY") => {
-    const found =
-      filteredContracts.find((c) => c.symbol === symbol) ||
-      contracts.find((c) => c.symbol === symbol);
-    if (!found) return;
+    const selectedRow = chainRows.find((r) => r.ce?.symbol === symbol || r.pe?.symbol === symbol);
+    if (!selectedRow) return;
+
+    const leg =
+      selectedRow.ce?.symbol === symbol
+        ? selectedRow.ce
+        : selectedRow.pe?.symbol === symbol
+        ? selectedRow.pe
+        : undefined;
+    if (!leg) return;
+
+    const token = leg.instrumentToken || optionTokenBySymbol[symbol];
+    if (!token) return;
 
     let chainLtp = 0;
-    for (const row of chainRows) {
-      if (row.ce?.symbol === symbol && row.ce.ltp > 0) {
-        chainLtp = row.ce.ltp;
+    for (const rowItem of chainRows) {
+      if (rowItem.ce?.symbol === symbol && rowItem.ce.ltp > 0) {
+        chainLtp = rowItem.ce.ltp;
         break;
       }
-      if (row.pe?.symbol === symbol && row.pe.ltp > 0) {
-        chainLtp = row.pe.ltp;
+      if (rowItem.pe?.symbol === symbol && rowItem.pe.ltp > 0) {
+        chainLtp = rowItem.pe.ltp;
         break;
       }
     }
 
-    const contractWithPrice = chainLtp > 0 ? { ...found, price: chainLtp } : found;
+    const expiryValue = optionChain?.expiry || selectedExpiry;
+    const expiryDate = expiryValue ? new Date(`${expiryValue}T00:00:00`) : undefined;
+    const contract: Stock = {
+      symbol,
+      name: symbol,
+      price: chainLtp,
+      change: 0,
+      changePercent: 0,
+      volume: 0,
+      lotSize: Number(leg.lotSize || 1),
+      instrumentToken: token,
+      expiryDate,
+      strikePrice: Number.isFinite(selectedRow.strike) ? selectedRow.strike : undefined,
+      optionType:
+        selectedRow.ce?.symbol === symbol
+          ? "CE"
+          : selectedRow.pe?.symbol === symbol
+          ? "PE"
+          : undefined,
+    };
+
+    const contractWithPrice = chainLtp > 0 ? { ...contract, price: chainLtp } : contract;
     setSelectedContract(contractWithPrice);
     setInitialSide(side);
     setMode("single");

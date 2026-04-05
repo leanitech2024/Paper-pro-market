@@ -7,7 +7,7 @@ import { performance } from "node:perf_hooks";
 import { mtmEngineService } from "@/services/trading/valuation/mtm-engine.service";
 import { PositionService } from "@/services/trading/positions/position.service";
 import { MarginCalculatorService } from "@/services/trading/margin/margin-calculator.service";
-import { and, asc, eq, ne, sql } from "drizzle-orm";
+import { and, asc, eq, ne, or, sql } from "drizzle-orm";
 import { requireInstrumentTokenForIdentityLookup } from "@/lib/trading/token-identity-guard";
 import { FillEngineService } from "@/services/trading/execution/fill-engine.service";
 import { assertTradingEnabled, isTradingEnabled } from "@/lib/system-control";
@@ -60,11 +60,29 @@ export class OrderExecutorService {
                 return 0;
             }
 
+            const staleThreshold = new Date(Date.now() - 30_000);
+            const candidates = await db
+                .select({ id: orders.id })
+                .from(orders)
+                .where(
+                    or(
+                        eq(orders.status, "OPEN"),
+                        and(
+                            eq(orders.status, "PROCESSING"),
+                            sql`${orders.updatedAt} < ${staleThreshold}`
+                        )
+                    )
+                )
+                .limit(1);
+
+            if (candidates.length === 0) {
+                return 0;
+            }
+
             // Recovery: reset any orders that have been stuck in PROCESSING for
             // more than 30 seconds back to OPEN so they can be retried. This handles
             // cases where a previous execution attempt crashed mid-flight (e.g. a
             // process restart, or a trading halt that was subsequently cleared).
-            const staleThreshold = new Date(Date.now() - 30_000);
             const staleProcessing = await db
                 .update(orders)
                 .set({ status: "OPEN", updatedAt: new Date() })

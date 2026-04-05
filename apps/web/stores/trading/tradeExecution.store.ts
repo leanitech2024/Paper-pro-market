@@ -200,7 +200,7 @@ export const useTradeExecutionStore = create<TradeExecutionState>((set, get) => 
 
       get().fetchOrders();
       useWalletStore.getState().fetchWallet();
-      usePositionsStore.getState().fetchPositions();
+      usePositionsStore.getState().fetchPositions(true);
     } catch (err: any) {
       const message = err instanceof Error ? err.message : "Order placement failed";
       set({ orderProcessingError: message });
@@ -271,7 +271,7 @@ export const useTradeExecutionStore = create<TradeExecutionState>((set, get) => 
       );
 
       setTimeout(() => {
-        positionsStore.fetchPositions();
+        positionsStore.fetchPositions(true);
       }, 500);
 
       const pnl =

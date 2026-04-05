@@ -32,6 +32,9 @@ function normalizeKey(value: string): string {
     .replace(/\s+/g, "");
 }
 
+const FUTURES_CACHE_TTL_MS = 10_000;
+const futuresContractsCache = new Map<string, { expiresAt: number; contracts: Stock[] }>();
+
 function resolveUnderlyingName(stock: Stock): string {
   const raw = String(stock.name || stock.symbol || "").trim();
   if (!raw) return "";
@@ -59,6 +62,13 @@ function isIndexUnderlying(value: string): boolean {
 }
 
 async function fetchFuturesContracts(underlying: string): Promise<Stock[]> {
+  const cacheKey = normalizeKey(underlying);
+  const now = Date.now();
+  const cached = futuresContractsCache.get(cacheKey);
+  if (cached && cached.expiresAt > now) {
+    return cached.contracts;
+  }
+
   const params = new URLSearchParams({
     underlying,
     instrumentType: "FUTURE",
@@ -68,7 +78,9 @@ async function fetchFuturesContracts(underlying: string): Promise<Stock[]> {
     cache: "no-store",
   });
   const payload = await res.json();
-  return payload?.data?.instruments || [];
+  const contracts = payload?.data?.instruments || [];
+  futuresContractsCache.set(cacheKey, { expiresAt: now + FUTURES_CACHE_TTL_MS, contracts });
+  return contracts;
 }
 
 function formatLtp(value: number): string {

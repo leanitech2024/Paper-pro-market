@@ -24,6 +24,10 @@ const calculatePnL = (position: Position, currentPrice: number): number => {
   return side === 'BUY' ? pnl : -pnl;
 };
 
+const MIN_BACKGROUND_INTERVAL_MS = 5000;
+let positionsFetchInFlight: Promise<void> | null = null;
+let lastPositionsFetchAt = 0;
+
 export const usePositionsStore = create<PositionsState>()(subscribeWithSelector((set, get) => ({
   positions: [],
   isLoading: false,
@@ -31,6 +35,18 @@ export const usePositionsStore = create<PositionsState>()(subscribeWithSelector(
   error: null,
 
   fetchPositions: async (background = false) => {
+    if (positionsFetchInFlight) {
+      return positionsFetchInFlight;
+    }
+    if (get().hasFetched && !background) return;
+
+    const now = Date.now();
+    if (background && now - lastPositionsFetchAt < MIN_BACKGROUND_INTERVAL_MS) {
+      return;
+    }
+    lastPositionsFetchAt = now;
+
+    const run = (async () => {
     if (!background) {
       set({ isLoading: true, error: null });
     }
@@ -41,7 +57,7 @@ export const usePositionsStore = create<PositionsState>()(subscribeWithSelector(
       if (data.success) {
         // Polling refresh is for structural position fields only.
         // Live current price is rendered from market quote SSE state.
-        set({ positions: data.data || [] });
+        set({ positions: data.data || [], hasFetched: true });
       } else {
         set({ error: data.error || 'Failed to fetch positions' });
       }
@@ -49,9 +65,17 @@ export const usePositionsStore = create<PositionsState>()(subscribeWithSelector(
       console.error('Failed to fetch positions:', err);
       set({ error: 'Network error fetching positions' });
     } finally {
-       if (!background) {
-           set({ isLoading: false , hasFetched: true });
-       }
+      if (!background) {
+        set({ isLoading: false });
+      }
+    }
+    })();
+
+    positionsFetchInFlight = run;
+    try {
+      await run;
+    } finally {
+      positionsFetchInFlight = null;
     }
   },
 
@@ -101,7 +125,7 @@ export const usePositionsStore = create<PositionsState>()(subscribeWithSelector(
 
       if (data.success) {
         // Refresh positions to reflect the change
-        await get().fetchPositions();
+        await get().fetchPositions(true);
         toast.success('Position Closed', {
           description: data.message || 'Position closed successfully'
         });

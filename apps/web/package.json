@@ -10,7 +10,8 @@
     "lint": "next lint",
     "type-check": "node -e \"require('fs').rmSync('.next',{recursive:true,force:true});\" && tsc --noEmit",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "drizzle-kit migrate"
+    "db:migrate": "drizzle-kit migrate",
+    "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
     "@auth/drizzle-adapter": "^1.11.1",

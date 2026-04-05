@@ -1,11 +1,13 @@
 import { marketSimulation } from "@/services/market/feeds/market-simulation.service";
 import { logger } from "@/lib/logger";
 import { SlTargetEngineService } from "@/services/trading/execution/sl-target-engine.service";
+import { OrderExecutorService } from "@/services/trading/execution/order-executor.service";
 
 class MarketTickJob {
     private intervalId: NodeJS.Timeout | null = null;
     private tickCount: number = 0;
     private isRunning: boolean = false;
+    private isExecutingOrders: boolean = false;
 
     /**
      * Start the market tick job.
@@ -67,6 +69,19 @@ class MarketTickJob {
         try {
             marketSimulation.tick();
             this.tickCount++;
+
+            const paperMode =
+                String(process.env.PAPER_TRADING_MODE ?? "true").trim().toLowerCase() !== "false";
+            if (paperMode && process.env.NODE_ENV !== "production" && !this.isExecutingOrders) {
+                this.isExecutingOrders = true;
+                try {
+                    await OrderExecutorService.executeOpenOrders();
+                } catch (err) {
+                    logger.warn({ err: err }, "Auto-execute open orders failed");
+                } finally {
+                    this.isExecutingOrders = false;
+                }
+            }
 
             // Log every 10 ticks
             if (this.tickCount % 10 === 0) {

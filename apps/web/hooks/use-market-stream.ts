@@ -9,6 +9,8 @@ const ISIN_LIKE = /^[A-Z]{2}[A-Z0-9]{8,14}$/i;
 const TICKER_KEYS = TICKER_CONFIG.map(cfg => cfg.instrumentKey).filter(Boolean);
 const QUOTE_REFRESH_INTERVAL_MS = 20_000;
 const QUOTE_REQUEST_BATCH_SIZE = 80;
+const QUOTE_MIN_INTERVAL_MS = 1500;
+const SNAPSHOT_DELAY_MS = 800;
 
 function resolveMarketWsUrl(): string {
     const configured = String(process.env.NEXT_PUBLIC_MARKET_ENGINE_WS_URL || "").trim();
@@ -69,6 +71,12 @@ export const useMarketStream = () => {
     const wsRef = useRef<ReturnType<typeof getMarketWebSocket> | null>(null);
     const subscribedKeysRef = useRef<Set<string>>(new Set());
     const isConnectedRef = useRef(false);
+    const pendingQuoteKeysRef = useRef<Set<string>>(new Set());
+    const isFetchingQuotesRef = useRef(false);
+    const quoteDebounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const lastQuoteFetchAtRef = useRef(0);
+    const snapshotRequestedRef = useRef(false);
+    const snapshotTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     // Stable function refs
     const applyTickRef = useRef(useMarketStore.getState().applyTick);
@@ -116,14 +124,14 @@ export const useMarketStream = () => {
         subscribedKeysRef.current = desired;
     }, [collectDesiredKeys]);
 
-    const refreshQuotesFromApi = useCallback(async (requestedKeys: string[]) => {
+    const fetchQuotesFromApi = useCallback(async (requestedKeys: string[], source: string) => {
         const normalizedKeys = Array.from(
             new Set(requestedKeys.map((k) => toInstrumentKey(k)).filter((k): k is string => Boolean(k)))
         );
         if (normalizedKeys.length === 0) return;
 
-        // Build a map from human-readable key suffix → symbol name.
-        // e.g., TICKER_CONFIG sends "NSE_EQ|RELIANCE" → symbolHintMap.set("NSE_EQ|RELIANCE", "RELIANCE")
+        // Build a map from human-readable key suffix -> symbol name.
+        // e.g., TICKER_CONFIG sends "NSE_EQ|RELIANCE" -> symbolHintMap.set("NSE_EQ|RELIANCE", "RELIANCE")
         // This lets us annotate ISIN-keyed API responses with the human symbol name.
         const symbolHintMap = new Map<string, string>();
         for (const k of requestedKeys) {
@@ -140,45 +148,104 @@ export const useMarketStream = () => {
         const hydrated: Array<{ instrumentKey: string; symbol?: string; price: number; close?: number; timestamp?: number }> = [];
         const batches = chunk(normalizedKeys, QUOTE_REQUEST_BATCH_SIZE);
 
-        for (const instrumentKeys of batches) {
-            try {
-                const response = await fetch('/api/v1/market/quotes', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ instrumentKeys }),
-                    cache: 'no-store',
-                });
-                if (!response.ok) continue;
-
-                const payload = await response.json();
-                const quoteMap = payload?.data;
-                if (!payload?.success || !quoteMap) continue;
-
-                const now = Date.now();
-                for (const [rawKey, quote] of Object.entries(quoteMap)) {
-                    const instrumentKey = toInstrumentKey(rawKey);
-                    const price = Number((quote as any)?.last_price);
-                    if (!instrumentKey || !Number.isFinite(price) || price <= 0) continue;
-                    const close = Number((quote as any)?.close_price);
-
-                    // Prefer human hint if available; otherwise the raw suffix (may be ISIN)
-                    const rawSuffix = instrumentKey.split('|')[1] || instrumentKey;
-                    const symbolHint = symbolHintMap.get(instrumentKey) ?? rawSuffix;
-
-                    hydrated.push({
-                        instrumentKey,
-                        symbol: symbolHint,
-                        price,
-                        close: Number.isFinite(close) && close > 0 ? close : undefined,
-                        timestamp: now,
+        const results = await Promise.all(
+            batches.map(async (instrumentKeys) => {
+                try {
+                    const traceId = typeof crypto !== "undefined" && "randomUUID" in crypto
+                        ? crypto.randomUUID()
+                        : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+                    const response = await fetch('/api/v1/market/quotes', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ instrumentKeys, source, traceId }),
+                        cache: 'no-store',
                     });
+                    if (!response.ok) return [];
+
+                    const payload = await response.json();
+                    const quoteMap = payload?.data;
+                    if (!payload?.success || !quoteMap) return [];
+
+                    const now = Date.now();
+                    const batchHydrated: Array<{ instrumentKey: string; symbol?: string; price: number; close?: number; timestamp?: number }> = [];
+                    for (const [rawKey, quote] of Object.entries(quoteMap)) {
+                        const instrumentKey = toInstrumentKey(rawKey);
+                        const price = Number((quote as any)?.last_price);
+                        if (!instrumentKey || !Number.isFinite(price) || price <= 0) continue;
+                        const close = Number((quote as any)?.close_price);
+
+                        // Prefer human hint if available; otherwise the raw suffix (may be ISIN)
+                        const rawSuffix = instrumentKey.split('|')[1] || instrumentKey;
+                        const symbolHint = symbolHintMap.get(instrumentKey) ?? rawSuffix;
+
+                        batchHydrated.push({
+                            instrumentKey,
+                            symbol: symbolHint,
+                            price,
+                            close: Number.isFinite(close) && close > 0 ? close : undefined,
+                            timestamp: now,
+                        });
+                    }
+                    return batchHydrated;
+                } catch {
+                    return [];
                 }
-            } catch { /* best-effort */ }
+            })
+        );
+
+        for (const batch of results) {
+            if (batch.length > 0) hydrated.push(...batch);
         }
 
         if (hydrated.length > 0) hydrateQuotesRef.current(hydrated);
-    }, []); // ← no deps, uses ref
+    }, []); // no deps, uses ref
 
+    const flushQuoteQueue = useCallback(async (source: string) => {
+        if (isFetchingQuotesRef.current) return;
+        const keys = Array.from(pendingQuoteKeysRef.current);
+        if (keys.length === 0) return;
+
+        pendingQuoteKeysRef.current.clear();
+        isFetchingQuotesRef.current = true;
+
+        try {
+            lastQuoteFetchAtRef.current = Date.now();
+            await fetchQuotesFromApi(keys, source);
+        } finally {
+            isFetchingQuotesRef.current = false;
+            if (pendingQuoteKeysRef.current.size > 0) {
+                // Coalesce any keys that arrived while we were fetching.
+                queueQuotesRefresh(Array.from(pendingQuoteKeysRef.current), `${source}-drain`);
+            }
+        }
+    }, [fetchQuotesFromApi]);
+
+    const queueQuotesRefresh = useCallback((requestedKeys: string[], source: string) => {
+        for (const key of requestedKeys) {
+            const normalized = toInstrumentKey(key);
+            if (normalized) pendingQuoteKeysRef.current.add(normalized);
+        }
+
+        if (isFetchingQuotesRef.current) {
+            return;
+        }
+
+        if (quoteDebounceTimerRef.current) {
+            clearTimeout(quoteDebounceTimerRef.current);
+        }
+
+        const now = Date.now();
+        const sinceLastFetch = now - lastQuoteFetchAtRef.current;
+        const minDelay = sinceLastFetch < QUOTE_MIN_INTERVAL_MS
+            ? QUOTE_MIN_INTERVAL_MS - sinceLastFetch
+            : 0;
+        const debounceMs = Math.max(minDelay, sinceLastFetch < 300 ? 500 : 350);
+
+        quoteDebounceTimerRef.current = setTimeout(() => {
+            quoteDebounceTimerRef.current = null;
+            void flushQuoteQueue(source);
+        }, debounceMs);
+    }, [flushQuoteQueue]);
     // ── Effect 1: One-time WS setup (empty deps — never re-runs) ──────
     /* eslint-disable react-hooks/exhaustive-deps */
     useEffect(() => {
@@ -264,23 +331,49 @@ export const useMarketStream = () => {
             });
             wsRef.current = ws;
             ws.connect();
-
-            // Hydrate quotes in parallel — best-effort, does not block WS
-            void (async () => {
-                try {
+            // Snapshot hydration is delayed to avoid blocking the first render and
+            // skipped entirely if we already have quotes from WS.
+            snapshotTimerRef.current = setTimeout(() => {
+                void (async () => {
                     if (cancelled) return;
-                    const snapshotRes = await fetch('/api/v1/market/snapshot', { cache: 'no-store' });
-                    if (!cancelled && snapshotRes.ok) {
-                        const snapshot = await snapshotRes.json();
-                        if (snapshot?.success && Array.isArray(snapshot?.data?.quotes)) {
-                            hydrateQuotesRef.current(snapshot.data.quotes);
+
+                    const hasAnyQuotes = Object.keys(useMarketStore.getState().quotesByInstrument || {}).length > 0;
+                    if (!hasAnyQuotes && !snapshotRequestedRef.current) {
+                        snapshotRequestedRef.current = true;
+                        let snapshotFailed = false;
+
+                        try {
+                            const snapshotRes = await fetch('/api/v1/market/snapshot', { cache: 'no-store' });
+                            if (!cancelled && snapshotRes.ok) {
+                                const snapshot = await snapshotRes.json();
+                                if (snapshot?.success && Array.isArray(snapshot?.data?.quotes)) {
+                                    hydrateQuotesRef.current(snapshot.data.quotes);
+                                }
+                            } else {
+                                snapshotFailed = true;
+                            }
+                        } catch {
+                            snapshotFailed = true;
+                        }
+
+                        if (snapshotFailed) {
+                            snapshotRequestedRef.current = false;
                         }
                     }
-                } catch { /* best-effort snapshot pre-hydration — failures do not block WS connect */ }
 
-                if (cancelled) return;
-                await refreshQuotesFromApi(TICKER_KEYS);
-            })();
+                    if (cancelled) return;
+                    const quotesByInstrument = useMarketStore.getState().quotesByInstrument;
+                    const missingTickerKeys = TICKER_KEYS.filter((k) => {
+                        const normalized = toInstrumentKey(k);
+                        const quote = normalized ? quotesByInstrument[normalized] : undefined;
+                        return !quote || !Number.isFinite(Number(quote.price)) || Number(quote.price) <= 0;
+                    });
+                    if (missingTickerKeys.length > 0) {
+                        queueQuotesRefresh(missingTickerKeys, 'startup');
+                    }
+                })();
+            }, SNAPSHOT_DELAY_MS);
+
         };
 
         connect();
@@ -288,6 +381,14 @@ export const useMarketStream = () => {
         return () => {
             cancelled = true;
             unsubActions();
+            if (quoteDebounceTimerRef.current) {
+                clearTimeout(quoteDebounceTimerRef.current);
+                quoteDebounceTimerRef.current = null;
+            }
+            if (snapshotTimerRef.current) {
+                clearTimeout(snapshotTimerRef.current);
+                snapshotTimerRef.current = null;
+            }
             // DO NOT call ws.unsubscribe or ws.disconnect here
             // The singleton persists across Strict Mode remounts
             // Subscriptions are re-synced on reconnect via onConnected callback
@@ -301,19 +402,24 @@ export const useMarketStream = () => {
     // Uses Zustand's subscribeWithSelector to avoid firing on price ticks —
     // only fires when the actual list of instruments changes
     useEffect(() => {
+        const handleUniverseChange = () => {
+            syncSubscriptions();
+            queueQuotesRefresh(collectDesiredKeys(), "universe-change");
+        };
+
         // Subscribe to structural changes only (watchlist items, positions)
         // NOT quotesByInstrument which changes on every tick
         const unsubWatchlist = useMarketStore.subscribe(
             (state) => (state.stocks || []).map(s => s.instrumentToken).join(','),
-            () => syncSubscriptions()
+            () => handleUniverseChange()
         );
         const unsubPositions = usePositionsStore.subscribe(
             (state) => (state.positions || []).map(p => p.instrumentToken).join(','),
-            () => syncSubscriptions()
+            () => handleUniverseChange()
         );
         const unsubChart = useMarketStore.subscribe(
             (state) => state.simulatedInstrumentKey,
-            () => syncSubscriptions()
+            () => handleUniverseChange()
         );
 
         return () => {
@@ -321,7 +427,7 @@ export const useMarketStream = () => {
             unsubPositions();
             unsubChart();
         };
-    }, [syncSubscriptions]);
+    }, [collectDesiredKeys, queueQuotesRefresh, syncSubscriptions]);
 
     // ── Effect 3: Polling fallback ─────────────────────────────────────
     useEffect(() => {
@@ -346,13 +452,13 @@ export const useMarketStream = () => {
             });
 
             if (missingOrStale.length > 0) {
-                await refreshQuotesFromApi(missingOrStale);
+                queueQuotesRefresh(missingOrStale, "poll");
             }
         };
         void poll();
         const interval = setInterval(() => void poll(), QUOTE_REFRESH_INTERVAL_MS);
         return () => { cancelled = true; clearInterval(interval); };
-    }, [collectDesiredKeys, refreshQuotesFromApi]);
+    }, [collectDesiredKeys, queueQuotesRefresh]);
 
     return { isConnected };
 };

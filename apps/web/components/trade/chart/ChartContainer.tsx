@@ -64,6 +64,8 @@ const INITIAL_VISIBLE_BARS_BY_TIMEFRAME: Record<string, number> = {
 export function ChartContainer({ symbol, headerSymbol, instrumentKey, onSearchClick }: ChartContainerProps) {
   const { isMobile } = useTradeViewport();
   const canonicalSymbol = toCanonicalSymbol(symbol);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const [isChartVisible, setIsChartVisible] = useState(false);
   const {
     isAnalysisMode,
     setAnalysisMode,
@@ -177,6 +179,31 @@ export function ChartContainer({ symbol, headerSymbol, instrumentKey, onSearchCl
     }, 300)
   );
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (!containerRef.current) {
+      setIsChartVisible(true);
+      return;
+    }
+    if (!("IntersectionObserver" in window)) {
+      setIsChartVisible(true);
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) {
+          setIsChartVisible(true);
+          observer.disconnect();
+        }
+      },
+      { root: null, rootMargin: "200px", threshold: 0.01 }
+    );
+
+    observer.observe(containerRef.current);
+    return () => observer.disconnect();
+  }, []);
+
   // 1) Symbol subscription lifecycle.
   useEffect(() => {
     useAnalysisStore.getState().cancelDrawing();
@@ -190,6 +217,7 @@ export function ChartContainer({ symbol, headerSymbol, instrumentKey, onSearchCl
 
   // 2) History lifecycle.
   useEffect(() => {
+    if (!isChartVisible) return;
     useMarketStore.setState((state: any) => ({
       historicalData: [],
       volumeData: [],
@@ -201,7 +229,7 @@ export function ChartContainer({ symbol, headerSymbol, instrumentKey, onSearchCl
     }));
 
     debouncedInitRef.current(symbol, timeframe, range, resolvedInstrumentKey);
-  }, [symbol, timeframe, range, canonicalSymbol, resolvedInstrumentKey]);
+  }, [isChartVisible, symbol, timeframe, range, canonicalSymbol, resolvedInstrumentKey]);
 
   // Live candle updates are applied by use-market-stream.ts.
   useEffect(() => {
@@ -670,7 +698,7 @@ export function ChartContainer({ symbol, headerSymbol, instrumentKey, onSearchCl
   );
 
   return (
-    <div className="relative w-full h-full group">
+    <div ref={containerRef} className="relative w-full h-full group">
       {!isAnalysisMode && (
         <div className="relative w-full h-full flex flex-col">
           <ChartHeader

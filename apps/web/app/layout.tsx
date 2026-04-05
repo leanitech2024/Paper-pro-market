@@ -2,6 +2,7 @@
 import "@/lib/startup/preload";
 import '@/globals.css';
 import Providers from '@/components/Providers';
+import { auth } from '@/lib/auth';
 import { ReactNode } from 'react';
 
 export const metadata = {
@@ -59,11 +60,12 @@ export const viewport = {
 // 🔥 REMOVED: MarketStreamProvider was here but ALSO in dashboard layout
 // This caused duplicate SSE connections. Keep only in dashboard layout.
 
-export default function RootLayout({ children }: { children: ReactNode }) {
+export default async function RootLayout({ children }: { children: ReactNode }) {
+  const session = await auth();
   return (
     <html lang="en" suppressHydrationWarning>
       <body>
-        <Providers>
+        <Providers session={session}>
           {children}
         </Providers>
       </body>

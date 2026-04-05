@@ -2,9 +2,12 @@ export type OptionSide = "CE" | "PE";
 
 export type OptionChainLeg = {
   symbol: string;
+  instrumentToken?: string;
+  lotSize?: number;
   ltp: number;
   oi: number;
   volume: number;
+  iv?: number;
 };
 
 export type OptionChainRow = {

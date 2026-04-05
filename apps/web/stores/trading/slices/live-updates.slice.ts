@@ -18,6 +18,10 @@ function buildOptionChainKey(symbol: string, expiry?: string): string {
   return `${normalizedSymbol}::${expiryKey || "NEAREST"}`;
 }
 
+const OPTION_CHAIN_MIN_INTERVAL_MS = 2000;
+const optionChainInflight = new Map<string, Promise<void>>();
+const optionChainLastFetchAt = new Map<string, number>();
+
 const ISIN_PATTERN = /^[A-Z]{2}[A-Z0-9]{8,14}$/;
 
 function quoteLookupKeys(rawKey: string, symbol?: string): string[] {
@@ -100,36 +104,60 @@ export const createLiveUpdatesSlice: MarketSlice<any> = (set, get) => ({
     if (!normalizedSymbol) return;
 
     const key = buildOptionChainKey(normalizedSymbol, expiry);
+    const now = Date.now();
+    const lastFetchAt = optionChainLastFetchAt.get(key) ?? 0;
+    if (now - lastFetchAt < OPTION_CHAIN_MIN_INTERVAL_MS && get().optionChainByKey[key]) {
+      return;
+    }
+
+    const inflight = optionChainInflight.get(key);
+    if (inflight) {
+      return inflight;
+    }
+
     const { isFetchingChain, fetchingOptionChainKey } = get();
     if (isFetchingChain && fetchingOptionChainKey === key) {
       return;
     }
 
-    set({ isFetchingChain: true, fetchingOptionChainKey: key });
-    try {
-      const params = new URLSearchParams({ symbol: normalizedSymbol });
-      if (expiry) {
-        params.set("expiry", expiry);
-      }
-      const res = await fetch(`/api/v1/market/option-chain?${params.toString()}`);
-      const data = await res.json();
+    const request = (async () => {
+      set({ isFetchingChain: true, fetchingOptionChainKey: key });
+      try {
+        const params = new URLSearchParams({ symbol: normalizedSymbol });
+        if (expiry) {
+          params.set("expiry", expiry);
+        }
+        const res = await fetch(`/api/v1/market/option-chain?${params.toString()}`);
+        const data = await res.json();
 
-      if (data.success) {
-        set((state: any) => ({
-          optionChain: data.data,
-          optionChainByKey: {
-            ...state.optionChainByKey,
-            [key]: data.data,
-          },
-        }));
+        if (data.success) {
+          const resolvedExpiry = String(data?.data?.expiry || "");
+          const resolvedKey = resolvedExpiry ? buildOptionChainKey(normalizedSymbol, resolvedExpiry) : key;
+          const completedAt = Date.now();
+          optionChainLastFetchAt.set(key, completedAt);
+          if (resolvedKey !== key) optionChainLastFetchAt.set(resolvedKey, completedAt);
+
+          set((state: any) => ({
+            optionChain: data.data,
+            optionChainByKey: {
+              ...state.optionChainByKey,
+              [key]: data.data,
+              ...(resolvedKey !== key ? { [resolvedKey]: data.data } : {}),
+            },
+          }));
+        }
+      } catch (error) {
+        console.error("Option Chain fetch failed", error);
+      } finally {
+        if (get().fetchingOptionChainKey === key) {
+          set({ isFetchingChain: false, fetchingOptionChainKey: null });
+        }
+        optionChainInflight.delete(key);
       }
-    } catch (error) {
-      console.error("Option Chain fetch failed", error);
-    } finally {
-      if (get().fetchingOptionChainKey === key) {
-        set({ isFetchingChain: false, fetchingOptionChainKey: null });
-      }
-    }
+    })();
+
+    optionChainInflight.set(key, request);
+    return request;
   },
 
   applyTick: (tick: { instrumentKey: string; symbol?: string; price: number; close?: number; timestamp?: number }) => {

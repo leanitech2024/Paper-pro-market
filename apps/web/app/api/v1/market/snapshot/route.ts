@@ -32,6 +32,7 @@ const ONE_MINUTE_MS = 60_000;
 const SNAPSHOT_STATE_KEY = "__pmSnapshotRouteState";
 const SNAPSHOT_OPEN_MAX_AGE_MS = 2 * ONE_MINUTE_MS;
 const SNAPSHOT_CLOSED_MAX_AGE_MS = 30 * ONE_MINUTE_MS;
+const SNAPSHOT_RESPONSE_TTL_MS = 5000;
 
 type SymbolRow = {
   symbol: string | null;
@@ -48,6 +49,7 @@ type SnapshotRouteState = {
   inflight: Map<string, Promise<MarketLtpCacheRecord[]>>;
   metrics: SnapshotRouteMetrics;
   metricsInterval: ReturnType<typeof setInterval> | null;
+  responseCache: Map<string, { expiresAt: number; payload: { symbols: string[]; quotes: ReturnType<typeof toSnapshotQuote>[] } }>;
 };
 
 const logSnapshotLatency = (metrics: {
@@ -59,6 +61,15 @@ const logSnapshotLatency = (metrics: {
   queueMicrotask(() => {
     logger.info(metrics, "Snapshot latency");
   });
+};
+
+const pruneSnapshotResponseCache = (state: SnapshotRouteState, now = Date.now()) => {
+  if (state.responseCache.size < 200) return;
+  for (const [key, entry] of state.responseCache.entries()) {
+    if (entry.expiresAt <= now) {
+      state.responseCache.delete(key);
+    }
+  }
 };
 
 const getSnapshotRouteState = (): SnapshotRouteState => {
@@ -78,6 +89,7 @@ const getSnapshotRouteState = (): SnapshotRouteState => {
       cacheMisses: 0,
     },
     metricsInterval: null,
+    responseCache: new Map(),
   };
 
   state.metricsInterval = setInterval(() => {
@@ -302,6 +314,21 @@ export async function GET() {
     }
 
     const state = getSnapshotRouteState();
+    pruneSnapshotResponseCache(state);
+    const cached = state.responseCache.get(session.user.id);
+    if (cached && cached.expiresAt > Date.now()) {
+      logSnapshotLatency({
+        auth_duration_ms: Number(authDurationMs.toFixed(2)),
+        redis_read_ms: Number(redisReadMs.toFixed(2)),
+        broker_fetch_ms: Number(brokerFetchMs.toFixed(2)),
+        total_duration_ms: Number((performance.now() - totalStart).toFixed(2)),
+      });
+      return NextResponse.json({
+        success: true,
+        data: cached.payload,
+        cached: true,
+      });
+    }
 
     const [watchlistRows, positionRows] = await Promise.all([
       db
@@ -434,12 +461,18 @@ export async function GET() {
       total_duration_ms: Number((performance.now() - totalStart).toFixed(2)),
     });
 
+    const responsePayload = {
+      symbols: requestKeys,
+      quotes,
+    };
+    state.responseCache.set(session.user.id, {
+      expiresAt: Date.now() + SNAPSHOT_RESPONSE_TTL_MS,
+      payload: responsePayload,
+    });
+
     return NextResponse.json({
       success: true,
-      data: {
-        symbols: requestKeys,
-        quotes,
-      },
+      data: responsePayload,
     });
   } catch (err: any) {
     logSnapshotLatency({

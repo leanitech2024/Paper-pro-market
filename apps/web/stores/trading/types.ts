@@ -37,6 +37,7 @@ export interface OptionChainSnapshot {
   underlyingPrice?: number;
   underlyingChangePercent?: number;
   expiry?: string;
+  expiries?: string[];
   strikes: any[];
 }
 

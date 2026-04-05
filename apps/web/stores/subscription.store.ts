@@ -92,9 +92,18 @@ export const useSubscriptionStore = create<SubscriptionState>((set, get) => ({
     },
 
     seedFromSession: (plan: string, status: string) => {
-        // Only seed if we haven't fetched real data yet — avoids overwriting fresh API data
+        // Only seed if we haven't fetched real data yet - avoids overwriting fresh API data
         if (!get().hasFetched) {
-            set({ plan, status });
+            const isTrialActive = plan === "free_trial" && status === "active";
+            const isTrialExpired = status === "expired";
+            set({
+                plan,
+                status,
+                isTrialActive,
+                isTrialExpired,
+                hasFetched: true,
+                lastFetchedAt: Date.now(),
+            });
         }
     },
 

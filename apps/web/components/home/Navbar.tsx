@@ -5,12 +5,11 @@ import { Sun, Moon } from "lucide-react";
 import { useTheme } from 'next-themes';
 import { useEffect, useState } from 'react';
 import Logo from '@/components/general/Logo';
-import { useSession } from 'next-auth/react';
+import type { Session } from 'next-auth';
 
-const Navbar = () => {
+const Navbar = ({ session }: { session: Session | null }) => {
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
-  const { data: session } = useSession();
 
   useEffect(() => {
     setMounted(true);

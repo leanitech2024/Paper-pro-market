@@ -21,6 +21,7 @@ import Logo from '@/components/general/Logo';
 import { usePathname } from 'next/navigation';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { UserProfile } from './UserProfile';
+import type { Session } from 'next-auth';
 
 interface NavItem {
   to: string;
@@ -61,6 +62,7 @@ interface SidebarProps {
   disableMobile?: boolean;
   plan?: string;
   subscriptionStatus?: string;
+  user?: Session["user"] | null;
 }
 
 export function Sidebar({
@@ -71,6 +73,7 @@ export function Sidebar({
   disableMobile = false,
   plan,
   subscriptionStatus,
+  user = null,
 }: SidebarProps) {
   const pathname = usePathname();
   const filteredNavItems = navItems.filter((item) => !item.adminOnly || isAdmin);
@@ -297,7 +300,7 @@ export function Sidebar({
         <NavContent />
 
         {/* Footer */}
-        <UserProfile />
+        <UserProfile user={user} />
       </aside>
 
       {/* MOBILE SIDEBAR (Sheet) */}
@@ -314,7 +317,7 @@ export function Sidebar({
             </SheetHeader>
             <div className="flex flex-col h-[calc(100vh-4rem)]">
               <NavContent />
-              <UserProfile />
+              <UserProfile user={user} />
             </div>
           </SheetContent>
         </Sheet>

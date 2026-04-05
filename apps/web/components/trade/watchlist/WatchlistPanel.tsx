@@ -48,8 +48,6 @@ export function WatchlistPanel({ instruments, onSelect, selectedSymbol, onOpenSe
   const [preferredWatchlistId, setPreferredWatchlistId] = useState<string | null>(null);
   const lastAppliedQuerySnapshotRef = useRef<string>('');
   const queryClient = useQueryClient();
-  const hydrateQuotes = useMarketStore((state) => state.hydrateQuotes);
-  const lastHydratedKeyRef = useRef<string>('');
 
   // 🔥 NEW: TanStack Query hooks for data fetching
   const { data: watchlists = [], isLoading: isLoadingWatchlists } = useWatchlists();
@@ -121,106 +119,7 @@ export function WatchlistPanel({ instruments, onSelect, selectedSymbol, onOpenSe
   // Fetch instruments for active watchlist
   const { data: queryInstruments = [], isLoading: isLoadingInstruments } = useWatchlistInstruments(resolvedWatchlistId);
 
-  // Best-effort quote hydration for watchlist instruments (fallback when WS is slow or unavailable).
-  useEffect(() => {
-    if (!resolvedWatchlistId) return;
-    if (queryInstruments.length === 0) return;
-
-    const keys = queryInstruments
-      .map((s) => toInstrumentKey(s.instrumentToken || s.symbol || ""))
-      .filter((k) => k.length > 0);
-    if (keys.length === 0) return;
-
-    const hydrateKey = `${resolvedWatchlistId}:${keys.join(",")}`;
-    if (hydrateKey === lastHydratedKeyRef.current) return;
-    lastHydratedKeyRef.current = hydrateKey;
-
-    let cancelled = false;
-
-    void (async () => {
-      try {
-        const res = await fetch("/api/v1/market/quotes", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ instrumentKeys: keys }),
-        });
-
-        if (cancelled) return;
-
-        if (res.ok) {
-          const payload = await res.json();
-          const quoteMap = payload?.data || {};
-          const now = Date.now();
-          const quotes = Object.entries(quoteMap)
-            .map(([rawKey, quote]) => {
-              const instrumentKey = toInstrumentKey(rawKey);
-              if (!instrumentKey) return null;
-              const price = Number(
-                (quote as any)?.last_price ??
-                (quote as any)?.lastPrice ??
-                (quote as any)?.last
-              );
-              if (!Number.isFinite(price) || price <= 0) return null;
-              const closeRaw = Number(
-                (quote as any)?.close_price ??
-                (quote as any)?.closePrice ??
-                (quote as any)?.close
-              );
-              return {
-                instrumentKey,
-                symbol: instrumentKey.split("|")[1] || instrumentKey,
-                price,
-                close: Number.isFinite(closeRaw) && closeRaw > 0 ? closeRaw : undefined,
-                timestamp: now,
-              };
-            })
-            .filter(Boolean) as Array<{
-              instrumentKey: string;
-              symbol?: string;
-              price: number;
-              close?: number;
-              timestamp?: number;
-            }>;
-
-          if (quotes.length > 0) {
-            hydrateQuotes(quotes);
-            return; // ✅ success — don't fall through to snapshot
-          }
-        }
-
-        // ── quotes failed or returned empty — reset ref so next render retries ──
-        // ✅ KEY FIX: clear the ref so the effect re-runs and retries
-        lastHydratedKeyRef.current = "";
-
-        // Snapshot fallback — only hydrate symbols not already priced
-        if (cancelled) return;
-        const snapshotRes = await fetch("/api/v1/market/snapshot", {
-          cache: "no-store",
-        });
-        if (!snapshotRes.ok || cancelled) return;
-        const snapshot = await snapshotRes.json();
-        const snapshotQuotes = Array.isArray(snapshot?.data?.quotes)
-          ? snapshot.data.quotes
-          : [];
-        if (snapshotQuotes.length > 0) {
-          // Only hydrate quotes not already present — don't overwrite live prices
-          const existing = useMarketStore.getState().quotesByInstrument;
-          const missing = snapshotQuotes.filter((q: any) => {
-            const k = toInstrumentKey(q.instrumentKey || q.symbol || "");
-            return k && (!existing[k] || !(existing[k].price > 0));
-          });
-          if (missing.length > 0) hydrateQuotes(missing);
-        }
-      } catch {
-        // best-effort — reset ref so next render can retry
-        lastHydratedKeyRef.current = "";
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [resolvedWatchlistId, queryInstruments, hydrateQuotes]);
+  // Quote hydration is centralized in useMarketStream to avoid duplicate requests.
 
   // Sync query data to Zustand store (for SSE price updates)
   useEffect(() => {

@@ -1,5 +1,4 @@
 import DashboardLayoutClient from '@/components/layout/DashboardLayoutClient';
-import { Providers } from '@/components/layout/Providers';
 import { auth } from '@/lib/auth';
 import { SubscriptionService } from '@/services/subscription/subscription.service';
 import { headers } from 'next/headers';
@@ -42,11 +41,9 @@ export default async function DashboardLayout({
 
   return (
     <div data-theme="terminal" className="bg-background min-h-screen text-foreground font-sans ">
-      <Providers>
-        <DashboardLayoutClient>
-          {children}
-        </DashboardLayoutClient>
-      </Providers>
+      <DashboardLayoutClient session={session}>
+        {children}
+      </DashboardLayoutClient>
     </div>
   );
 }

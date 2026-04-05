@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import {
@@ -15,7 +15,6 @@ import {
 } from "recharts";
 import { useMarketStore } from "@/stores/trading/market.store";
 import type { OptionChainRow, StrategyKind } from "@/components/trade/options/types";
-import type { Stock } from "@paper-market/core";
 import type { MultiLegPayoffLeg } from "@/lib/options/multi-leg-payoff";
 import { findBreakevenPrices, generateMultiLegPayoffSeries } from "@/lib/options/multi-leg-payoff";
 import { cn } from "@/lib/utils";
@@ -106,6 +105,8 @@ function mapRows(strikes: any[] = []): OptionChainRow[] {
       ce: item.ce
         ? {
             symbol: String(item.ce.symbol || ""),
+            instrumentToken: String(item.ce.instrumentToken || ""),
+            lotSize: Number(item.ce.lotSize || 0),
             ltp: Number(item.ce.ltp || 0),
             oi: Number(item.ce.oi || 0),
             volume: Number(item.ce.volume || 0),
@@ -114,6 +115,8 @@ function mapRows(strikes: any[] = []): OptionChainRow[] {
       pe: item.pe
         ? {
             symbol: String(item.pe.symbol || ""),
+            instrumentToken: String(item.pe.instrumentToken || ""),
+            lotSize: Number(item.pe.lotSize || 0),
             ltp: Number(item.pe.ltp || 0),
             oi: Number(item.pe.oi || 0),
             volume: Number(item.pe.volume || 0),
@@ -133,7 +136,6 @@ function OptionsStrategyBuilderContent() {
 
   const [underlying, setUnderlying] = useState(initialSymbol || "NIFTY");
   const [selectedExpiry, setSelectedExpiry] = useState(initialExpiry);
-  const [contracts, setContracts] = useState<Stock[]>([]);
   const [strategy, setStrategy] = useState<StrategyKind>("STRADDLE");
   const [lots, setLots] = useState("1");
   const [s1, setS1] = useState("");
@@ -144,6 +146,7 @@ function OptionsStrategyBuilderContent() {
   const [isPreviewing, setIsPreviewing] = useState(false);
   const [isExecuting, setIsExecuting] = useState(false);
   const [previewError, setPreviewError] = useState<string | null>(null);
+  const hasMountedRef = useRef(false);
 
   const optionChainKey = useMemo(
     () => buildOptionChainKey(underlying, selectedExpiry || undefined),
@@ -158,39 +161,20 @@ function OptionsStrategyBuilderContent() {
   );
 
   useEffect(() => {
-    if (!underlying) return;
-    let cancelled = false;
-
-    const loadContracts = async () => {
-      const params = new URLSearchParams({
-        underlying,
-        instrumentType: "OPTION",
-      });
-      const res = await fetch(`/api/v1/instruments/derivatives?${params.toString()}`, {
-        cache: "no-store",
-      });
-      const payload = await res.json();
-      if (cancelled) return;
-      setContracts(payload?.data?.instruments || []);
-    };
-
-    loadContracts().catch(() => {
-      if (!cancelled) setContracts([]);
-    });
-
-    return () => {
-      cancelled = true;
-    };
+    if (!hasMountedRef.current) {
+      hasMountedRef.current = true;
+      return;
+    }
+    setSelectedExpiry("");
+    setPreview(null);
+    setPreviewError(null);
+    setS1("");
+    setS2("");
+    setS3("");
+    setS4("");
   }, [underlying]);
 
-  const expiries = useMemo(() => {
-    const keys = new Set<string>();
-    for (const item of contracts) {
-      const key = toDateKey(item.expiryDate);
-      if (key) keys.add(key);
-    }
-    return Array.from(keys).sort();
-  }, [contracts]);
+  const expiries = useMemo(() => optionChain?.expiries ?? [], [optionChain?.expiries]);
 
   useEffect(() => {
     if (expiries.length === 0) {
@@ -203,13 +187,19 @@ function OptionsStrategyBuilderContent() {
   }, [expiries, selectedExpiry]);
 
   useEffect(() => {
+    if (!optionChain?.expiry) return;
+    if (!selectedExpiry) {
+      setSelectedExpiry(optionChain.expiry);
+    }
+  }, [optionChain?.expiry, selectedExpiry]);
+
+  useEffect(() => {
     if (!underlying) return;
-    if (optionChain) return;
     const timer = window.setTimeout(() => {
       fetchOptionChain(underlying, selectedExpiry || undefined).catch(() => undefined);
     }, 200);
     return () => window.clearTimeout(timer);
-  }, [fetchOptionChain, optionChain, selectedExpiry, underlying]);
+  }, [fetchOptionChain, selectedExpiry, underlying]);
 
   const rows = useMemo(() => mapRows(optionChain?.strikes || []), [optionChain?.strikes]);
   const strikes = useMemo(() => rows.map((row) => row.strike).sort((a, b) => a - b), [rows]);

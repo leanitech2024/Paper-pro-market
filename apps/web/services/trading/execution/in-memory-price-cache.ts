@@ -58,4 +58,15 @@ class InMemoryPriceCache {
     }
 }
 
-export const inMemoryPriceCache = new InMemoryPriceCache();
+declare global {
+    var __inMemoryPriceCacheInstance: InMemoryPriceCache | undefined;
+}
+
+const globalState = globalThis as unknown as {
+    __inMemoryPriceCacheInstance?: InMemoryPriceCache;
+};
+
+export const inMemoryPriceCache =
+    globalState.__inMemoryPriceCacheInstance || new InMemoryPriceCache();
+
+globalState.__inMemoryPriceCacheInstance = inMemoryPriceCache;

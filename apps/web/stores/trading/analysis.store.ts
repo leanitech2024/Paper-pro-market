@@ -165,6 +165,7 @@ export interface PositionDrawing extends BaseDrawing {
   targetPrice: number;
   stopPrice: number;
   entryTime: number;
+  endTime: number;
   quantity?: number;
 }
 
@@ -476,6 +477,8 @@ function normalizeDrawing(input: any): Drawing | null {
     const target = Number(input.targetPrice);
     const stop = Number(input.stopPrice);
     const entryTime = Number(input.entryTime);
+    // Support legacy drawings by defaulting endTime to 20 bars later if missing
+    const endTime = Number(input.endTime) || (entryTime + 20 * 60 * 1000); // 20 units (assuming 1m as base if not specified, but better than nothing)
     if (![entry, target, stop, entryTime].every(Number.isFinite)) return null;
     return {
       ...base,
@@ -484,6 +487,7 @@ function normalizeDrawing(input: any): Drawing | null {
       targetPrice: target,
       stopPrice: stop,
       entryTime,
+      endTime: Number.isFinite(endTime) ? endTime : entryTime + 20 * 60 * 1000,
       quantity: Number.isFinite(Number(input.quantity)) ? Number(input.quantity) : undefined,
     } as PositionDrawing;
   }
@@ -918,7 +922,7 @@ export const useAnalysisStore = create<AnalysisState>()(
           const current = state.symbolState[symbol] || createSymbolState();
           const next = {
             ...drawing,
-            id: nowId(),
+            id: typeof (drawing as any).id === "string" ? (drawing as any).id : nowId(),
             visible: drawing.visible ?? true,
             locked: drawing.locked ?? false,
             zIndex: drawing.zIndex ?? current.drawings.length + 1,
