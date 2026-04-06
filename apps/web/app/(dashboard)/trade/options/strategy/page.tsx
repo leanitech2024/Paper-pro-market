@@ -10,8 +10,8 @@ import {
   ReferenceLine,
   ResponsiveContainer,
   Tooltip,
-  XAxis,
-  YAxis,
+  XAxis as RechartsXAxis,
+  YAxis as RechartsYAxis,
 } from "recharts";
 import { useMarketStore } from "@/stores/trading/market.store";
 import type { OptionChainRow, StrategyKind } from "@/components/trade/options/types";
@@ -549,14 +549,14 @@ function OptionsStrategyBuilderContent() {
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={payoffData} margin={{ top: 10, right: 12, left: -10, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,.2)" />
-                    <XAxis
+                    <RechartsXAxis
                       dataKey="price"
                       type="number"
                       domain={["dataMin", "dataMax"]}
                       tickFormatter={formatAxis}
                       tick={{ fontSize: 11, fill: "#93a4bf" }}
                     />
-                    <YAxis tickFormatter={formatAxis} tick={{ fontSize: 11, fill: "#93a4bf" }} />
+                    <RechartsYAxis tickFormatter={formatAxis} tick={{ fontSize: 11, fill: "#93a4bf" }} />
                     <Tooltip
                       contentStyle={{ backgroundColor: "#0f172a", borderColor: "rgba(148,163,184,.3)", fontSize: "12px" }}
                       formatter={(value: number) => [formatCurrencyTick(value), "P&L"]}
