@@ -308,9 +308,6 @@ export function WatchlistPanel({ instruments, onSelect, selectedSymbol, onOpenSe
             const hasFallbackPrice = Number.isFinite(fallbackPrice) && fallbackPrice > 0;
 
             const quotePrice = typeof quote?.price === 'number' ? quote.price : undefined;
-            const quoteChange = typeof quote?.change === 'number' ? quote.change : undefined;
-            const quoteChangePercent =
-              typeof quote?.changePercent === 'number' ? quote.changePercent : undefined;
             const quoteClose = typeof quote?.close === 'number' ? quote.close : undefined;
 
             const hasLiveQuote = Number.isFinite(quotePrice) && (quotePrice ?? 0) > 0;
