@@ -7,11 +7,12 @@ const envSchema = z.object({
   DATABASE_URL: z.string().url(),
 
   // Authentication (NextAuth)
-  AUTH_SECRET: requiredAuthString(),
+  AUTH_SECRET: requiredAuthString().optional(),
+  NEXTAUTH_SECRET: requiredAuthString().optional(),
 
   // OAuth Providers (Google)
-  GOOGLE_CLIENT_ID: requiredAuthString(),
-  GOOGLE_CLIENT_SECRET: requiredAuthString(),
+  GOOGLE_CLIENT_ID: requiredAuthString().optional(),
+  GOOGLE_CLIENT_SECRET: requiredAuthString().optional(),
   NEXTAUTH_URL: z.string().url().default("http://localhost:3000"),
 
   // Market Data (Upstox) - Optional for now, but good to have
@@ -30,6 +31,14 @@ const envSchema = z.object({
   // Rate Limiting (Upstash) - Optional for now
   UPSTASH_REDIS_REST_URL: z.string().optional(),
   UPSTASH_REDIS_REST_TOKEN: z.string().optional(),
+}).superRefine((env, ctx) => {
+  if (!env.AUTH_SECRET && !env.NEXTAUTH_SECRET) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["AUTH_SECRET"],
+      message: "AUTH_SECRET or NEXTAUTH_SECRET is required",
+    });
+  }
 });
 
 // Validate `process.env` against the schema
@@ -43,7 +52,7 @@ export const config = {
     url: env.DATABASE_URL,
   },
   auth: {
-    secret: env.AUTH_SECRET,
+    secret: env.AUTH_SECRET ?? env.NEXTAUTH_SECRET,
     url: env.NEXTAUTH_URL,
     google: {
       clientId: env.GOOGLE_CLIENT_ID,

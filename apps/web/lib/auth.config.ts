@@ -1,20 +1,29 @@
 import type { NextAuthConfig } from "next-auth";
 import Google from "next-auth/providers/google";
-import { config as appConfig } from "@/lib/config";
+
+const authSecret = process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET;
+const googleClientId = process.env.GOOGLE_CLIENT_ID;
+const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET;
+
+const providers = [];
+
+if (googleClientId && googleClientSecret) {
+  providers.push(
+    Google({
+      clientId: googleClientId,
+      clientSecret: googleClientSecret,
+    })
+  );
+}
 
 // This file must be Edge-compatible (no database adapters here!)
 export const authConfig = {
-    providers: [
-        Google({
-            clientId: appConfig.auth.google.clientId,
-            clientSecret: appConfig.auth.google.clientSecret,
-        }),
-    ],
+    providers,
     // Force JWT strategy for performance and Edge compatibility
     session: {
         strategy: "jwt",
     },
-    secret: appConfig.auth.secret,
+    secret: authSecret,
     trustHost: true,
     // Let Auth.js v5 use its default cookie names to avoid version conflicts
     pages: {

@@ -20,7 +20,10 @@
     "FEED_MAX_TICK_AGE_MS",
     "FEED_MIN_TICK_RATE",
     "FEED_MIN_ACTIVE_TOKENS",
-    "DIRECT_URL"
+    "DIRECT_URL",
+    "RAZORPAY_KEY_ID",
+    "RAZORPAY_KEY_SECRET",
+    "RAZORPAY_WEBHOOK_SECRET"
   ],
   "tasks": {
     "build": {
