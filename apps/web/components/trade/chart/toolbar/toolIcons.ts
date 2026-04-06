@@ -27,6 +27,8 @@ import {
   Highlighter,
   Tag,
   Navigation,
+  Eraser,
+  Trash2,
 } from "lucide-react";
 import {
   AbcdPatternIcon,
@@ -88,6 +90,8 @@ export const TOOL_ICONS: Record<string, ToolIconComponent> = {
   "cursor": MousePointer2,
   "crosshair": Crosshair,
   "select": MousePointer2,
+  "eraser": Eraser,
+  "clear-all": Trash2,
   "trendline": TrendingUp,
   "ray": ArrowUpRight,
   "info-line": Ruler,

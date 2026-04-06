@@ -13,6 +13,17 @@ export interface ToolGroup {
   defaultTool?: ToolType;
 }
 
+export type MobileMenuActionId = "clear-all";
+
+export type MobileMenuItem =
+  | ({ kind: "tool" } & ToolItem)
+  | { kind: "action"; id: MobileMenuActionId; label: string; icon: string };
+
+export interface MobileMenuSection {
+  name: string;
+  items: MobileMenuItem[];
+}
+
 export const TOOL_ICON_SIZE = 22;
 export const TOOL_ICON_CLASS = "w-[22px] h-[22px]";
 export const TOOL_BUTTON_SIZE_CLASS = "w-[30px] h-[30px]";
@@ -190,5 +201,81 @@ export const TOOL_GROUPS: ToolGroup[] = [
       { id: "flag-mark", label: "Flag Mark", icon: "flag-mark" },
     ],
     defaultTool: "text",
+  },
+];
+
+const EXTRA_TOOL_ITEMS: ToolItem[] = [
+  { id: "eraser", label: "Eraser", icon: "eraser" },
+];
+
+export function findToolItem(toolId: ToolType): ToolItem | undefined {
+  for (const group of TOOL_GROUPS) {
+    const match = group.tools.find((tool) => tool.id === toolId);
+    if (match) return match;
+  }
+  return EXTRA_TOOL_ITEMS.find((tool) => tool.id === toolId);
+}
+
+function pickTool(toolId: ToolType): ToolItem {
+  const match = findToolItem(toolId);
+  if (!match) {
+    throw new Error(`Unknown tool id in mobile config: ${toolId}`);
+  }
+  return match;
+}
+
+function tool(toolId: ToolType): MobileMenuItem {
+  return { kind: "tool", ...pickTool(toolId) };
+}
+
+export const MOBILE_DROPDOWN_SECTIONS: MobileMenuSection[] = [
+  {
+    name: "Cursor",
+    items: [tool("cursor"), tool("crosshair")],
+  },
+  {
+    name: "Lines",
+    items: [
+      tool("trendline"),
+      tool("horizontal-line"),
+      tool("vertical-line"),
+      tool("ray"),
+      tool("extended-line"),
+    ],
+  },
+  {
+    name: "Channels",
+    items: [tool("parallel-channel"), tool("regression-trend"), tool("disjoint-channel")],
+  },
+  {
+    name: "Projection",
+    items: [tool("long-position"), tool("short-position"), tool("forecast"), tool("bars-pattern")],
+  },
+  {
+    name: "Measurer",
+    items: [tool("price-range"), tool("date-range"), tool("date-price-range")],
+  },
+  {
+    name: "Brushes",
+    items: [tool("brush"), tool("highlighter")],
+  },
+  {
+    name: "Arrows",
+    items: [tool("arrow-marker"), tool("arrow-up"), tool("arrow-down")],
+  },
+  {
+    name: "Shapes",
+    items: [tool("rectangle"), tool("rotated-rectangle"), tool("circle"), tool("ellipse"), tool("path")],
+  },
+  {
+    name: "Text",
+    items: [tool("text"), tool("anchored-text"), tool("note"), tool("callout"), tool("price-label")],
+  },
+  {
+    name: "Actions",
+    items: [
+      tool("eraser"),
+      { kind: "action", id: "clear-all", label: "Clear All", icon: "clear-all" },
+    ],
   },
 ];
