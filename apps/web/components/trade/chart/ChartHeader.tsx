@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { ChartStyle, useAnalysisStore } from '@/stores/trading/analysis.store';
 import { IndicatorsMenu } from './IndicatorsMenu';
 import { Button } from '@/components/ui/button';
@@ -12,13 +12,13 @@ import {
   Undo2,
   Redo2,
   CandlestickChart,
-  Wrench,
+  ChevronDown,
 } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 import { resolveToolIcon } from './toolbar/toolIcons';
-import { MOBILE_DROPDOWN_SECTIONS, findToolItem } from './toolbar/toolConfig';
+import { MOBILE_HEADER_MENUS } from './toolbar/toolConfig';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -72,8 +72,6 @@ export function ChartHeader({
   } = useAnalysisStore();
   const headerText = displaySymbol || symbol;
   const [styleSearch, setStyleSearch] = useState("");
-  const activeToolItem = useMemo(() => findToolItem(activeTool), [activeTool]);
-  const ActiveToolIcon = resolveToolIcon(activeToolItem?.icon || "cursor");
 
   const ranges = ['5Y', '1Y', '6M', '3M', '1M', '5D', '1D'];
   const rangeToTimeframe: Record<string, string> = {
@@ -373,80 +371,84 @@ export function ChartHeader({
 
           <div className="md:hidden flex items-center shrink-0">
             <Separator orientation="vertical" className="h-4 bg-border/50 mx-0.5 shrink-0" />
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-7 gap-1.5 px-2 text-[10px] text-slate-500 hover:text-slate-900 transition-none dark:text-slate-400 dark:hover:text-slate-100"
-                >
-                  {activeToolItem ? (
-                    <ActiveToolIcon className="h-3.5 w-3.5" />
-                  ) : (
-                    <Wrench className="h-3.5 w-3.5" />
-                  )}
-                  <span>Tools</span>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent
-                align="end"
-                className="w-[320px] max-w-[calc(100vw-16px)] max-h-[70vh] overflow-y-auto overscroll-contain bg-white border-slate-200/80 p-1.5 dark:bg-[#0c1322] dark:border-white/[0.08]"
-              >
-                <div className="px-2 py-1.5">
-                  <div className="flex items-center gap-2 text-xs font-semibold text-slate-900 dark:text-slate-100">
-                    <ActiveToolIcon className="h-4 w-4 text-blue-500 dark:text-blue-400" />
-                    <span>{activeToolItem?.label || "Cursor"}</span>
-                  </div>
-                  <p className="mt-0.5 text-[10px] uppercase tracking-wider text-slate-500 dark:text-slate-400/70">
-                    Chart tools
-                  </p>
-                </div>
+            <div className="flex items-center gap-1.5 shrink-0">
+              {MOBILE_HEADER_MENUS.map((menu) => {
+                const MenuIcon = resolveToolIcon(menu.icon);
+                const activeMenuItem = menu.items.find(
+                  (item) => item.kind === "tool" && item.id === activeTool
+                );
+                const TriggerIcon = resolveToolIcon(activeMenuItem?.icon || menu.icon);
+                const isMenuActive = Boolean(activeMenuItem);
 
-                {MOBILE_DROPDOWN_SECTIONS.map((section, sectionIndex) => (
-                  <div key={section.name}>
-                    {sectionIndex > 0 ? (
-                      <DropdownMenuSeparator className="bg-slate-200/70 dark:bg-white/[0.08]" />
-                    ) : null}
-                    <DropdownMenuLabel className="px-2 pt-2 pb-1 text-[10px] uppercase tracking-wider text-slate-500/80 dark:text-slate-400/70">
-                      {section.name}
-                    </DropdownMenuLabel>
-                    <div className="space-y-0.5">
-                      {section.items.map((item) => {
-                        const Icon = resolveToolIcon(item.icon);
-                        const isActive = item.kind === "tool" && activeTool === item.id;
-                        return (
-                          <DropdownMenuItem
-                            key={item.id}
-                            onSelect={() => {
-                              if (item.kind === "action") {
-                                clearAllDrawings(symbol);
-                                return;
-                              }
-                              setActiveTool(item.id);
-                            }}
-                            className={cn(
-                              "cursor-pointer gap-2.5 rounded px-2 py-2 text-xs text-slate-700 dark:text-slate-300 data-[highlighted]:bg-slate-100 data-[highlighted]:text-slate-900 dark:data-[highlighted]:bg-white/[0.06] dark:data-[highlighted]:text-white",
-                              isActive &&
-                                "bg-blue-600/10 font-medium text-blue-500 dark:text-blue-400 data-[highlighted]:bg-blue-600/10 data-[highlighted]:text-blue-500 dark:data-[highlighted]:text-blue-400",
-                              item.kind === "action" &&
-                                "text-rose-600 dark:text-rose-400 data-[highlighted]:text-rose-600 dark:data-[highlighted]:text-rose-400",
-                            )}
-                          >
-                            <Icon className="h-4 w-4 shrink-0" />
-                            <span className="flex-1">{item.label}</span>
-                            {isActive ? (
-                              <span className="text-[9px] font-semibold uppercase tracking-wider opacity-70">
-                                Active
-                              </span>
-                            ) : null}
-                          </DropdownMenuItem>
-                        );
-                      })}
-                    </div>
-                  </div>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
+                return (
+                  <DropdownMenu key={menu.id}>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className={cn(
+                          "h-7 gap-1.5 px-2 text-[10px] transition-none shrink-0 border border-slate-200/70 bg-slate-50 text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:border-white/[0.08] dark:bg-[#10192b] dark:text-slate-300 dark:hover:bg-white/[0.08] dark:hover:text-slate-100",
+                          isMenuActive &&
+                            "border-blue-500/40 bg-blue-600/10 text-blue-600 dark:border-blue-400/30 dark:text-blue-300"
+                        )}
+                      >
+                        {isMenuActive ? (
+                          <TriggerIcon className="h-3.5 w-3.5" />
+                        ) : (
+                          <MenuIcon className="h-3.5 w-3.5" />
+                        )}
+                        <span>{menu.label}</span>
+                        <ChevronDown className="h-3 w-3 opacity-60" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent
+                      align="start"
+                      className="w-[260px] max-w-[calc(100vw-20px)] max-h-[65vh] overflow-y-auto overscroll-contain bg-white border-slate-200/80 p-1.5 dark:bg-[#0c1322] dark:border-white/[0.08]"
+                    >
+                      <div className="px-2 py-1.5">
+                        <div className="flex items-center gap-2 text-xs font-semibold text-slate-900 dark:text-slate-100">
+                          <MenuIcon className="h-4 w-4 text-blue-500 dark:text-blue-400" />
+                          <span>{menu.label}</span>
+                        </div>
+                      </div>
+                      <div className="space-y-0.5">
+                        {menu.items.map((item) => {
+                          const Icon = resolveToolIcon(item.icon);
+                          const isActive = item.kind === "tool" && activeTool === item.id;
+                          return (
+                            <DropdownMenuItem
+                              key={item.id}
+                              onSelect={() => {
+                                if (item.kind === "action") {
+                                  clearAllDrawings(symbol);
+                                  return;
+                                }
+                                setActiveTool(item.id);
+                              }}
+                              className={cn(
+                                "cursor-pointer gap-2.5 rounded px-2 py-2 text-xs text-slate-700 dark:text-slate-300 data-[highlighted]:bg-slate-100 data-[highlighted]:text-slate-900 dark:data-[highlighted]:bg-white/[0.06] dark:data-[highlighted]:text-white",
+                                isActive &&
+                                  "bg-blue-600/10 font-medium text-blue-500 dark:text-blue-400 data-[highlighted]:bg-blue-600/10 data-[highlighted]:text-blue-500 dark:data-[highlighted]:text-blue-400",
+                                item.kind === "action" &&
+                                  "text-rose-600 dark:text-rose-400 data-[highlighted]:text-rose-600 dark:data-[highlighted]:text-rose-400",
+                              )}
+                            >
+                              <Icon className="h-4 w-4 shrink-0" />
+                              <span className="flex-1">{item.label}</span>
+                              {isActive ? (
+                                <span className="text-[9px] font-semibold uppercase tracking-wider opacity-70">
+                                  Active
+                                </span>
+                              ) : null}
+                            </DropdownMenuItem>
+                          );
+                        })}
+                      </div>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                );
+              })}
+            </div>
           </div>
         </div>
       </div>

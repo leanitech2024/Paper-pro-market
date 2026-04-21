@@ -24,6 +24,13 @@ export interface MobileMenuSection {
   items: MobileMenuItem[];
 }
 
+export interface MobileHeaderMenu {
+  id: string;
+  label: string;
+  icon: string;
+  items: MobileMenuItem[];
+}
+
 export const TOOL_ICON_SIZE = 22;
 export const TOOL_ICON_CLASS = "w-[22px] h-[22px]";
 export const TOOL_BUTTON_SIZE_CLASS = "w-[30px] h-[30px]";
@@ -277,5 +284,109 @@ export const MOBILE_DROPDOWN_SECTIONS: MobileMenuSection[] = [
       tool("eraser"),
       { kind: "action", id: "clear-all", label: "Clear All", icon: "clear-all" },
     ],
+  },
+];
+
+export const MOBILE_HEADER_MENUS: MobileHeaderMenu[] = [
+  {
+    id: "cursor",
+    label: "Cursor",
+    icon: "cursor",
+    items: [tool("cursor"), tool("crosshair"), tool("eraser")],
+  },
+  {
+    id: "lines",
+    label: "Lines",
+    icon: "trendline",
+    items: [
+      tool("trendline"),
+      tool("horizontal-line"),
+      tool("vertical-line"),
+      tool("ray"),
+      tool("extended-line"),
+      tool("info-line"),
+      tool("trend-angle"),
+    ],
+  },
+  {
+    id: "channels",
+    label: "Channels",
+    icon: "parallel-channel",
+    items: [
+      tool("parallel-channel"),
+      tool("regression-trend"),
+      tool("flat-top-bottom"),
+      tool("disjoint-channel"),
+    ],
+  },
+  {
+    id: "projection",
+    label: "Projection",
+    icon: "long-position",
+    items: [
+      tool("long-position"),
+      tool("short-position"),
+      tool("forecast"),
+      tool("bars-pattern"),
+      tool("ghost-feed"),
+    ],
+  },
+  {
+    id: "measure",
+    label: "Measure",
+    icon: "date-price-range",
+    items: [tool("price-range"), tool("date-range"), tool("date-price-range")],
+  },
+  {
+    id: "shapes",
+    label: "Shapes",
+    icon: "rectangle",
+    items: [
+      tool("rectangle"),
+      tool("rotated-rectangle"),
+      tool("circle"),
+      tool("ellipse"),
+      tool("path"),
+      tool("polyline"),
+      tool("triangle-shape"),
+      tool("curve"),
+      tool("double-curve"),
+    ],
+  },
+  {
+    id: "text",
+    label: "Text",
+    icon: "text",
+    items: [
+      tool("text"),
+      tool("anchored-text"),
+      tool("note"),
+      tool("anchored-note"),
+      tool("callout"),
+      tool("comment"),
+      tool("price-label"),
+      tool("signpost"),
+      tool("flag-mark"),
+    ],
+  },
+  {
+    id: "marks",
+    label: "Marks",
+    icon: "brush",
+    items: [
+      tool("brush"),
+      tool("highlighter"),
+      tool("arrow-marker"),
+      tool("arrow-up"),
+      tool("arrow-down"),
+      tool("arrow-left"),
+      tool("arrow-right"),
+    ],
+  },
+  {
+    id: "actions",
+    label: "Actions",
+    icon: "clear-all",
+    items: [{ kind: "action", id: "clear-all", label: "Clear All", icon: "clear-all" }],
   },
 ];

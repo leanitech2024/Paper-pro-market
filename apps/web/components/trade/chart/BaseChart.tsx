@@ -221,6 +221,8 @@ export const BaseChart = forwardRef<BaseChartRef, BaseChartProps>(({
           height={dimensions.height}
           data={data}
           symbol={symbol}
+          rawToRenderTimeRef={rawToRenderTimeRef}
+          renderToRawTimeRef={renderToRawTimeRef}
         />
       )}
     </div>

@@ -655,7 +655,7 @@ export const useAnalysisStore = create<AnalysisState>()(
       isAnalysisMode: false,
       timeframe: "5m",
       range: "1D",
-      activeTool: "crosshair",
+      activeTool: "cursor",
       interactionState: { status: "idle" },
       selectedDrawingId: null,
       selectedDrawingIds: [],

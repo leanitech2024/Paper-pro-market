@@ -1,42 +1,56 @@
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, type MutableRefObject } from 'react';
 import type { IChartApi, ISeriesApi, Time, Logical, CandlestickData, Coordinate } from 'lightweight-charts';
 import type { Point } from '@/stores/trading/analysis.store';
+import { detectIntervalHintSec, resolveDisplayTime } from '../utils/timeline';
 
 export function useChartCoordinates(
   chart: IChartApi | null,
   mainSeries: ISeriesApi<'Candlestick'> | null,
-  data: CandlestickData[]
+  data: CandlestickData[],
+  rawToRenderTimeRef?: MutableRefObject<Map<number, number>>,
+  renderToRawTimeRef?: MutableRefObject<Map<number, number>>
 ) {
   const timeInterval = useMemo(() => {
-    if (data.length > 1) {
-      const first = Number(data[0].time);
-      const second = Number(data[1].time);
-      const interval = Math.abs(second - first);
-      if (Number.isFinite(interval) && interval > 0) return interval;
-    }
-    return 300;
+    return detectIntervalHintSec(data);
   }, [data]);
 
   const priceStep = 0.01;
+
+  const toRenderTime = useCallback(
+    (rawTime: number) => {
+      const mapped = rawToRenderTimeRef?.current.get(rawTime);
+      return Number.isFinite(mapped as number) ? Number(mapped) : rawTime;
+    },
+    [rawToRenderTimeRef]
+  );
+
+  const toRawTime = useCallback(
+    (renderTime: number) => {
+      if (!renderToRawTimeRef) return renderTime;
+      return resolveDisplayTime(renderTime, renderToRawTimeRef as MutableRefObject<Map<number, number>>);
+    },
+    [renderToRawTimeRef]
+  );
 
   const pointToCoords = useCallback(
     (p: Point) => {
       if (!chart || !mainSeries) return null;
       const timeScale = chart.timeScale();
       const y = mainSeries.priceToCoordinate(p.price);
-      const x = timeScale.timeToCoordinate(p.time as Time);
+      const renderTime = toRenderTime(p.time);
+      const x = timeScale.timeToCoordinate(renderTime as Time);
 
       if (x !== null && y !== null) return { x: x as Coordinate, y: y as Coordinate };
 
       if (y !== null && data && data.length > 0) {
         const lastIndex = data.length - 1;
-        const lastCandle = data[lastIndex];
-        const firstCandle = data[0];
+        const lastCandleTime = toRenderTime(Number(data[lastIndex].time));
+        const firstCandleTime = toRenderTime(Number(data[0].time));
         let logical: number | null = null;
-        if ((p.time as number) > (lastCandle.time as number)) {
-          logical = lastIndex + ((p.time as number) - (lastCandle.time as number)) / timeInterval;
-        } else if ((p.time as number) < (firstCandle.time as number)) {
-          logical = ((p.time as number) - (firstCandle.time as number)) / timeInterval;
+        if (renderTime > lastCandleTime) {
+          logical = lastIndex + (renderTime - lastCandleTime) / timeInterval;
+        } else if (renderTime < firstCandleTime) {
+          logical = (renderTime - firstCandleTime) / timeInterval;
         }
 
         if (logical !== null) {
@@ -46,7 +60,7 @@ export function useChartCoordinates(
       }
       return null;
     },
-    [chart, mainSeries, data, timeInterval]
+    [chart, mainSeries, data, timeInterval, toRenderTime]
   );
 
   const coordsToPoint = useCallback(
@@ -57,7 +71,7 @@ export function useChartCoordinates(
       if (price === null) return null;
 
       const time = timeScale.coordinateToTime(x);
-      if (time !== null) return { time: time as number, price };
+      if (time !== null) return { time: toRawTime(Number(time)), price };
 
       const logical = timeScale.coordinateToLogical(x);
       if (logical === null || !data || data.length === 0) return null;
@@ -66,21 +80,24 @@ export function useChartCoordinates(
       if (logical >= 0 && logical <= lastIndex) {
         const idx = Math.round(logical);
         const pt = data[idx];
-        if (pt) return { time: pt.time as number, price };
+        if (pt) return { time: Number(pt.time), price };
       }
+
+      const firstRawTime = Number(data[0].time);
+      const lastRawTime = Number(data[lastIndex].time);
 
       if (logical > lastIndex) {
         return {
-          time: (data[lastIndex].time as number) + Math.round(logical - lastIndex) * timeInterval,
+          time: lastRawTime + Math.round(logical - lastIndex) * timeInterval,
           price,
         };
       }
       if (logical < 0) {
-        return { time: (data[0].time as number) + Math.round(logical) * timeInterval, price };
+        return { time: firstRawTime + Math.round(logical) * timeInterval, price };
       }
       return null;
     },
-    [chart, mainSeries, data, timeInterval]
+    [chart, mainSeries, data, timeInterval, toRawTime]
   );
 
   const snapTime = useCallback(

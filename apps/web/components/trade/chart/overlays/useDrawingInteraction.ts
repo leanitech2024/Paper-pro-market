@@ -1,4 +1,12 @@
-import { useState, useCallback, useEffect, useRef, type RefObject } from "react";
+import {
+  useState,
+  useCallback,
+  useEffect,
+  useRef,
+  type MouseEvent as ReactMouseEvent,
+  type PointerEvent as ReactPointerEvent,
+  type RefObject,
+} from "react";
 import {
   useAnalysisStore,
   type Point,
@@ -80,6 +88,8 @@ export interface LocalInteractionState {
   collectedPoints: Point[];
   handleType?: InteractionHandleType;
 }
+
+type InteractionEvent = ReactPointerEvent<SVGSVGElement> | ReactMouseEvent;
 
 const isElement = (value: EventTarget | null): value is Element =>
   value instanceof Element;
@@ -611,7 +621,7 @@ export function useDrawingInteraction({
   );
 
   const handleMouseDown = useCallback(
-    (e: React.MouseEvent, isTargetInPopover: boolean) => {
+    (e: InteractionEvent, isTargetInPopover: boolean) => {
       if (isTextDialogOpen && isTargetInPopover) return;
 
       const rect = svgRef.current?.getBoundingClientRect();
@@ -726,6 +736,15 @@ export function useDrawingInteraction({
           if (activeTool === "crosshair") {
             return;
           }
+          // In "cursor" mode, empty-area clicks should pan the chart (chart-native
+          // behavior). Only the explicit "select" tool activates rubber-band
+          // box-selection. Returning without calling stopPropagation lets
+          // LightweightCharts receive the pointer-down and handle panning.
+          if (activeTool === "cursor") {
+            if (!(e.ctrlKey || e.metaKey)) setSelectedDrawings([]);
+            return;
+          }
+          // activeTool === "select" — start box-selection
           if (!(e.ctrlKey || e.metaKey)) setSelectedDrawings([]);
           setLocalInteraction({
             status: "box-selecting",
@@ -837,7 +856,7 @@ export function useDrawingInteraction({
   );
 
   const handleMouseMove = useCallback(
-    (e: React.MouseEvent) => {
+    (e: InteractionEvent) => {
       const rect = svgRef.current?.getBoundingClientRect();
       if (!rect) return;
 

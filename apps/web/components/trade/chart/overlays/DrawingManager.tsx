@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type MutableRefObject } from 'react';
 import type { IChartApi, ISeriesApi, CandlestickData } from 'lightweight-charts';
 import { useAnalysisStore } from '@/stores/trading/analysis.store';
 
@@ -18,9 +18,20 @@ interface DrawingManagerProps {
   height: number;
   data: CandlestickData[];
   symbol: string;
+  rawToRenderTimeRef?: MutableRefObject<Map<number, number>>;
+  renderToRawTimeRef?: MutableRefObject<Map<number, number>>;
 }
 
-export function DrawingManager({ chart, mainSeries, width, height, data, symbol }: DrawingManagerProps) {
+export function DrawingManager({
+  chart,
+  mainSeries,
+  width,
+  height,
+  data,
+  symbol,
+  rawToRenderTimeRef,
+  renderToRawTimeRef,
+}: DrawingManagerProps) {
   const { activeTool, selectedDrawingIds, globalHideState } = useAnalysisStore();
   
   const symbolDrawings = useAnalysisStore((s) => s.symbolState[symbol]?.drawings);
@@ -30,7 +41,13 @@ export function DrawingManager({ chart, mainSeries, width, height, data, symbol 
   const svgRef = useRef<SVGSVGElement>(null);
   const textPopoverRef = useRef<HTMLDivElement>(null);
 
-  const { pointToCoords, coordsToPoint, snapTime, snapPrice, timeInterval } = useChartCoordinates(chart, mainSeries, data);
+  const { pointToCoords, coordsToPoint, snapTime, snapPrice, timeInterval } = useChartCoordinates(
+    chart,
+    mainSeries,
+    data,
+    rawToRenderTimeRef,
+    renderToRawTimeRef
+  );
   
   const {
     localInteraction,
@@ -156,13 +173,22 @@ export function DrawingManager({ chart, mainSeries, width, height, data, symbol 
         width={width}
         height={height}
         svgRef={svgRef}
-        onMouseDown={(e: React.MouseEvent) => {
+        onPointerDown={(e: React.PointerEvent<SVGSVGElement>) => {
+          if (e.button !== 0) return;
+          if (typeof e.currentTarget.setPointerCapture === "function") {
+            e.currentTarget.setPointerCapture(e.pointerId);
+          }
           const isTargetInPopover = textPopoverRef.current?.contains(e.target as Node) ?? false;
           handleMouseDown(e, isTargetInPopover);
         }}
-        onMouseMove={handleMouseMove}
-        onMouseLeave={handleMouseLeave}
-        onMouseUp={handleMouseUp}
+        onPointerMove={handleMouseMove}
+        onPointerLeave={handleMouseLeave}
+        onPointerUp={(e: React.PointerEvent<SVGSVGElement>) => {
+          handleMouseUp();
+          if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+            e.currentTarget.releasePointerCapture(e.pointerId);
+          }
+        }}
         cursor={interactionCursor}
       >
         {/* Committed drawings */}
