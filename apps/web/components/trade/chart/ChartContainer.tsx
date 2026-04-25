@@ -172,6 +172,8 @@ export function ChartContainer({ symbol, headerSymbol, instrumentKey, onSearchCl
   // Use state from store
   const data = historicalData;
   const volData = volumeData;
+  const shouldShowInitialLoader = historicalData.length === 0 && (isFetchingHistory || isInitialLoad);
+  const shouldShowNoDataState = historicalData.length === 0 && !isFetchingHistory && !isInitialLoad;
 
   const debouncedInitRef = useRef(
     debounce((sym: string, tf: string | undefined, rng: string | undefined, key: string) => {
@@ -632,13 +634,18 @@ export function ChartContainer({ symbol, headerSymbol, instrumentKey, onSearchCl
       {showTradingPanel && <ChartTradingPanel symbol={symbol} />}
 
       <div className="flex-1 w-full min-h-0 relative">
-        {isFetchingHistory && isInitialLoad && (
+        {/* Show loader while fetching OR while we haven't confirmed no-data yet.
+            This prevents the blank flash that occurs between mount (store idle)
+            and the effect that sets isFetchingHistory=true. */}
+        {shouldShowInitialLoader && (
           <div className="absolute inset-0 z-50 bg-background/50 flex items-center justify-center">
             <ChartLoadingIndicator />
           </div>
         )}
 
-        {!isFetchingHistory && historicalData.length === 0 && (
+        {/* Only show "no data" when the initial fetch has definitively completed
+            empty — never during the idle window before the first fetch fires. */}
+        {shouldShowNoDataState && (
           <div className="absolute inset-0 z-40 flex items-center justify-center text-muted-foreground bg-background/50">
             No historical data available for {symbol}
           </div>
@@ -714,7 +721,7 @@ export function ChartContainer({ symbol, headerSymbol, instrumentKey, onSearchCl
             onMaximize={handleMaximize}
             onSearchClick={onSearchClick}
             onChartStyleChange={(style) => setChartStyleForSymbol(symbol, style)}
-            isLoading={isFetchingHistory && isInitialLoad}
+            isLoading={shouldShowInitialLoader}
             isFullscreen={false}
           />
 
@@ -741,7 +748,7 @@ export function ChartContainer({ symbol, headerSymbol, instrumentKey, onSearchCl
               onMaximize={() => setAnalysisMode(false)}
               onSearchClick={onSearchClick}
               onChartStyleChange={(style) => setChartStyleForSymbol(symbol, style)}
-              isLoading={isFetchingHistory && isInitialLoad}
+              isLoading={shouldShowInitialLoader}
               isFullscreen={true}
             />
 

@@ -91,7 +91,7 @@ export const createChartDataSlice: MarketSlice<any> = (set, get) => ({
   intervalId: null,
   activeInterval: '1m', // Default
   isFetchingHistory: false,
-  isInitialLoad: false,
+  isInitialLoad: true,
   hasMoreHistory: true,
   currentRequestId: 0,
 
