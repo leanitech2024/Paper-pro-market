@@ -17,7 +17,7 @@ import {
   parseMarketLtpCacheRecord,
   prevCloseKey,
   type MarketLtpCacheRecord,
-} from "@/lib/market/market-cache";
+} from "@/domains/market/lib/market-cache";
 import {
   symbolToIndexInstrumentKey,
   toCanonicalSymbol,
@@ -219,7 +219,7 @@ async function fetchSnapshotMissesSingleflight(
   }
 
   const fetchPromise = (async () => {
-    const { UpstoxService } = await import("@/services/market/feeds/upstox-feed.service");
+    const { UpstoxService } = await import("@/domains/market/server/feeds/upstox-feed.service");
     const upstreamInstrumentKeys = Array.from(
       new Set(missingInstrumentKeys.map((value) => toUpstoxRequestInstrumentKey(value)).filter(Boolean))
     );

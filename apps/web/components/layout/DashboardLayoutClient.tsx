@@ -7,17 +7,17 @@ import Logo from '@/components/general/Logo';
 import { CircleUserRound } from 'lucide-react';
 import type { Session } from 'next-auth';
 
-import { useWalletStore } from '@/stores/wallet.store';
-import { usePositionsStore } from '@/stores/trading/positions.store';
-import { useMarketStream } from '@/hooks/use-market-stream'; // New Hook
-import { useMarketStore } from '@/stores/trading/market.store';
+import { useWalletStore } from '@/domains/platform/stores/wallet.store';
+import { usePositionsStore } from '@/domains/trading/stores/positions.store';
+import { useMarketStream } from '@/domains/market/hooks/use-market-stream';
+import { useMarketStore } from '@/domains/market/stores/market.store';
 import { MarketStatusBar } from '@/components/layout/MarketStatusBar';
 import { MobileBottomNav } from '@/components/layout/MobileBottomNav';
 import { cn } from '@/lib/utils';
 import { toInstrumentKey } from '@paper-market/core';
-import { useSearchStore } from '@/stores/ui/search.store';
-import { GlobalSearchModal } from '@/components/trade/search/GlobalSearchModal';
-import { useSubscriptionStore } from '@/stores/subscription.store';
+import { useSearchStore } from '@/domains/watchlist/stores/search.store';
+import { GlobalSearchModal } from '@/domains/watchlist/components/search/GlobalSearchModal';
+import { useSubscriptionStore } from '@/domains/platform/stores/subscription.store';
 
 export default function DashboardLayoutClient({
   children,

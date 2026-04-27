@@ -5,7 +5,7 @@
 
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { InstrumentService } from '@/services/market/catalog/instrument.service';
+import { InstrumentService } from '@/domains/market/server/catalog/instrument.service';
 import { logger } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';

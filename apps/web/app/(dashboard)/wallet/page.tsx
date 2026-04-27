@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useWalletStore } from "@/stores/wallet.store";
-import { BalanceWidget } from "@/components/wallet/BalanceWidget";
-import { TransactionTable } from "@/components/wallet/TransactionTable";
-import { TransactionFilterBar } from "@/components/wallet/TransactionFilterBar";
+import { useWalletStore } from "@/domains/platform/stores/wallet.store";
+import { BalanceWidget } from "@/domains/platform/components/wallet/BalanceWidget";
+import { TransactionTable } from "@/domains/platform/components/wallet/TransactionTable";
+import { TransactionFilterBar } from "@/domains/platform/components/wallet/TransactionFilterBar";
 import { Button } from "@/components/ui/button";
 import { RefreshCw, Download } from "lucide-react";
 

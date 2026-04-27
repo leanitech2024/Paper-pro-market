@@ -13,10 +13,10 @@ import {
   XAxis as RechartsXAxis,
   YAxis as RechartsYAxis,
 } from "recharts";
-import { useMarketStore } from "@/stores/trading/market.store";
-import type { OptionChainRow, StrategyKind } from "@/components/trade/options/types";
-import type { MultiLegPayoffLeg } from "@/lib/options/multi-leg-payoff";
-import { findBreakevenPrices, generateMultiLegPayoffSeries } from "@/lib/options/multi-leg-payoff";
+import { useMarketStore } from "@/domains/market/stores/market.store";
+import type { OptionChainRow, StrategyKind } from "@/domains/trading/components/options/types";
+import type { MultiLegPayoffLeg } from "@/domains/trading/lib/options/multi-leg-payoff";
+import { findBreakevenPrices, generateMultiLegPayoffSeries } from "@/domains/trading/lib/options/multi-leg-payoff";
 import { cn } from "@/lib/utils";
 
 type PreviewSummary = {
@@ -580,7 +580,7 @@ function OptionsStrategyBuilderContent() {
 
 export default function OptionsStrategyBuilderPage() {
   return (
-    <Suspense fallback={<div className="flex h-screen items-center justify-center text-slate-400 text-sm">Loading strategy builder…</div>}>
+    <Suspense fallback={<div className="flex h-screen items-center justify-center text-slate-400 text-sm">Loading strategy builderâ€¦</div>}>
       <OptionsStrategyBuilderContent />
     </Suspense>
   );

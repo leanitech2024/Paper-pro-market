@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/admin";
 import { handleError } from "@/lib/errors";
-import { UpstoxAuthService } from "@/services/market/feeds/upstox-auth.service";
+import { UpstoxAuthService } from "@/domains/market/server/feeds/upstox-auth.service";
 
 export async function POST(_req: Request) {
   try {

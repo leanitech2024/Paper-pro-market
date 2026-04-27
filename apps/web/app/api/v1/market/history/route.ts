@@ -4,7 +4,7 @@ import { logger } from "@/lib/logger";
 import {
   CandleOrchestrator,
   type CandleResult,
-} from "@/lib/market/candle-orchestrator";
+} from "@/domains/market/lib/candle-orchestrator";
 import { toInstrumentKey } from "@paper-market/core";
 
 const ONE_MINUTE_MS = 60_000;
@@ -204,7 +204,7 @@ export async function GET(req: NextRequest) {
     if (instrumentKeyParam) {
       instrumentKey = toInstrumentKey(instrumentKeyParam);
     } else if (symbol) {
-      const { UpstoxService } = await import("@/services/market/feeds/upstox-feed.service");
+      const { UpstoxService } = await import("@/domains/market/server/feeds/upstox-feed.service");
       instrumentKey = await UpstoxService.resolveInstrumentKey(symbol);
     } else {
       return NextResponse.json(
@@ -222,7 +222,7 @@ export async function GET(req: NextRequest) {
 
     // Singleflight key: deduplicate concurrent requests for the same candle set
     // Historical candle caching uses the in-process LRU cache (lib/cache.ts),
-    // NOT Redis — full candle arrays (20–400 KB) are too expensive for Upstash free tier.
+    // NOT Redis Ã¢â‚¬â€ full candle arrays (20Ã¢â‚¬â€œ400 KB) are too expensive for Upstash free tier.
     const cacheKey = `${instrumentKey}:${timeframe || "1m"}:${range || "default"}:${toDate || "latest"}`;
 
     const now = Date.now();

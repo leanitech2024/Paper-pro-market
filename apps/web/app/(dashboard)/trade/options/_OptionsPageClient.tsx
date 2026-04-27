@@ -2,19 +2,19 @@
 
 import { useEffect, useMemo, useRef, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
-import { TerminalHeader } from "@/components/trade/options/TerminalHeader";
-import { OptionChainTable } from "@/components/trade/options/OptionChainTable";
-import { OrderPanel } from "@/components/trade/options/OrderPanel";
-import { EmptyPanel } from "@/components/trade/options/EmptyPanel";
-import { StrategyBuilderPanel } from "@/components/trade/options/StrategyBuilderPanel";
-import { BottomBar } from "@/components/trade/options/BottomBar";
-import { OptionChainRow } from "@/components/trade/options/types";
+import { TerminalHeader } from "@/domains/trading/components/options/TerminalHeader";
+import { OptionChainTable } from "@/domains/trading/components/options/OptionChainTable";
+import { OrderPanel } from "@/domains/trading/components/options/OrderPanel";
+import { EmptyPanel } from "@/domains/trading/components/options/EmptyPanel";
+import { StrategyBuilderPanel } from "@/domains/trading/components/options/StrategyBuilderPanel";
+import { BottomBar } from "@/domains/trading/components/options/BottomBar";
+import { OptionChainRow } from "@/domains/trading/components/options/types";
 import { Stock } from "@paper-market/core";
-import { useMarketStore } from "@/stores/trading/market.store";
-import { AdaptiveTradeLayout } from "@/components/trade/layout/AdaptiveTradeLayout";
-import { PositionsCards } from "@/components/trade/mobile/PositionsCards";
-import { useTradeViewport } from "@/hooks/use-trade-viewport";
-import { useSearchStore } from "@/stores/ui/search.store";
+import { useMarketStore } from "@/domains/market/stores/market.store";
+import { AdaptiveTradeLayout } from "@/domains/trading/components/layout/AdaptiveTradeLayout";
+import { PositionsCards } from "@/domains/trading/components/mobile/PositionsCards";
+import { useTradeViewport } from "@/domains/trading/hooks/use-trade-viewport";
+import { useSearchStore } from "@/domains/watchlist/stores/search.store";
 import { cn } from "@/lib/utils";
 import { Search } from "lucide-react";
 

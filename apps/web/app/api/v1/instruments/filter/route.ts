@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { InstrumentService } from "@/services/market/catalog/instrument.service";
+import { InstrumentService } from "@/domains/market/server/catalog/instrument.service";
 import { handleError } from "@/lib/errors";
 import { InstrumentFilterSchema } from "@paper-market/core";
 

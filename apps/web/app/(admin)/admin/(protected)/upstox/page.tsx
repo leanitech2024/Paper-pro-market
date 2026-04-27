@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { auth } from "@/lib/auth";
-import { UpstoxAuthService } from "@/services/market/feeds/upstox-auth.service";
+import { UpstoxAuthService } from "@/domains/market/server/feeds/upstox-auth.service";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
@@ -12,7 +12,7 @@ type UpstoxPageProps = {
 };
 
 function formatTimestamp(value: Date | null) {
-  if (!value) return "—";
+  if (!value) return "â€”";
   return value.toLocaleString("en-IN", { timeZone: "Asia/Kolkata" });
 }
 

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { handleError } from "@/lib/errors";
 import { requireAdmin } from "@/lib/admin";
-import { AdminService } from "@/services/admin/admin.service";
+import { AdminService } from "@/domains/platform/server/admin/admin.service";
 
 export async function GET(
   _req: Request,

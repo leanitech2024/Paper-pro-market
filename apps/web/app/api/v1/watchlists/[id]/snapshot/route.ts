@@ -57,7 +57,7 @@ export async function GET(
     const priceMap = new Map<string, { price: number; change: number; changePct: number }>();
 
     try {
-      const { UpstoxService } = await import('@/services/market/feeds/upstox-feed.service') as { UpstoxService: any };
+      const { UpstoxService } = await import('@/domains/market/server/feeds/upstox-feed.service') as { UpstoxService: any };
 
       const upstoxKeys = Array.from(
         new Set(rows.map(r => toInstrumentKey(r.instrumentToken)).filter(Boolean))

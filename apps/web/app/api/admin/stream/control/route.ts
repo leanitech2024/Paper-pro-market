@@ -1,6 +1,6 @@
 
 import { NextRequest, NextResponse } from "next/server";
-import { realTimeMarketService } from "@/services/market/feeds/realtime-market.service";
+import { realTimeMarketService } from "@/domains/market/server/feeds/realtime-market.service";
 import { auth } from "@/lib/auth";
 import { logger } from "@/lib/logger";
 import { z } from "zod";
@@ -60,7 +60,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ error: "Invalid action", code: "INVALID_ACTION" }, { status: 400 });
   } catch (err) {
-    // H-7 FIX: Never return raw error.message — it may contain internal details.
+    // H-7 FIX: Never return raw error.message â€” it may contain internal details.
     logger.error({ err: err }, "Admin stream control failed");
     return NextResponse.json({ error: "Internal server error", code: "INTERNAL_ERROR" }, { status: 500 });
   }

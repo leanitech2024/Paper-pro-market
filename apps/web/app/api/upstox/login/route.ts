@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { UpstoxService } from "@/services/market/feeds/upstox-feed.service";
+import { UpstoxService } from "@/domains/market/server/feeds/upstox-feed.service";
 import { auth } from "@/lib/auth";
 import { handleError, ApiError } from "@/lib/errors";
 

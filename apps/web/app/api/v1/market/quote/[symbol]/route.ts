@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { marketSimulation } from "@/services/market/feeds/market-simulation.service";
+import { marketSimulation } from "@/domains/market/server/feeds/market-simulation.service";
 import { handleError, ApiError } from "@/lib/errors";
 
 export async function GET(

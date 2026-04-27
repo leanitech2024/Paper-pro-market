@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect } from 'react';
-import { useJournalStore } from '@/stores/trading/journal.store';
-import { useJournalEntries } from '@/hooks/use-journal-entries';
-import { JournalTable } from '@/components/journal/JournalTable';
-import { LedgerTable } from '@/components/journal/LedgerTable';
+import { useJournalStore } from '@/domains/portfolio/stores/journal.store';
+import { useJournalEntries } from '@/domains/portfolio/hooks/use-journal-entries';
+import { JournalTable } from '@/domains/portfolio/components/journal/JournalTable';
+import { LedgerTable } from '@/domains/portfolio/components/journal/LedgerTable';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BookOpen, History } from 'lucide-react';
 import { UpgradeGate } from '@/components/subscription/UpgradeGate';

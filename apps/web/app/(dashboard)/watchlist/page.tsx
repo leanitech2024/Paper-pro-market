@@ -8,9 +8,9 @@ import {
   useAddInstrument, 
   useCreateWatchlist, 
   useDeleteWatchlist 
-} from "@/hooks/queries/use-watchlists";
-import { useMarketStore } from "@/stores/trading/market.store";
-import { useSearchStore } from "@/stores/ui/search.store";
+} from "@/domains/watchlist/hooks/use-watchlists";
+import { useMarketStore } from "@/domains/market/stores/market.store";
+import { useSearchStore } from "@/domains/watchlist/stores/search.store";
 import { Search, Plus, Trash2, FolderPlus, FolderOpen, AlertCircle, X, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toInstrumentKey } from "@paper-market/core";

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { PositionService } from "@/services/trading/positions/position.service";
-import { OrderExecutorService } from "@/services/trading/execution/order-executor.service";
+import { PositionService } from "@/domains/trading/server/positions/position.service";
+import { OrderExecutorService } from "@/domains/trading/server/execution/order-executor/order-executor.service";
 import { handleError, ApiError } from "@/lib/errors";
 import { logger } from "@/lib/logger";
 

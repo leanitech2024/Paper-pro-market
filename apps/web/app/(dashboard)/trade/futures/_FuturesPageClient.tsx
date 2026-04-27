@@ -2,21 +2,21 @@
 
 import { useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
-import { GlobalSearchModal } from "@/components/trade/search/GlobalSearchModal";
-import { FuturesTradeForm } from "@/components/trade/FuturesTradeForm";
-import { ChartLoadingIndicator } from "@/components/trade/chart/ChartLoadingIndicator";
+import { GlobalSearchModal } from "@/domains/watchlist/components/search/GlobalSearchModal";
+import { FuturesTradingForm } from "@/domains/trading/components/futures/futures-trading-form";
+import { ChartLoadingIndicator } from "@/domains/chart/components/chart/ChartLoadingIndicator";
 import { Stock } from "@paper-market/core";
 import { symbolToIndexInstrumentKey } from "@paper-market/core";
-import { AdaptiveTradeLayout } from "@/components/trade/layout/AdaptiveTradeLayout";
-import { PositionsCards } from "@/components/trade/mobile/PositionsCards";
+import { AdaptiveTradeLayout } from "@/domains/trading/components/layout/AdaptiveTradeLayout";
+import { PositionsCards } from "@/domains/trading/components/mobile/PositionsCards";
 import { cn } from "@/lib/utils";
-import { useMarketStore } from "@/stores/trading/market.store";
-import { BottomBar } from "@/components/trade/options/BottomBar";
+import { useMarketStore } from "@/domains/market/stores/market.store";
+import { BottomBar } from "@/domains/trading/components/options/BottomBar";
 import { Search } from "lucide-react";
 
 const CandlestickChartComponent = dynamic(
   () =>
-    import("@/components/trade/CandlestickChart").then((mod) => ({
+    import("@/domains/chart/components/CandlestickChart").then((mod) => ({
       default: mod.CandlestickChart,
     })),
   {
@@ -241,7 +241,7 @@ export default function FuturesPage() {
   }, [selectedStock]);
 
   const renderOrderNode = (sheetMode = false) => (
-    <FuturesTradeForm
+    <FuturesTradingForm
       selectedStock={selectedStock}
       onStockSelect={setSelectedStock}
       instruments={currentInstruments}

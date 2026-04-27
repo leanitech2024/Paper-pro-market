@@ -1,6 +1,6 @@
 import { auth } from '@/lib/auth';
 import { NextResponse } from 'next/server';
-import { SubscriptionService } from '@/services/subscription/subscription.service';
+import { SubscriptionService } from '@/domains/platform/server/subscription/subscription.service';
 import { logger } from '@/lib/logger';
 
 export async function GET(): Promise<NextResponse> {

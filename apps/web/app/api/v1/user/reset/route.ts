@@ -15,12 +15,12 @@ import {
 } from "@paper-market/core/db";
 import { handleError, ApiError } from "@/lib/errors";
 import { logger } from "@/lib/logger";
-import { WalletService } from "@/services/accounting/wallet/wallet.service";
-import { bootstrapLedgerAccounts } from "@/services/accounting/ledger/ledger-bootstrap.service";
-import { ledgerCacheService } from "@/services/accounting/ledger/ledger-cache.service";
-import { LedgerService } from "@/services/accounting/ledger/ledger.service";
-import { mtmEngineService } from "@/services/trading/valuation/mtm-engine.service";
-import { WatchlistService } from "@/services/market/catalog/watchlist.service";
+import { WalletService } from "@/domains/platform/server/accounting/wallet/wallet.service";
+import { bootstrapLedgerAccounts } from "@/domains/platform/server/accounting/ledger/ledger-bootstrap.service";
+import { ledgerCacheService } from "@/domains/platform/server/accounting/ledger/ledger-cache.service";
+import { LedgerService } from "@/domains/platform/server/accounting/ledger/ledger.service";
+import { mtmEngineService } from "@/domains/trading/server/valuation/mtm-engine.service";
+import { WatchlistService } from "@/domains/market/server/catalog/watchlist.service";
 
 const RESET_BALANCE = "10000000.00";
 

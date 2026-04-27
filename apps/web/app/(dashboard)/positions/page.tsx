@@ -1,7 +1,7 @@
 
 "use client";
 
-import { PositionsTable } from '@/components/positions/PositionsTable';
+import { PositionsTable } from '@/domains/trading/components/positions/PositionsTable';
 
 export default function PositionsPage() {
   return (

@@ -1,7 +1,7 @@
-import { marketSimulation } from "@/services/market/feeds/market-simulation.service";
+import { marketSimulation } from "@/domains/market/server/feeds/market-simulation.service";
 import { logger } from "@/lib/logger";
-import { SlTargetEngineService } from "@/services/trading/execution/sl-target-engine.service";
-import { OrderExecutorService } from "@/services/trading/execution/order-executor.service";
+import { SlTargetEngineService } from "@/domains/trading/server/execution/sl-target-engine.service";
+import { OrderExecutorService } from "@/domains/trading/server/execution/order-executor/order-executor.service";
 
 class MarketTickJob {
     private intervalId: NodeJS.Timeout | null = null;

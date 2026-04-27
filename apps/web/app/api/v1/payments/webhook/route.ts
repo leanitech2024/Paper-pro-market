@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { payments } from '@paper-market/core/db';
 import { eq } from 'drizzle-orm';
-import { SubscriptionService } from '@/services/subscription/subscription.service';
+import { SubscriptionService } from '@/domains/platform/server/subscription/subscription.service';
 import crypto from 'node:crypto';
 import { logger } from '@/lib/logger';
 
@@ -64,7 +64,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
                 return NextResponse.json({ received: true });
             }
 
-            // Idempotency — skip if already processed
+            // Idempotency â€” skip if already processed
             if (payment.status === 'paid') {
                 return NextResponse.json({ received: true });
             }

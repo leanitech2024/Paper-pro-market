@@ -1,7 +1,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { UpstoxService } from "@/services/market/feeds/upstox-feed.service";
+import { UpstoxService } from "@/domains/market/server/feeds/upstox-feed.service";
 import { cookies } from "next/headers";
 
 export async function GET(req: NextRequest) {

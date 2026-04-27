@@ -7,9 +7,9 @@ export async function register() {
         // Register candle handler on the WS singleton at boot
         // Must happen after prewarm so the singleton URL is known
         if (typeof window === 'undefined') {
-            // Server-side only — chart registry lives client-side,
+            // Server-side only â€” chart registry lives client-side,
             // so this is a no-op on the server but safe to call
-            const { initializeCandleSubscription } = await import('@/lib/trading/init-realtime');
+            const { initializeCandleSubscription } = await import('@/domains/chart/lib/init-realtime');
             initializeCandleSubscription();
         }
     }

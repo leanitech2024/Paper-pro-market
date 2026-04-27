@@ -1,4 +1,4 @@
-import { SubscriptionService } from "@/services/subscription/subscription.service";
+import { SubscriptionService } from "@/domains/platform/server/subscription/subscription.service";
 import { logger } from "@/lib/logger";
 
 /**

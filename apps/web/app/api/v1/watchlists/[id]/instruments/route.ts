@@ -8,7 +8,7 @@
 
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { WatchlistService } from '@/services/market/catalog/watchlist.service';
+import { WatchlistService } from '@/domains/market/server/catalog/watchlist.service';
 import { logger } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';

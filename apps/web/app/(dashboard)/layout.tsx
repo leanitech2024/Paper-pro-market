@@ -1,6 +1,6 @@
 import DashboardLayoutClient from '@/components/layout/DashboardLayoutClient';
 import { auth } from '@/lib/auth';
-import { SubscriptionService } from '@/services/subscription/subscription.service';
+import { SubscriptionService } from '@/domains/platform/server/subscription/subscription.service';
 import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 

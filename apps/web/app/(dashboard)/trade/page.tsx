@@ -2,21 +2,21 @@
 
 import { useState, useEffect, Suspense, useMemo } from "react";
 import dynamic from "next/dynamic";
-import { EquityTradeForm } from "@/components/trade/EquityTradeForm";
+import { EquityTradingForm } from "@/domains/trading/components/equity/equity-trading-form";
 import { Stock } from "@paper-market/core";
-import { useMarketStore } from "@/stores/trading/market.store";
+import { useMarketStore } from "@/domains/market/stores/market.store";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
-import { WatchlistPanel } from "@/components/trade/watchlist/WatchlistPanel";
-import { PositionsTable } from "@/components/positions/PositionsTable";
+import { WatchlistPanel } from "@/domains/watchlist/components/watchlist/WatchlistPanel";
+import { PositionsTable } from "@/domains/trading/components/positions/PositionsTable";
 import { toCanonicalSymbol } from "@paper-market/core";
-import { AdaptiveTradeLayout } from "@/components/trade/layout/AdaptiveTradeLayout";
-import { PositionsCards } from "@/components/trade/mobile/PositionsCards";
-import { useTradeViewport } from "@/hooks/use-trade-viewport";
-import { useSearchStore } from "@/stores/ui/search.store";
+import { AdaptiveTradeLayout } from "@/domains/trading/components/layout/AdaptiveTradeLayout";
+import { PositionsCards } from "@/domains/trading/components/mobile/PositionsCards";
+import { useTradeViewport } from "@/domains/trading/hooks/use-trade-viewport";
+import { useSearchStore } from "@/domains/watchlist/stores/search.store";
 
 const CandlestickChartComponent = dynamic(
-  () => import("@/components/trade/CandlestickChart").then((mod) => ({ default: mod.CandlestickChart })),
+  () => import("@/domains/chart/components/CandlestickChart").then((mod) => ({ default: mod.CandlestickChart })),
   { ssr: false },
 );
 
@@ -114,7 +114,7 @@ export default function TradePage() {
 
   const orderPanelNode = selectedStock ? (
     <div className="h-full min-h-0 overflow-y-auto">
-      <EquityTradeForm selectedStock={selectedStock} onStockSelect={handleSelectStock} instruments={stocks} sheetMode />
+      <EquityTradingForm selectedStock={selectedStock} onStockSelect={handleSelectStock} instruments={stocks} sheetMode />
     </div>
   ) : (
     <div className="flex h-full items-center justify-center p-4 text-xs text-slate-500">Select a stock to place an order.</div>
@@ -156,7 +156,7 @@ export default function TradePage() {
                       </svg>
                     </Button>
                     <div className="h-auto max-h-[80vh] overflow-y-auto rounded-lg">
-                      <EquityTradeForm selectedStock={selectedStock} onStockSelect={handleSelectStock} instruments={stocks} />
+                      <EquityTradingForm selectedStock={selectedStock} onStockSelect={handleSelectStock} instruments={stocks} />
                     </div>
                   </div>
                 </div>

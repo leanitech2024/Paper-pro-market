@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { OrderService } from "@/services/trading/order/order.service";
+import { OrderService } from "@/domains/trading/server/order/order.service";
 import { handleError, ApiError } from "@/lib/errors";
 import { PlaceOrderSchema, OrderQuerySchema } from "@paper-market/core";
 import { requireActiveSubscription } from "@/lib/subscription.guard";
@@ -12,7 +12,7 @@ export async function POST(req: NextRequest) {
     try {
         const session = await auth();
         if (!session?.user?.id) {
-            console.warn("⚠️ Order Route: No Session ID found");
+            console.warn("âš ï¸ Order Route: No Session ID found");
             throw new ApiError("Unauthorized", 401, "UNAUTHORIZED");
         }
 

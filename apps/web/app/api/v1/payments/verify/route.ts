@@ -3,7 +3,7 @@ import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { payments } from '@paper-market/core/db';
 import { eq } from 'drizzle-orm';
-import { SubscriptionService } from '@/services/subscription/subscription.service';
+import { SubscriptionService } from '@/domains/platform/server/subscription/subscription.service';
 import crypto from 'node:crypto';
 import { z } from 'zod';
 import { logger } from '@/lib/logger';
@@ -31,7 +31,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
         const { razorpayOrderId, razorpayPaymentId, razorpaySignature, plan } = parsed.data;
 
-        // Verify HMAC signature — prevents tampered payment responses
+        // Verify HMAC signature â€” prevents tampered payment responses
         const payloadStr = `${razorpayOrderId}|${razorpayPaymentId}`;
         const secret = process.env.RAZORPAY_KEY_SECRET ?? '';
         const expectedSignature = crypto

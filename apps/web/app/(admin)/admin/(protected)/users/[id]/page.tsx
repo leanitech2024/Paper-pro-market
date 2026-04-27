@@ -2,7 +2,7 @@ import Link from "next/link";
 import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { users, wallets, subscriptions } from "@paper-market/core/db";
-import { LedgerService } from "@/services/accounting/ledger/ledger.service";
+import { LedgerService } from "@/domains/platform/server/accounting/ledger/ledger.service";
 import { notFound } from "next/navigation";
 import { formatCurrency } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -44,7 +44,7 @@ export default async function AdminUserDetailPage({ params }: AdminUserDetailPro
       <div className="flex items-center justify-between">
         <div>
           <Link href="/admin/users" className="text-sm text-slate-400 hover:text-slate-200">
-            ← Back to users
+            â† Back to users
           </Link>
           <h1 className="text-2xl font-semibold text-white">{user.name}</h1>
           <p className="text-sm text-slate-400">{user.email}</p>
@@ -111,18 +111,18 @@ export default async function AdminUserDetailPage({ params }: AdminUserDetailPro
         <CardContent className="grid gap-2 text-sm text-slate-300 md:grid-cols-2">
           <div className="flex justify-between">
             <span>Plan</span>
-            <span className="text-white">{subscription?.plan ?? "—"}</span>
+            <span className="text-white">{subscription?.plan ?? "â€”"}</span>
           </div>
           <div className="flex justify-between">
             <span>Status</span>
-            <span className="text-white">{subscription?.status ?? "—"}</span>
+            <span className="text-white">{subscription?.status ?? "â€”"}</span>
           </div>
           <div className="flex justify-between">
             <span>Period Start</span>
             <span className="text-white">
               {subscription?.currentPeriodStart
                 ? new Date(subscription.currentPeriodStart).toLocaleDateString()
-                : "—"}
+                : "â€”"}
             </span>
           </div>
           <div className="flex justify-between">
@@ -130,7 +130,7 @@ export default async function AdminUserDetailPage({ params }: AdminUserDetailPro
             <span className="text-white">
               {subscription?.currentPeriodEnd
                 ? new Date(subscription.currentPeriodEnd).toLocaleDateString()
-                : "—"}
+                : "â€”"}
             </span>
           </div>
         </CardContent>

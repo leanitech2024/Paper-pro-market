@@ -1,5 +1,5 @@
 import { cn } from '@/lib/utils';
-import { useWalletStore } from '@/stores/wallet.store';
+import { useWalletStore } from '@/domains/platform/stores/wallet.store';
 import { useEffect } from 'react';
 
 interface TopbarProps {

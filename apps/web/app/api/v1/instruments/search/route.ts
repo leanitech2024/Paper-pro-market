@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { instrumentRepository } from "@/lib/instruments/repository";
+import { instrumentRepository } from "@/domains/market/server/instruments/repository";
 import { handleError } from "@/lib/errors";
 import { InstrumentSearchSchema } from "@paper-market/core";
 
@@ -46,9 +46,9 @@ function isModeMatch(instrument: any, mode: "ALL" | "EQUITY" | "FUTURE" | "OPTIO
     return instrument.segment === "NSE_FO" && type === "OPTION";
 }
 
-// Simple time-bounded cache: key → { results, expiresAt }
+// Simple time-bounded cache: key -> { results, expiresAt }
 const searchCache = new Map<string, { data: unknown[]; expiresAt: number }>();
-const CACHE_TTL_MS = 30_000; // 30 seconds — instruments don't change that fast
+const CACHE_TTL_MS = 30_000; // 30 seconds - instruments don't change that fast
 
 export async function GET(req: NextRequest) {
     try {

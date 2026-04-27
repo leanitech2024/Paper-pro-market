@@ -2,8 +2,8 @@
 
 import { useEffect } from "react";
 import { signOut } from "next-auth/react";
-import { useWalletStore } from "@/stores/wallet.store";
-import { useSubscriptionStore } from "@/stores/subscription.store";
+import { useWalletStore } from "@/domains/platform/stores/wallet.store";
+import { useSubscriptionStore } from "@/domains/platform/stores/subscription.store";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import type { Session } from "next-auth";

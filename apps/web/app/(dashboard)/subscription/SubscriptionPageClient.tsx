@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useSubscriptionStore } from "@/stores/subscription.store";
+import { useSubscriptionStore } from "@/domains/platform/stores/subscription.store";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";

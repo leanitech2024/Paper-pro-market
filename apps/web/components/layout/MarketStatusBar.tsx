@@ -1,19 +1,15 @@
 "use client";
 
-import { useGlobalStore } from "@/stores/global.store";
-import { useMarketStore } from "@/stores/trading/market.store";
+import { useMarketStore } from "@/domains/market/stores/market.store";
 import { cn } from "@/lib/utils";
-import { symbolToIndexInstrumentKey, toCanonicalSymbol } from "@paper-market/core";
 import Link from "next/link";
 import { useMemo, useEffect, useRef, useState, Fragment } from "react";
-import { TICKER_CONFIG } from "@/lib/ticker-config";
+import { TICKER_CONFIG } from "@/domains/market/lib/ticker-config";
 
 function TickerItem({
   cfg,
-  selectedKey,
 }: {
   cfg: (typeof TICKER_CONFIG)[number];
-  selectedKey: string | null;
 }) {
   const quote = useMarketStore((s) => s.quotesByInstrument[cfg.instrumentKey]);
 
@@ -39,8 +35,6 @@ function TickerItem({
     return () => clearTimeout(t);
   }, [price]);
 
-  const isSelected = selectedKey === cfg.instrumentKey;
-
   return (
     <Link
       href={
@@ -53,8 +47,7 @@ function TickerItem({
         flashClass
       )}
     >
-      {/* Label */}
-      <span className={cn("font-semibold tracking-wide text-[11px]", isSelected ? "text-primary" : "text-muted-foreground")}>
+      <span className="font-semibold tracking-wide text-[11px] text-muted-foreground">
         {cfg.label}
       </span>
 
@@ -110,11 +103,6 @@ export function MarketStatusBar() {
     })));
   }, [quotesByInstrument]);
 
-  const { selectedSymbol } = useGlobalStore();
-  const selectedKey = symbolToIndexInstrumentKey(
-    toCanonicalSymbol(selectedSymbol || "")
-  );
-
   const indices = useMemo(() => TICKER_CONFIG.filter((c) => c.isIndex), []);
   // Duplicate for seamless loop: indices scroll with equities as one band
   const allItems = useMemo(() => TICKER_CONFIG, []);
@@ -141,7 +129,6 @@ export function MarketStatusBar() {
             <TickerItem
               key={`${cfg.symbol}-${idx}`}
               cfg={cfg}
-              selectedKey={selectedKey}
             />
           </Fragment>
         ))}

@@ -1,6 +1,6 @@
 import { auth } from '@/lib/auth';
 import { NextRequest, NextResponse } from 'next/server';
-import { SubscriptionService } from '@/services/subscription/subscription.service';
+import { SubscriptionService } from '@/domains/platform/server/subscription/subscription.service';
 import { logger } from '@/lib/logger';
 import { z } from 'zod';
 
@@ -34,7 +34,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
             });
         }
 
-        // Paid plans must go through Razorpay — block direct upgrade
+        // Paid plans must go through Razorpay â€” block direct upgrade
         return NextResponse.json(
             { error: 'Paid plans require payment via Razorpay', code: 'PAYMENT_REQUIRED' },
             { status: 402 }

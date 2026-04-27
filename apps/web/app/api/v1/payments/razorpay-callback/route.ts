@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { payments } from "@paper-market/core/db";
 import { eq } from "drizzle-orm";
-import { SubscriptionService } from "@/services/subscription/subscription.service";
+import { SubscriptionService } from "@/domains/platform/server/subscription/subscription.service";
 import crypto from "node:crypto";
 import { logger } from "@/lib/logger";
 
@@ -11,22 +11,22 @@ import { logger } from "@/lib/logger";
  *
  * With redirect:true + callback_url, Razorpay redirects the user's browser
  * to callback_url with payment params appended as URL query params (GET).
- * It does NOT POST form data — despite some docs suggesting otherwise.
+ * It does NOT POST form data â€” despite some docs suggesting otherwise.
  *
  * We also export a POST handler as a defensive fallback in case any payment
  * method submits via form POST.
  *
- * Security: No session needed — we identify the user by looking up the
+ * Security: No session needed â€” we identify the user by looking up the
  * razorpay_order_id in our payments table (created when the order was placed).
  * Tampering is prevented by HMAC-SHA256 signature verification.
  *
  * Flow:
- *   Razorpay → GET /api/v1/payments/razorpay-callback?plan=X&onboarding=true
+ *   Razorpay â†’ GET /api/v1/payments/razorpay-callback?plan=X&onboarding=true
  *              &razorpay_payment_id=X&razorpay_order_id=Y&razorpay_signature=Z
- *   → verify HMAC signature
- *   → update payments + subscription in DB
- *   → set onb_done=1 cookie
- *   → 302 GET redirect to /subscription/success?plan=X&verified=true
+ *   â†’ verify HMAC signature
+ *   â†’ update payments + subscription in DB
+ *   â†’ set onb_done=1 cookie
+ *   â†’ 302 GET redirect to /subscription/success?plan=X&verified=true
  */
 
 async function handleCallback(
@@ -55,7 +55,7 @@ async function handleCallback(
     return NextResponse.redirect(failureRedirect, { status: 302 });
   }
 
-  // Verify HMAC — prevents tampered payment responses
+  // Verify HMAC â€” prevents tampered payment responses
   const secret = process.env.RAZORPAY_KEY_SECRET ?? "";
   const expectedSignature = crypto
     .createHmac("sha256", secret)
@@ -90,7 +90,7 @@ async function handleCallback(
     "Razorpay callback: payment verified, subscription activated"
   );
 
-  // Redirect browser to success page (GET) — client will patch the session JWT
+  // Redirect browser to success page (GET) â€” client will patch the session JWT
   const successUrl = new URL("/subscription/success", origin);
   successUrl.searchParams.set("plan", plan);
   if (isOnboarding) successUrl.searchParams.set("onboarding", "true");
@@ -109,7 +109,7 @@ async function handleCallback(
   return response;
 }
 
-/** GET handler — Razorpay with redirect:true appends params to the callback URL */
+/** GET handler â€” Razorpay with redirect:true appends params to the callback URL */
 export async function GET(req: NextRequest): Promise<NextResponse> {
   const { searchParams, origin } = req.nextUrl;
   const plan = searchParams.get("plan") ?? "basic";
@@ -143,7 +143,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   }
 }
 
-/** POST handler — defensive fallback for form-POST style callbacks */
+/** POST handler â€” defensive fallback for form-POST style callbacks */
 export async function POST(req: NextRequest): Promise<NextResponse> {
   const { searchParams, origin } = req.nextUrl;
   const plan = searchParams.get("plan") ?? "basic";

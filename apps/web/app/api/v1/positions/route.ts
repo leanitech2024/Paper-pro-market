@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { PositionService } from "@/services/trading/positions/position.service";
+import { PositionService } from "@/domains/trading/server/positions/position.service";
 import { handleError, ApiError } from "@/lib/errors";
 
 /**

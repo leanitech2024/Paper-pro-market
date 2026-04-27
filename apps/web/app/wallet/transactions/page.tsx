@@ -1,7 +1,7 @@
 "use client";
 import { useEffect } from "react";
-import { useWalletStore } from "@/stores/wallet.store";
-import { TransactionHistory } from "@/components/wallet/TransactionHistory";
+import { useWalletStore } from "@/domains/platform/stores/wallet.store";
+import { TransactionHistory } from "@/domains/platform/components/wallet/TransactionHistory";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Wallet, TrendingUp, Lock } from "lucide-react";
 

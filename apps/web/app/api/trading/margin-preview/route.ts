@@ -2,9 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { z } from "zod";
 import { logger } from "@/lib/logger";
-import { MarginCalculatorService } from "@/services/trading/margin/margin-calculator.service";
-import { instrumentStore } from "@/stores/instrument.store";
-import { requireInstrumentTokenForIdentityLookup } from "@/lib/trading/token-identity-guard";
+import { MarginCalculatorService } from "@/domains/trading/server/margin/margin-calculator.service";
+import { instrumentStore } from "@/domains/market/stores/instrument.store";
+import { requireInstrumentTokenForIdentityLookup } from "@/domains/trading/lib/token-identity-guard";
 
 const MarginPreviewSchema = z.object({
   instrumentToken: z.string().min(1),

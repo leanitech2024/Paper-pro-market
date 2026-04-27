@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { handleError } from "@/lib/errors";
 import { requireAdmin } from "@/lib/admin";
-import { AdminService } from "@/services/admin/admin.service";
+import { AdminService } from "@/domains/platform/server/admin/admin.service";
 
 const BodySchema = z.object({
   reason: z.string().max(200).optional(),

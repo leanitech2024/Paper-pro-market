@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { instrumentRepository } from "@/lib/instruments/repository";
+import { instrumentRepository } from "@/domains/market/server/instruments/repository";
 import { handleError, ApiError } from "@/lib/errors";
 
 export const dynamic = "force-dynamic";

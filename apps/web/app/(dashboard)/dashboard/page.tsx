@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { useMemo } from "react";
-import { useDashboardOverview } from "@/hooks/queries/use-dashboard-overview";
-import { useMarketStore } from "@/stores/trading/market.store";
+import { useDashboardOverview } from "@/domains/portfolio/hooks/use-dashboard-overview";
+import { useMarketStore } from "@/domains/market/stores/market.store";
 import { toInstrumentKey } from "@paper-market/core";
 import {
   Activity,

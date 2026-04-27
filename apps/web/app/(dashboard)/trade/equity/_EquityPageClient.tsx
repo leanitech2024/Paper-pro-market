@@ -2,23 +2,23 @@
 
 import { useEffect, useMemo, useState, Suspense } from "react";
 import dynamic from "next/dynamic";
-import { EquityTradeForm } from "@/components/trade/EquityTradeForm";
+import { EquityTradingForm } from "@/domains/trading/components/equity/equity-trading-form";
 import { Stock } from "@paper-market/core";
-import { useMarketStore } from "@/stores/trading/market.store";
+import { useMarketStore } from "@/domains/market/stores/market.store";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
-import { GlobalSearchModal } from "@/components/trade/search/GlobalSearchModal";
-import { WatchlistPanel } from "@/components/trade/watchlist/WatchlistPanel";
-import { AdaptiveTradeLayout } from "@/components/trade/layout/AdaptiveTradeLayout";
-import { useTradeViewport } from "@/hooks/use-trade-viewport";
-import { PositionsTable } from "@/components/positions/PositionsTable";
-import { BottomBar } from "@/components/trade/options/BottomBar";
+import { GlobalSearchModal } from "@/domains/watchlist/components/search/GlobalSearchModal";
+import { WatchlistPanel } from "@/domains/watchlist/components/watchlist/WatchlistPanel";
+import { AdaptiveTradeLayout } from "@/domains/trading/components/layout/AdaptiveTradeLayout";
+import { useTradeViewport } from "@/domains/trading/hooks/use-trade-viewport";
+import { PositionsTable } from "@/domains/trading/components/positions/PositionsTable";
+import { BottomBar } from "@/domains/trading/components/options/BottomBar";
 
 
 import { ChevronLeft, Search } from "lucide-react";
 
 const CandlestickChartComponent = dynamic(
-  () => import("@/components/trade/CandlestickChart").then((mod) => ({ default: mod.CandlestickChart })),
+  () => import("@/domains/chart/components/CandlestickChart").then((mod) => ({ default: mod.CandlestickChart })),
   { ssr: false },
 );
 
@@ -130,7 +130,7 @@ export default function EquityPage({ initialSymbol }: { initialSymbol?: string }
 
   const orderPanelNode = selectedStock ? (
     <div className="h-full min-h-0 overflow-y-auto">
-      <EquityTradeForm
+      <EquityTradingForm
         selectedStock={selectedStock}
         onStockSelect={handleSelectStock}
         instruments={currentInstruments}
@@ -303,7 +303,7 @@ export default function EquityPage({ initialSymbol }: { initialSymbol?: string }
                       </svg>
                     </Button>
                     <div className="h-auto max-h-[80vh] overflow-y-auto rounded-lg">
-                      <EquityTradeForm
+                      <EquityTradingForm
                         selectedStock={selectedStock}
                         onStockSelect={handleSelectStock}
                         instruments={currentInstruments}

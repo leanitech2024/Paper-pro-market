@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
-import { useSubscriptionStore } from '@/stores/subscription.store';
+import { useSubscriptionStore } from '@/domains/platform/stores/subscription.store';
 import { useRouter } from 'next/navigation';
 
 interface UpgradeGateProps {

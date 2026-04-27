@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { TradeService } from "@/services/trading/execution/trade.service";
+import { TradeService } from "@/domains/trading/server/execution/trade.service";
 import { handleError, ApiError } from "@/lib/errors";
 
 /**

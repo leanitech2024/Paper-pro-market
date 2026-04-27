@@ -5,7 +5,7 @@ import { db } from "@/lib/db";
 import { instruments } from "@paper-market/core/db";
 import { inArray } from "drizzle-orm";
 import { toInstrumentKey } from "@paper-market/core";
-import { resolveUpstoxPreviousClose } from "@/lib/market/upstox-quote-normalization";
+import { resolveUpstoxPreviousClose } from "@/domains/market/lib/upstox-quote-normalization";
 import { auth } from "@/lib/auth";
 import { z } from "zod";
 
@@ -87,7 +87,7 @@ function normalizeErrorMessage(error: unknown): string {
 /**
  * After buildQuoteLookup() produces an ISIN-keyed map, re-key every entry that
  * has a corresponding requested trading-symbol variant so that toRequestedKeyPayload
- * can resolve it by the original key (e.g. NSE_EQ|RELIANCE → NSE_EQ|INE002A01018).
+ * can resolve it by the original key (e.g. NSE_EQ|RELIANCE -> NSE_EQ|INE002A01018).
  */
 function applySymbolKeyRemapping(
     lookup: Map<string, { last: number; close: number }>,
@@ -308,7 +308,7 @@ function toRequestedKeyPayload(
             key.replace("|", ":"),
             key.replace(":", "|"),
             suffix ? `suffix:${suffix.toUpperCase()}` : "",
-            // ISIN key candidates — crucial for text-symbol equity keys
+            // ISIN key candidates Ã¢â‚¬â€ crucial for text-symbol equity keys
             isinKey ?? "",
             isinKey ? isinKey.replace("|", ":") : "",
             isinKey ? isinKey.replace(":", "|") : "",
@@ -408,7 +408,7 @@ export async function POST(req: NextRequest) {
             )
         );
 
-        const { UpstoxService } = await import("@/services/market/feeds/upstox-feed.service");
+        const { UpstoxService } = await import("@/domains/market/server/feeds/upstox-feed.service");
         const token = await UpstoxService.getSystemToken();
 
         if (!token) {
@@ -437,7 +437,7 @@ export async function POST(req: NextRequest) {
             // Re-key ISIN entries back to requested symbol keys (primary path)
             applySymbolKeyRemapping(lookup, symbolToIsinMap, symbolToIsinFromDB);
 
-            // TEMP DEBUG — remove after fix confirmed
+            // TEMP DEBUG Ã¢â‚¬â€ remove after fix confirmed
             logger.info({
               requestSource,
               traceId,

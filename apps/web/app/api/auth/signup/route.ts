@@ -5,10 +5,10 @@ import { hash } from "bcryptjs";
 import { eq } from "drizzle-orm";
 import { SignupSchema } from "@paper-market/core";
 import { handleError, ApiError } from "@/lib/errors";
-import { WalletService } from "@/services/accounting/wallet/wallet.service";
-import { bootstrapUserLedgerState } from "@/services/accounting/ledger/ledger-bootstrap.service";
-import { WatchlistService } from "@/services/market/catalog/watchlist.service";
-import { SubscriptionService } from "@/services/subscription/subscription.service";
+import { WalletService } from "@/domains/platform/server/accounting/wallet/wallet.service";
+import { bootstrapUserLedgerState } from "@/domains/platform/server/accounting/ledger/ledger-bootstrap.service";
+import { WatchlistService } from "@/domains/market/server/catalog/watchlist.service";
+import { SubscriptionService } from "@/domains/platform/server/subscription/subscription.service";
 
 export async function POST(req: NextRequest) {
     try {

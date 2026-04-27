@@ -25,7 +25,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { useOrdersStore } from '@/stores/trading/orders.store';
+import { useOrdersStore } from '@/domains/trading/stores/orders.store';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { Search, ArrowUpDown, History, Download, X } from 'lucide-react';

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { EODPriceUpdateService } from '@/services/market/pricing/eod-price-update.service';
+import { EODPriceUpdateService } from '@/domains/market/server/pricing/eod-price-update.service';
 
 export const dynamic = 'force-dynamic';
 
@@ -30,7 +30,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(_req: NextRequest) {
-  // 🔒 SECURITY: Require authentication
+  // ðŸ”’ SECURITY: Require authentication
   const session = await auth();
   if (!session?.user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

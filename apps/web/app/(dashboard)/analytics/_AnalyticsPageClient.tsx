@@ -1,10 +1,10 @@
 "use client";
 import { useEffect } from 'react';
-import { useJournalStore } from '@/stores/trading/journal.store';
-import { PerformanceSummary } from '@/components/analytics/PerformanceSummary';
-import { EquityCurveChart } from '@/components/analytics/EquityCurveChart';
-import { WeeklyReviewPanel } from '@/components/analytics/WeeklyReviewPanel';
-import { WinLossChart } from '@/components/analytics/WinLossChart';
+import { useJournalStore } from '@/domains/portfolio/stores/journal.store';
+import { PerformanceSummary } from '@/domains/portfolio/components/analytics/PerformanceSummary';
+import { EquityCurveChart } from '@/domains/portfolio/components/analytics/EquityCurveChart';
+import { WeeklyReviewPanel } from '@/domains/portfolio/components/analytics/WeeklyReviewPanel';
+import { WinLossChart } from '@/domains/portfolio/components/analytics/WinLossChart';
 import { UpgradeGate } from '@/components/subscription/UpgradeGate';
 
 export default function AnalyticsPageClient() {
