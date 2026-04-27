@@ -45,6 +45,7 @@ type UseChartInstanceArgs = {
   onHoverCandleChangeRef: MutableRefObject<((candle: CandlestickData | null) => void) | undefined>;
   resolveDisplayTime: (time: number) => number;
   setDimensions: Dispatch<SetStateAction<Dimensions>>;
+  isMobile?: boolean;
 };
 
 export const useChartInstance = ({
@@ -62,6 +63,7 @@ export const useChartInstance = ({
   onHoverCandleChangeRef,
   resolveDisplayTime,
   setDimensions,
+  isMobile,
 }: UseChartInstanceArgs): { chartInstance: IChartApi | null } => {
   const monthFormatter = useRef(new Intl.DateTimeFormat('en-IN', { month: 'short' }));
   const dayFormatter = useRef(new Intl.DateTimeFormat('en-IN', { day: 'numeric', month: 'short' }));
@@ -160,6 +162,26 @@ export const useChartInstance = ({
           },
         },
         crosshair: { mode: CrosshairMode.Normal },
+        handleScroll: {
+          mouseWheel: true,
+          pressedMouseMove: true,
+          horzTouchDrag: true,
+          // Let the page scroll vertically on mobile while preserving
+          // horizontal chart dragging and pinch zoom.
+          vertTouchDrag: !isMobile,
+        },
+        handleScale: {
+          axisPressedMouseMove: {
+            time: true,
+            price: true,
+          },
+          axisDoubleClickReset: {
+            time: true,
+            price: true,
+          },
+          mouseWheel: true,
+          pinch: true,
+        },
       });
 
       const candlestickSeriesInstance = chartInstance.addSeries(CandlestickSeries, {
@@ -357,7 +379,7 @@ export const useChartInstance = ({
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [resolveDisplayTime, height, onChartReady]);
+  }, [resolveDisplayTime, height, onChartReady, isMobile]);
 
   return { chartInstance };
 };

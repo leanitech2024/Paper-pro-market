@@ -120,7 +120,7 @@ function DashboardContentWrapper({
 
   return (
 
-    <div className="flex min-h-screen w-full font-sans bg-gradient-to-b from-slate-100 via-white to-slate-100/80 text-slate-950 dark:from-[#09111e] dark:via-[#0b1220] dark:to-[#0b1324] dark:text-slate-50">
+    <div className="flex min-h-screen w-full max-w-full overflow-x-hidden font-sans bg-gradient-to-b from-slate-100 via-white to-slate-100/80 text-slate-950 dark:from-[#09111e] dark:via-[#0b1220] dark:to-[#0b1324] dark:text-slate-50">
       <GlobalSearchModal
         open={isOpen}
         onOpenChange={(open) => !open && closeSearch()}
@@ -141,7 +141,7 @@ function DashboardContentWrapper({
 
       <div
         className={cn(
-          'flex-1 flex flex-col transition-all duration-300',
+          'flex min-w-0 max-w-full flex-1 flex-col overflow-x-hidden transition-all duration-300',
           isEquityTradeRoute ? 'xl:ml-16' : 'md:ml-16',
         )}
       >
@@ -150,7 +150,7 @@ function DashboardContentWrapper({
           <MarketStatusBar staleWarning={staleWarning} />
         </div>
 
-        <main className="flex-1 overflow-x-hidden w-full max-w-full pb-20 pt-20 md:pb-0 md:pt-0">
+        <main className="flex-1 w-full min-w-0 max-w-full overflow-x-hidden pb-20 pt-20 md:pb-0 md:pt-0">
           {children}
         </main>
         <MobileBottomNav />

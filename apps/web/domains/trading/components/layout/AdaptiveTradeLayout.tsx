@@ -123,14 +123,14 @@ export function AdaptiveTradeLayout({
   };
 
   const renderMobile = () => (
-    <div className="flex h-full min-h-0 flex-col overflow-hidden">
+    <div className="flex h-full min-h-0 min-w-0 max-w-full flex-col overflow-x-hidden overflow-y-hidden">
       {mobileTopBar ? <div className="shrink-0">{mobileTopBar}</div> : null}
 
       {mobileContent ? (
-        <div className="relative flex-1 min-h-0 overflow-hidden">{mobileContent}</div>
+        <div className="relative flex-1 min-h-0 min-w-0 max-w-full overflow-x-hidden overflow-y-hidden">{mobileContent}</div>
       ) : (
         <>
-          <div className="relative flex-1 min-h-0 overflow-hidden">
+          <div className="relative flex-1 min-h-0 min-w-0 max-w-full overflow-x-hidden overflow-y-hidden">
             {mobileTabs.map((tab) => {
               if (!tab.content) return null;
               const isActive = activeTab === tab.id;
@@ -181,7 +181,7 @@ export function AdaptiveTradeLayout({
   return (
     <div className={cn("flex h-full min-h-0 flex-col overflow-hidden bg-background", className)}>
       {header ? <div className="shrink-0 border-b border-border">{header}</div> : null}
-      <div className="flex-1 min-h-0 overflow-hidden">{isDesktop ? renderDesktop() : isTablet ? renderTablet() : renderMobile()}</div>
+      <div className="flex-1 min-h-0 min-w-0 max-w-full overflow-x-hidden overflow-y-hidden">{isDesktop ? renderDesktop() : isTablet ? renderTablet() : renderMobile()}</div>
       {footer && !isMobile ? <div className="shrink-0 border-t border-border">{footer}</div> : null}
     </div>
   );

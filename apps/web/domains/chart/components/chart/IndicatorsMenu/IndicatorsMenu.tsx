@@ -35,7 +35,7 @@ export function IndicatorsMenu({ symbol }: IndicatorsMenuProps) {
         <Button
           variant="ghost"
           size="sm"
-          className="h-7 px-2 text-xs gap-1.5 text-muted-foreground hover:text-foreground"
+          className="h-7 shrink-0 gap-1.5 px-2 text-xs text-muted-foreground hover:text-foreground"
         >
           <Settings2 size={14} />
           <span className="hidden sm:inline">Indicators</span>

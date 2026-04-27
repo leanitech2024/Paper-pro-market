@@ -174,8 +174,8 @@ export default function EquityPage({ initialSymbol }: { initialSymbol?: string }
   ), [orderPanelNode]);
 
   const mobileChartNode = useMemo(() => (
-    <div className="h-full min-h-0 bg-transparent p-2 pb-3">
-      <div className={`h-full min-h-0 overflow-hidden ${chartPanelClass} shadow-sm`}>
+    <div className="h-full min-h-0 min-w-0 max-w-full overflow-x-hidden bg-transparent p-2 pb-3">
+      <div className={`h-full min-h-0 min-w-0 max-w-full overflow-x-hidden overflow-y-hidden ${chartPanelClass} shadow-sm`}>
         {chartNode}
       </div>
     </div>
@@ -208,8 +208,8 @@ export default function EquityPage({ initialSymbol }: { initialSymbol?: string }
   ), [watchlistNode]);
 
   const mobileChartNodeWithHeader = useMemo(() => (
-    <div className="h-full min-h-0 bg-transparent p-2 pb-3">
-      <div className={`h-full min-h-0 overflow-hidden ${panelClass} shadow-sm`}>
+    <div className="h-full min-h-0 min-w-0 max-w-full overflow-hidden bg-transparent p-2 pb-3">
+      <div className={`h-full min-h-0 min-w-0 max-w-full overflow-hidden ${panelClass} shadow-sm`}>
         <div className={`flex items-center justify-between px-3 py-2 ${headerBorderClass}`}>
           <button
             type="button"
@@ -272,7 +272,10 @@ export default function EquityPage({ initialSymbol }: { initialSymbol?: string }
         }}
       />
 
-      <div className="h-[calc(100dvh-6rem)] md:h-[calc(100vh-2rem)] min-h-0 overflow-hidden bg-background">
+      <div
+        className="h-[calc(100dvh-6rem)] md:h-[calc(100vh-2rem)] min-h-0 max-w-full overflow-hidden bg-background"
+        style={{ touchAction: 'none' }}
+      >
         <AdaptiveTradeLayout
           desktopLeft={watchlistNode}
           desktopLeftWidth="300px"

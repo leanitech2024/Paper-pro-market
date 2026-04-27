@@ -105,6 +105,7 @@ export const BaseChart = forwardRef<BaseChartRef, BaseChartProps>(({
     onHoverCandleChangeRef,
     resolveDisplayTime,
     setDimensions,
+    isMobile,
   });
 
   useInfiniteScroll({
@@ -212,7 +213,7 @@ export const BaseChart = forwardRef<BaseChartRef, BaseChartProps>(({
   }));
 
   return (
-    <div ref={chartContainerRef} className="w-full h-full rounded-lg relative">
+    <div ref={chartContainerRef} className="relative h-full w-full min-w-0 rounded-lg">
       {chartInstance && candleSeriesRef.current && dimensions.width > 0 && data && data.length > 0 && (
         <DrawingManager
           chart={chartInstance}

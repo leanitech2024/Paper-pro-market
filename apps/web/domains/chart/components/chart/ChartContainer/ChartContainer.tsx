@@ -155,7 +155,7 @@ export function ChartContainer({ symbol, headerSymbol, instrumentKey, onSearchCl
   const legendDownColor = chartStyle === "HEIKIN_ASHI" ? "#EF4444" : "#F23645";
 
   return (
-    <div ref={containerRef} className="relative w-full h-full group">
+    <div ref={containerRef} className="relative h-full w-full min-w-0 group">
       <ChartLayout
         isAnalysisMode={isAnalysisMode}
         symbol={symbol}

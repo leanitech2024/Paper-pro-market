@@ -46,7 +46,7 @@ export function ChartLayout({
   const leftToolbar = <ChartToolbar symbol={symbol} />;
   
   const content = (
-    <div className="relative w-full h-full flex flex-col">
+    <div className="relative flex h-full w-full min-w-0 flex-col">
       <ChartHeader
         symbol={symbol}
         displaySymbol={headerSymbol}
@@ -64,7 +64,7 @@ export function ChartLayout({
         isFullscreen={isAnalysisMode}
       />
 
-      <div className="flex flex-1 relative min-h-0">
+      <div className="relative flex min-h-0 min-w-0 flex-1">
         {!isMobile && leftToolbar}
         {children}
       </div>

@@ -48,8 +48,8 @@ export function MobileHeader({
   onChartStyleChange,
 }: MobileHeaderProps) {
   return (
-    <div className="flex w-full flex-col border-b border-slate-200/80 bg-white/95 backdrop-blur-sm dark:border-white/[0.08] dark:bg-[#0c1322]/95 md:hidden">
-      <div className="flex items-center gap-1.5 px-2 pb-1.5 pt-2">
+    <div className="flex w-full min-w-0 max-w-full flex-col overflow-x-hidden border-b border-slate-200/80 bg-white/95 backdrop-blur-sm dark:border-white/[0.08] dark:bg-[#0c1322]/95 md:hidden">
+      <div className="flex w-full min-w-0 max-w-full flex-nowrap items-center gap-1.5 overflow-x-auto overflow-y-hidden overscroll-x-contain px-2 pb-1.5 pt-2 [scrollbar-width:none] [touch-action:pan-x] [-webkit-overflow-scrolling:touch] [&::-webkit-scrollbar]:hidden">
         <HeaderSymbol headerText={headerText} isLoading={isLoading} onSearchClick={onSearchClick} isMobile={true} />
 
         <RangeSelector currentRange={range} setRange={setRange} setTimeframe={setTimeframe} isMobile={true} />
@@ -82,7 +82,12 @@ export function MobileHeader({
         <IndicatorsMenu symbol={symbol} />
       </div>
 
-      <div className="flex items-center gap-1.5 overflow-x-auto overscroll-x-contain border-t border-slate-200/70 px-2 pb-2 pt-1.5 [scrollbar-width:none] [touch-action:pan-x] [-webkit-overflow-scrolling:touch] dark:border-white/[0.06] [&::-webkit-scrollbar]:hidden">
+      <div
+        className="flex flex-nowrap items-center gap-1.5 overflow-x-auto overscroll-x-contain border-t border-slate-200/70 px-2 pb-2 pt-1.5 [scrollbar-width:none] dark:border-white/[0.06] [&::-webkit-scrollbar]:hidden"
+        style={{ touchAction: 'pan-x', WebkitOverflowScrolling: 'touch' }}
+        onTouchStart={(e) => e.stopPropagation()}
+        onTouchMove={(e) => e.stopPropagation()}
+      >
         {MOBILE_HEADER_MENUS.map((menu) => {
           const MenuIcon = resolveToolIcon(menu.icon);
           const activeMenuItem = menu.items.find((item) => item.kind === "tool" && item.id === activeTool);
@@ -96,7 +101,7 @@ export function MobileHeader({
                   className={cn(
                     "flex h-12 min-w-[3.4rem] shrink-0 flex-col items-center justify-center gap-1 rounded-2xl border px-1.5 transition-all active:scale-95",
                     isMenuActive
-                      ? "border-blue-500/40 bg-blue-600/10 text-blue-500 shadow-[0_8px_18px_rgba(59,130,246,0.18)] dark:border-blue-400/30 dark:text-blue-400 dark:shadow-none"
+                      ? "border-blue-500/40 bg-blue-600/10 text-blue-500 dark:border-blue-400/30 dark:text-blue-400"
                       : "border-slate-200/70 bg-slate-50 text-slate-500 dark:border-white/[0.08] dark:bg-[#10192b] dark:text-slate-400",
                   )}
                 >

@@ -40,7 +40,7 @@ export default async function DashboardLayout({
   }
 
   return (
-    <div data-theme="terminal" className="bg-background min-h-screen text-foreground font-sans ">
+    <div data-theme="terminal" className="bg-background min-h-screen max-w-full overflow-x-hidden text-foreground font-sans">
       <DashboardLayoutClient session={session}>
         {children}
       </DashboardLayoutClient>

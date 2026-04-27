@@ -295,7 +295,7 @@ export default function FuturesPage() {
   );
 
   const mobileContentNode = (
-    <div className="flex h-full min-h-0 flex-col bg-background">
+    <div className="flex h-full min-h-0 min-w-0 max-w-full flex-col overflow-x-hidden bg-background">
       <div className={`shrink-0 ${headerBorderClass} bg-white/95 backdrop-blur dark:bg-[#0c1322]/95`}>
         <div className="space-y-2 px-3 py-2">
           <div className="flex items-center justify-between gap-2">
@@ -349,9 +349,9 @@ export default function FuturesPage() {
         </div>
       </div>
 
-      <div className="min-h-0 flex-1 p-2 pb-3">
-        <div className={`h-full min-h-0 overflow-hidden ${panelClass}`}>
-          <div className="h-full min-h-0">{chartNode}</div>
+      <div className="min-h-0 min-w-0 max-w-full flex-1 overflow-x-hidden p-2 pb-3">
+        <div className={`h-full min-h-0 min-w-0 max-w-full overflow-x-hidden overflow-y-hidden ${panelClass}`}>
+          <div className="h-full min-h-0 min-w-0 max-w-full overflow-x-hidden">{chartNode}</div>
         </div>
       </div>
     </div>
@@ -370,7 +370,7 @@ export default function FuturesPage() {
         }}
       />
 
-      <div className="h-[calc(100dvh-6rem)] md:h-[calc(100vh-32px)] min-h-0 overflow-hidden bg-background">
+      <div className="h-[calc(100dvh-6rem)] md:h-[calc(100vh-32px)] min-h-0 max-w-full overflow-x-hidden overflow-y-hidden bg-background">
         <AdaptiveTradeLayout
           desktopLeft={<div className="h-full min-h-0">{orderNode}</div>}
           desktopLeftWidth="280px"

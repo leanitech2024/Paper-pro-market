@@ -63,8 +63,8 @@ export const viewport = {
 export default async function RootLayout({ children }: { children: ReactNode }) {
   const session = await auth();
   return (
-    <html lang="en" suppressHydrationWarning>
-      <body>
+    <html lang="en" suppressHydrationWarning className="max-w-full overflow-x-hidden">
+      <body className="max-w-full overflow-x-hidden">
         <Providers session={session}>
           {children}
         </Providers>

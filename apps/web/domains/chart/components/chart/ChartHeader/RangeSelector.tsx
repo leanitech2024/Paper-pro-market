@@ -17,8 +17,8 @@ export function RangeSelector({ currentRange, setRange, setTimeframe, isMobile }
 
   if (isMobile) {
     return (
-      <div className="min-w-0 flex-1 overflow-x-auto [scrollbar-width:none] [touch-action:pan-x] [overscroll-behavior-x:contain] [-webkit-overflow-scrolling:touch] [&::-webkit-scrollbar]:hidden">
-        <div className="flex items-center gap-1 pr-1">
+      <div className="shrink-0">
+        <div className="flex shrink-0 items-center gap-1 pr-1">
           {ranges.map((r) => (
             <button
               key={r}
