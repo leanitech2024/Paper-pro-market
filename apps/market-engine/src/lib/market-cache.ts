@@ -1,4 +1,4 @@
-import { toInstrumentKey } from "../core/symbol-normalization.js";
+import { toInstrumentKey } from "@paper-market/core";
 
 export const CACHE_TTL_SECONDS = 3600;
 export const CACHE_TTL_JITTER_MAX_SECONDS = 300;

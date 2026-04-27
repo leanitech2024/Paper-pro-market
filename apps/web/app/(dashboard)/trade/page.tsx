@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, Suspense, useMemo } from "react";
+import { useCallback, useState, useEffect, Suspense, useMemo } from "react";
 import dynamic from "next/dynamic";
 import { EquityTradingForm } from "@/domains/trading/components/equity/equity-trading-form";
 import { Stock } from "@paper-market/core";
@@ -22,7 +22,8 @@ const CandlestickChartComponent = dynamic(
 
 export default function TradePage() {
   const { isMobile, isDesktop } = useTradeViewport();
-  const { stocks, stocksBySymbol } = useMarketStore();
+  const stocks = useMarketStore((state) => state.stocks);
+  const stocksBySymbol = useMarketStore((state) => state.stocksBySymbol);
 
   const [selectedSymbol, setSelectedSymbol] = useState<string | null>(null);
   const [selectedFallback, setSelectedFallback] = useState<Stock | null>(null);
@@ -70,17 +71,17 @@ export default function TradePage() {
     };
   }, [isMobile]);
 
-  const handleSelectStock = (stock: Stock) => {
+  const handleSelectStock = useCallback((stock: Stock) => {
     setSelectedSymbol(toCanonicalSymbol(stock.symbol));
     setSelectedFallback(stock);
-  };
+  }, []);
 
-  const handleClearSelection = () => {
+  const handleClearSelection = useCallback(() => {
     setSelectedSymbol(null);
     setSelectedFallback(null);
-  };
+  }, []);
 
-  const chartNode = (
+  const chartNode = useMemo(() => (
     <div className="h-full w-full bg-card/50">
       {selectedSymbol ? (
         <Suspense fallback={<Skeleton className="h-full w-full" />}>
@@ -98,9 +99,9 @@ export default function TradePage() {
         </div>
       )}
     </div>
-  );
+  ), [selectedSymbol, selectedStock, isMobile, showOrderForm, isDesktop]);
 
-  const watchlistNode = (
+  const watchlistNode = useMemo(() => (
     <div className="h-full">
       <WatchlistPanel
         instruments={stocks}
@@ -110,15 +111,17 @@ export default function TradePage() {
         onClearSelection={handleClearSelection}
       />
     </div>
-  );
+  ), [stocks, selectedSymbol, handleSelectStock, handleClearSelection]);
 
-  const orderPanelNode = selectedStock ? (
-    <div className="h-full min-h-0 overflow-y-auto">
-      <EquityTradingForm selectedStock={selectedStock} onStockSelect={handleSelectStock} instruments={stocks} sheetMode />
-    </div>
-  ) : (
-    <div className="flex h-full items-center justify-center p-4 text-xs text-slate-500">Select a stock to place an order.</div>
-  );
+  const orderPanelNode = useMemo(() => (
+    selectedStock ? (
+      <div className="h-full min-h-0 overflow-y-auto">
+        <EquityTradingForm selectedStock={selectedStock} onStockSelect={handleSelectStock} instruments={stocks} sheetMode />
+      </div>
+    ) : (
+      <div className="flex h-full items-center justify-center p-4 text-xs text-slate-500">Select a stock to place an order.</div>
+    )
+  ), [selectedStock, stocks, handleSelectStock]);
 
   return (
     <>

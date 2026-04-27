@@ -4,7 +4,7 @@ import { jwtVerify } from 'jose';
 import { tickBus, candleEngine } from '@paper-market/core';
 import { marketFeedSupervisor } from '../core/market-feed-supervisor.js';
 import { logger } from '../lib/logger.js';
-import { toInstrumentKey } from '../core/symbol-normalization.js';
+import { toInstrumentKey } from '@paper-market/core';
 import { warmRedisFromUpstox } from '../lib/redis-prewarm.js';
 import type { NormalizedTick, CandleUpdate } from '../core/types.js';
 
@@ -61,14 +61,18 @@ function messageSizeBytes(message: WebSocket.RawData): number {
     return message.byteLength;
 }
 
-function extractToken(request: IncomingMessage): string | null {
+function extractConnectionParams(request: IncomingMessage): { token: string | null; userId: string | null } {
     try {
         const base = `ws://${request.headers.host || 'localhost'}`;
         const parsed = new URL(request.url || '/', base);
         const token = parsed.searchParams.get('token');
-        return token && token.trim().length > 0 ? token.trim() : null;
+        const userId = parsed.searchParams.get('userId');
+        return {
+            token: token && token.trim().length > 0 ? token.trim() : null,
+            userId: userId && userId.trim().length > 0 ? userId.trim() : null,
+        };
     } catch {
-        return null;
+        return { token: null, userId: null };
     }
 }
 
@@ -242,9 +246,11 @@ export function createWebSocketServer(server: HttpServer): WebSocketServer {
 // ═══════════════════════════════════════════════════════════
 
 async function onConnection(ws: WebSocket, request: IncomingMessage): Promise<void> {
-    const token = extractToken(request);
+    const { token, userId: tracedUserId } = extractConnectionParams(request);
     const authRequired = WS_AUTH_REQUIRED;
-    let userId: string | null = null;
+    // Internal tracing only: this query param is useful for local/dev scoping,
+    // but public deployments should upgrade to signed token verification.
+    let userId: string | null = tracedUserId;
 
     if (authRequired && !jwtSecretBytes) {
         ws.close(POLICY_VIOLATION, 'Server auth misconfigured');

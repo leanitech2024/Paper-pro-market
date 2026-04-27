@@ -1,5 +1,5 @@
 'use client';
-import { ReactNode, useEffect, useState } from 'react';
+import { memo, ReactNode, useEffect, useState } from 'react';
 import { Sidebar } from './Sidebar';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
@@ -26,7 +26,7 @@ export default function DashboardLayoutClient({
   children: ReactNode;
   session: Session | null;
 }) {
-  useMarketStream();
+  const { staleWarning } = useMarketStream(session?.user?.id ?? null);
   const pathname = usePathname();
 
   const fetchWallet = useWalletStore((state) => state.fetchWallet);
@@ -42,7 +42,7 @@ export default function DashboardLayoutClient({
         session.user.subscriptionStatus,
       );
     }
-  }, [session, seedFromSession]);
+  }, [session?.user?.subscriptionStatus, session?.user?.plan, seedFromSession]);
 
   useEffect(() => {
     fetchWallet();
@@ -92,7 +92,7 @@ export default function DashboardLayoutClient({
   }, [pathname]);
 
   return (
-    <DashboardContentWrapper session={session}>
+    <DashboardContentWrapper session={session} staleWarning={staleWarning}>
       {children}
     </DashboardContentWrapper>
   );
@@ -103,9 +103,11 @@ export default function DashboardLayoutClient({
 function DashboardContentWrapper({
   children,
   session,
+  staleWarning = false,
 }: {
   children: ReactNode;
   session: Session | null;
+  staleWarning?: boolean;
 }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const pathname = usePathname();
@@ -143,9 +145,9 @@ function DashboardContentWrapper({
           isEquityTradeRoute ? 'xl:ml-16' : 'md:ml-16',
         )}
       >
-        <MobileFloatingHeader />
+        <MobileFloatingHeader staleWarning={staleWarning} />
         <div className="hidden md:block w-full overflow-hidden" style={{ contain: 'layout paint' }}>
-          <MarketStatusBar />
+          <MarketStatusBar staleWarning={staleWarning} />
         </div>
 
         <main className="flex-1 overflow-x-hidden w-full max-w-full pb-20 pt-20 md:pb-0 md:pt-0">
@@ -157,21 +159,17 @@ function DashboardContentWrapper({
   )
 }
 
-function MobileFloatingHeader() {
-  const quotesByInstrument = useMarketStore((state) => state.quotesByInstrument);
-  const selectQuote = useMarketStore((state) => state.selectQuote);
-
-  const niftyKey = toInstrumentKey("NSE_INDEX|NIFTY 50");
-  const bankNiftyKey = toInstrumentKey("NSE_INDEX|NIFTY BANK");
-
-  const niftyQuote =
-    quotesByInstrument[niftyKey] ||
-    selectQuote(niftyKey) ||
-    selectQuote("NIFTY 50");
-  const bankNiftyQuote =
-    quotesByInstrument[bankNiftyKey] ||
-    selectQuote(bankNiftyKey) ||
-    selectQuote("NIFTY BANK");
+const MobileFloatingHeader = memo(function MobileFloatingHeader({
+  staleWarning = false,
+}: {
+  staleWarning?: boolean;
+}) {
+  const niftyQuote = useMarketStore(
+    (state) => state.quotesByInstrument[toInstrumentKey("NSE_INDEX|NIFTY 50")]
+  );
+  const bankNiftyQuote = useMarketStore(
+    (state) => state.quotesByInstrument[toInstrumentKey("NSE_INDEX|NIFTY BANK")]
+  );
 
   const formatPrice = (value: number | undefined) =>
     Number.isFinite(Number(value)) && Number(value) > 0
@@ -202,7 +200,13 @@ function MobileFloatingHeader() {
           <div className="grid grid-cols-2 gap-2">
             <Link href="/trade/equity?symbol=NIFTY%2050" className="min-w-0 flex flex-col hover:opacity-80 transition-opacity cursor-pointer">
               <p className="truncate text-[9px] uppercase tracking-[0.08em] text-muted-foreground dark:text-slate-400">NIFTY</p>
-              <p className="truncate text-[11px] font-semibold text-foreground dark:text-slate-100">{formatPrice(niftyQuote?.price)}</p>
+              <p
+                className="truncate text-[11px] font-semibold text-foreground dark:text-slate-100"
+                title={staleWarning ? "Showing last traded price" : undefined}
+              >
+                {staleWarning ? "~" : ""}
+                {formatPrice(niftyQuote?.price)}
+              </p>
               <p
                 className={cn(
                   "truncate text-[9px]",
@@ -216,7 +220,13 @@ function MobileFloatingHeader() {
             </Link>
             <Link href="/trade/equity?symbol=NIFTY%20BANK" className="min-w-0 border-l border-border/80 pl-2 dark:border-[#1a2e4f] flex flex-col hover:opacity-80 transition-opacity cursor-pointer">
               <p className="truncate text-[9px] uppercase tracking-[0.08em] text-muted-foreground dark:text-slate-400">BANKNIFTY</p>
-              <p className="truncate text-[11px] font-semibold text-foreground dark:text-slate-100">{formatPrice(bankNiftyQuote?.price)}</p>
+              <p
+                className="truncate text-[11px] font-semibold text-foreground dark:text-slate-100"
+                title={staleWarning ? "Showing last traded price" : undefined}
+              >
+                {staleWarning ? "~" : ""}
+                {formatPrice(bankNiftyQuote?.price)}
+              </p>
               <p
                 className={cn(
                   "truncate text-[9px]",
@@ -243,4 +253,4 @@ function MobileFloatingHeader() {
       </div>
     </div>
   );
-}
+});

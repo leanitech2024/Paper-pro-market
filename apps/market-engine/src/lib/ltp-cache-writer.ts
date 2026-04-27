@@ -1,5 +1,5 @@
 import { tickBus } from "@paper-market/core";
-import { toInstrumentKey } from "../core/symbol-normalization.js";
+import { toInstrumentKey } from "@paper-market/core";
 import type { NormalizedTick } from "../core/types.js";
 import { logger } from "./logger.js";
 import { getRedis } from "./redis.js";

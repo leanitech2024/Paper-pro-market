@@ -26,19 +26,16 @@ function resolveTradingSymbol(rawSymbol: unknown): string {
     const input = rawSymbol.trim();
     if (!input) return '';
 
-    // Common case: already tradingsymbol (e.g. "ITC")
     if (!input.includes('|') && !ISIN_LIKE.test(input)) {
         return input;
     }
 
     const symbolPart = input.includes('|') ? (input.split('|')[1] || input) : input;
 
-    // Some feeds send NSE_EQ|ITC. Use direct symbol if RHS is not ISIN-like.
     if (!ISIN_LIKE.test(symbolPart) && symbolPart) {
         return symbolPart;
     }
 
-    // Fallback: resolve from currently loaded instruments/watchlist.
     const state = useMarketStore.getState();
     const all = [...(state.stocks || []), ...(state.indices || []), ...(state.futures || []), ...(state.options || [])];
     const match = all.find((item) =>
@@ -50,7 +47,10 @@ function resolveTradingSymbol(rawSymbol: unknown): string {
     return match?.symbol || symbolPart || input;
 }
 
-export function useMarketConnection(collectDesiredKeys: () => string[]) {
+export function useMarketConnection(
+    collectDesiredKeys: () => string[],
+    userId?: string | null
+) {
     const [isConnected, setIsConnected] = useState(false);
     const wsRef = useRef<ReturnType<typeof getMarketWebSocket> | null>(null);
     const isConnectedRef = useRef(false);
@@ -75,9 +75,7 @@ export function useMarketConnection(collectDesiredKeys: () => string[]) {
         subscribedKeysRef.current = desired;
     }, [collectDesiredKeys]);
 
-    /* eslint-disable react-hooks/exhaustive-deps */
     useEffect(() => {
-        // Keep action refs fresh without re-running this effect
         const unsubActions = useMarketStore.subscribe((state) => {
             applyTickRef.current = state.applyTick;
             updateLiveCandleRef.current = state.updateLiveCandle;
@@ -126,17 +124,25 @@ export function useMarketConnection(collectDesiredKeys: () => string[]) {
             const instrumentKey = toInstrumentKey(rawKey);
             const tradingSymbol = toCanonicalSymbol(resolveTradingSymbol(rawSymbol || rawKey));
             if (!instrumentKey || !tradingSymbol) return;
-            updateLiveCandleRef.current({ price: candle.close, volume: candle.volume || 0, time: candle.time }, tradingSymbol, instrumentKey);
+            updateLiveCandleRef.current(
+                { price: candle.close, volume: candle.volume || 0, time: candle.time },
+                tradingSymbol,
+                instrumentKey
+            );
         };
 
         const connect = async () => {
             if (cancelled) return;
 
             const wsUrl = resolveMarketWsUrl();
-            if (!wsUrl) { setIsConnected(false); return; }
+            if (!wsUrl) {
+                setIsConnected(false);
+                return;
+            }
 
             const ws = getMarketWebSocket({
                 url: wsUrl,
+                userId,
                 onTick: handleTick,
                 onCandle: handleCandle,
                 onConnected: () => {
@@ -159,7 +165,7 @@ export function useMarketConnection(collectDesiredKeys: () => string[]) {
             ws.connect();
         };
 
-        connect();
+        void connect();
 
         return () => {
             cancelled = true;
@@ -167,8 +173,7 @@ export function useMarketConnection(collectDesiredKeys: () => string[]) {
             subscribedKeysRef.current = new Set();
             isConnectedRef.current = false;
         };
-    }, []); // ← empty, truly runs once
-    /* eslint-enable react-hooks/exhaustive-deps */
+    }, [syncSubscriptions, userId]);
 
     return { isConnected, syncSubscriptions };
 }

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { marketTickJob } from "@/jobs/market-tick.job";
+import { marketTickJob } from "@/domains/market/jobs/market-tick.job";
 import { handleError, ApiError } from "@/lib/errors";
 
 /**

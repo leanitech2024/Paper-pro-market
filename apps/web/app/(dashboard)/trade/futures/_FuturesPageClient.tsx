@@ -110,17 +110,19 @@ export default function FuturesPage() {
   const [searchModalOpen, setSearchModalOpen] = useState(false);
   const [isBootstrappingDefault, setIsBootstrappingDefault] = useState(true);
   const [mobileOrderOpen, setMobileOrderOpen] = useState(false);
-  const quotesByInstrument = useMarketStore((state) => state.quotesByInstrument);
   const selectQuote = useMarketStore((state) => state.selectQuote);
   const selectPrice = useMarketStore((state) => state.selectPrice);
   const livePrice = useMarketStore((state) => state.livePrice);
+  const selectedToken = selectedStock?.instrumentToken;
+  const tokenQuote = useMarketStore((state) =>
+    selectedToken ? state.quotesByInstrument[selectedToken] : null,
+  );
 
   const liveTokenPrice = useMemo(() => {
-    const token = selectedStock?.instrumentToken;
-    if (!token) return 0;
-    const price = Number(quotesByInstrument[token]?.price);
+    if (!selectedStock?.instrumentToken) return 0;
+    const price = Number(tokenQuote?.price);
     return Number.isFinite(price) && price > 0 ? price : 0;
-  }, [quotesByInstrument, selectedStock?.instrumentToken]);
+  }, [tokenQuote, selectedStock?.instrumentToken]);
 
   const liveSymbolPrice = useMemo(() => {
     const symbol = selectedStock?.symbol;
@@ -130,11 +132,10 @@ export default function FuturesPage() {
   }, [selectPrice, selectedStock?.symbol]);
 
   const liveTokenChange = useMemo(() => {
-    const token = selectedStock?.instrumentToken;
-    if (!token) return Number.NaN;
-    const change = Number(quotesByInstrument[token]?.changePercent);
+    if (!selectedStock?.instrumentToken) return Number.NaN;
+    const change = Number(tokenQuote?.changePercent);
     return Number.isFinite(change) ? change : Number.NaN;
-  }, [quotesByInstrument, selectedStock?.instrumentToken]);
+  }, [tokenQuote, selectedStock?.instrumentToken]);
 
   const liveSymbolChange = useMemo(() => {
     const symbol = selectedStock?.symbol;
@@ -240,16 +241,16 @@ export default function FuturesPage() {
     };
   }, [selectedStock]);
 
-  const renderOrderNode = (sheetMode = false) => (
+  const orderNode = useMemo(() => (
     <FuturesTradingForm
       selectedStock={selectedStock}
       onStockSelect={setSelectedStock}
       instruments={currentInstruments}
       onOpenSearch={() => setSearchModalOpen(true)}
       isBootstrapping={isBootstrappingDefault}
-      sheetMode={sheetMode}
+      sheetMode
     />
-  );
+  ), [selectedStock, currentInstruments, isBootstrappingDefault]);
 
   const headerSymbolPrice = useMemo(() => {
     const symbol = selectedStock?.symbol || chartBinding.symbol;
@@ -371,17 +372,17 @@ export default function FuturesPage() {
 
       <div className="h-[calc(100dvh-6rem)] md:h-[calc(100vh-32px)] min-h-0 overflow-hidden bg-background">
         <AdaptiveTradeLayout
-          desktopLeft={<div className="h-full min-h-0">{renderOrderNode(true)}</div>}
+          desktopLeft={<div className="h-full min-h-0">{orderNode}</div>}
           desktopLeftWidth="280px"
           desktopCenter={<div className={`flex h-full min-h-0 flex-col ${panelClass}`}>{chartNode}</div>}
           tabletTop={<div className={`flex h-full min-h-0 flex-col ${panelClass}`}>{chartNode}</div>}
-          tabletLeft={<div className="h-full min-h-0">{renderOrderNode(true)}</div>}
+          tabletLeft={<div className="h-full min-h-0">{orderNode}</div>}
           tabletRight={<PositionsCards instrumentFilter="futures" />}
           mobileContent={mobileContentNode}
           mobileOrderTitle={selectedStock ? `${selectedStock.symbol} futures order ticket` : "Futures order ticket"}
           mobileOrderOpen={mobileOrderOpen}
           onMobileOrderOpenChange={setMobileOrderOpen}
-          mobileOrderDrawer={renderOrderNode(true)}
+          mobileOrderDrawer={orderNode}
           footer={<BottomBar />}
         />
       </div>

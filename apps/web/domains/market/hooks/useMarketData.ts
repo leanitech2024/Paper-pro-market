@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useMarketStore } from '@/domains/market/stores/market.store';
 import { usePositionsStore } from '@/domains/trading/stores/positions.store';
 import { toInstrumentKey } from '@paper-market/core';
@@ -9,6 +9,7 @@ const QUOTE_REFRESH_INTERVAL_MS = 20_000;
 const QUOTE_REQUEST_BATCH_SIZE = 80;
 const QUOTE_MIN_INTERVAL_MS = 1500;
 const SNAPSHOT_DELAY_MS = 800;
+const EQUITY_ISIN_RE = /^[A-Z]{2}[A-Z0-9]{8,14}$/;
 
 function chunk<T>(arr: T[], size: number): T[][] {
     if (size <= 0) return [arr];
@@ -19,10 +20,20 @@ function chunk<T>(arr: T[], size: number): T[][] {
     return out;
 }
 
+function normalizeQuoteRequestKey(value: string): string {
+    const normalized = toInstrumentKey(value);
+    if (!normalized) return "";
+    if (EQUITY_ISIN_RE.test(normalized)) {
+        return `NSE_EQ|${normalized}`;
+    }
+    return normalized;
+}
+
 export function useMarketData(
     collectDesiredKeys: () => string[],
     syncSubscriptions: () => void
 ) {
+    const [staleWarning, setStaleWarning] = useState(false);
     const pendingQuoteKeysRef = useRef<Set<string>>(new Set());
     const isFetchingQuotesRef = useRef(false);
     const quoteDebounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -41,7 +52,11 @@ export function useMarketData(
 
     const fetchQuotesFromApi = useCallback(async (requestedKeys: string[], source: string) => {
         const normalizedKeys = Array.from(
-            new Set(requestedKeys.map((k) => toInstrumentKey(k)).filter((k): k is string => Boolean(k)))
+            new Set(
+                requestedKeys
+                    .map((k) => normalizeQuoteRequestKey(k))
+                    .filter((k): k is string => Boolean(k))
+            )
         );
         if (normalizedKeys.length === 0) return;
 
@@ -58,6 +73,7 @@ export function useMarketData(
 
         const hydrated: Array<{ instrumentKey: string; symbol?: string; price: number; close?: number; timestamp?: number }> = [];
         const batches = chunk(normalizedKeys, QUOTE_REQUEST_BATCH_SIZE);
+        let sawStaleFallback = false;
 
         const results = await Promise.all(
             batches.map(async (instrumentKeys) => {
@@ -76,6 +92,12 @@ export function useMarketData(
                     const payload = await response.json();
                     const quoteMap = payload?.data;
                     if (!payload?.success || !quoteMap) return [];
+                    const isStaleFallback =
+                        payload?.dataSource === 'ltp-fallback' || payload?.staleWarning === true;
+                    if (isStaleFallback) {
+                        console.warn('Quotes API returned last traded price fallback data');
+                        sawStaleFallback = true;
+                    }
 
                     const now = Date.now();
                     const batchHydrated: Array<{ instrumentKey: string; symbol?: string; price: number; close?: number; timestamp?: number }> = [];
@@ -107,6 +129,7 @@ export function useMarketData(
             if (batch.length > 0) hydrated.push(...batch);
         }
 
+        setStaleWarning(sawStaleFallback);
         if (hydrated.length > 0) hydrateQuotesRef.current(hydrated);
     }, []);
 
@@ -131,7 +154,7 @@ export function useMarketData(
 
     const queueQuotesRefresh = useCallback((requestedKeys: string[], source: string) => {
         for (const key of requestedKeys) {
-            const normalized = toInstrumentKey(key);
+            const normalized = normalizeQuoteRequestKey(key);
             if (normalized) pendingQuoteKeysRef.current.add(normalized);
         }
 
@@ -268,4 +291,6 @@ export function useMarketData(
         const interval = setInterval(() => void poll(), QUOTE_REFRESH_INTERVAL_MS);
         return () => { cancelled = true; clearInterval(interval); };
     }, [collectDesiredKeys, queueQuotesRefresh]);
+
+    return { staleWarning };
 }

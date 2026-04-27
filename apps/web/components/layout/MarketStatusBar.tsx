@@ -3,13 +3,15 @@
 import { useMarketStore } from "@/domains/market/stores/market.store";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
-import { useMemo, useEffect, useRef, useState, Fragment } from "react";
+import { memo, useMemo, useEffect, useRef, useState, Fragment } from "react";
 import { TICKER_CONFIG } from "@/domains/market/lib/ticker-config";
 
-function TickerItem({
+const TickerItem = memo(function TickerItem({
   cfg,
+  staleWarning = false,
 }: {
   cfg: (typeof TICKER_CONFIG)[number];
+  staleWarning?: boolean;
 }) {
   const quote = useMarketStore((s) => s.quotesByInstrument[cfg.instrumentKey]);
 
@@ -52,7 +54,11 @@ function TickerItem({
       </span>
 
       {/* Price */}
-      <span className="text-foreground tabular-nums text-[11px] font-mono">
+      <span
+        className="text-foreground tabular-nums text-[11px] font-mono"
+        title={staleWarning ? "Showing last traded price" : undefined}
+      >
+        {staleWarning ? "~" : ""}
         {price !== null ? price.toFixed(2) : "--"}
       </span>
 
@@ -73,7 +79,7 @@ function TickerItem({
       </span>
     </Link>
   );
-}
+});
 
 // Thin vertical divider between indices and equities
 function Divider() {
@@ -93,16 +99,11 @@ const TICKER_STYLE = (duration: number) => `
   }
 `;
 
-export function MarketStatusBar() {
-  const quotesByInstrument = useMarketStore((s) => s.quotesByInstrument);
-
-  useEffect(() => {
-    console.log("TICKER DATA:", TICKER_CONFIG.map(cfg => ({
-      key: cfg.instrumentKey,
-      quote: quotesByInstrument[cfg.instrumentKey]
-    })));
-  }, [quotesByInstrument]);
-
+export function MarketStatusBar({
+  staleWarning = false,
+}: {
+  staleWarning?: boolean;
+}) {
   const indices = useMemo(() => TICKER_CONFIG.filter((c) => c.isIndex), []);
   // Duplicate for seamless loop: indices scroll with equities as one band
   const allItems = useMemo(() => TICKER_CONFIG, []);
@@ -129,6 +130,7 @@ export function MarketStatusBar() {
             <TickerItem
               key={`${cfg.symbol}-${idx}`}
               cfg={cfg}
+              staleWarning={staleWarning}
             />
           </Fragment>
         ))}

@@ -9,7 +9,7 @@ import { useMarketData } from '@/domains/market/hooks/useMarketData';
 
 const TICKER_KEYS = TICKER_CONFIG.map(cfg => cfg.instrumentKey).filter(Boolean);
 
-export const useMarketStream = () => {
+export const useMarketStream = (userId?: string | null) => {
     // collectDesiredKeys is purely reading Zustand state — fully stable, no deps
     const collectDesiredKeys = useCallback((): string[] => {
         const state = useMarketStore.getState();
@@ -36,10 +36,10 @@ export const useMarketStream = () => {
     }, []);
 
     // 1. Connection Hook: handles WS setup, teardown, reconnects, tick/candle events
-    const { isConnected, syncSubscriptions } = useMarketConnection(collectDesiredKeys);
+    const { isConnected, syncSubscriptions } = useMarketConnection(collectDesiredKeys, userId);
 
     // 2. Data Hook: handles snapshot fetch, polling, store hydration
-    useMarketData(collectDesiredKeys, syncSubscriptions);
+    const { staleWarning } = useMarketData(collectDesiredKeys, syncSubscriptions);
 
-    return { isConnected };
+    return { isConnected, staleWarning };
 };

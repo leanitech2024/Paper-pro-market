@@ -22,6 +22,7 @@ export type MarketWsErrorContext = {
 
 interface MarketWsOptions {
     url: string;
+    userId?: string | null;
     onTick?: MessageHandler;
     onCandle?: MessageHandler;
     onConnected?: () => void;
@@ -32,6 +33,7 @@ interface MarketWsOptions {
 class MarketWebSocket {
     private ws: WebSocket | null = null;
     private url: string;
+    private userId: string | null;
     
     // Stable forwarder functions — registered once on ws.onmessage etc.
     // Inner targets are swapped via configure() without re-registering on ws
@@ -52,6 +54,7 @@ class MarketWebSocket {
 
     constructor(options: MarketWsOptions) {
         this.url = options.url;
+        this.userId = options.userId ?? null;
         this.mergeHandlers(options);
     }
 
@@ -62,7 +65,24 @@ class MarketWebSocket {
         if (nextUrl && nextUrl !== this.url) {
             this.url = nextUrl;
         }
+        if (options.userId !== undefined) {
+            this.userId = options.userId ?? null;
+        }
         this.mergeHandlers(options);
+    }
+
+    private buildConnectionUrl(): string {
+        if (!this.userId) {
+            return this.url;
+        }
+
+        try {
+            const url = new URL(this.url, window.location.origin);
+            url.searchParams.set('userId', this.userId);
+            return url.toString();
+        } catch {
+            return this.url;
+        }
     }
 
     private mergeHandlers(options: MarketWsOptions) {
@@ -91,7 +111,8 @@ class MarketWebSocket {
         }
 
         try {
-            this.ws = new WebSocket(this.url);
+            const connectionUrl = this.buildConnectionUrl();
+            this.ws = new WebSocket(connectionUrl);
 
             this.ws.onopen = () => {
                 this.reconnectAttempts = 0;
@@ -116,7 +137,7 @@ class MarketWebSocket {
             this.ws.onerror = () => {
                 this.handlers.error?.({
                     kind: 'transport_error',
-                    url: this.url,
+                    url: connectionUrl,
                     readyState: this.ws?.readyState ?? WebSocket.CLOSED,
                     reconnectAttempts: this.reconnectAttempts,
                 });

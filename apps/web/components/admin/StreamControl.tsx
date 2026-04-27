@@ -13,7 +13,7 @@ export function StreamControl() {
   async function startStream() {
     setLoading(true);
     try {
-      const res = await fetch("/api/admin/stream/control", {
+      const res = await fetch("/api/v1/admin/stream/control", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "start" }),

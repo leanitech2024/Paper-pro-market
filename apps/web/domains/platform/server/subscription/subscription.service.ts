@@ -211,10 +211,11 @@ export const SubscriptionService = {
      */
     async hasFeatureAccess(userId: string, feature: GatedFeature): Promise<boolean> {
         const { plan, status } = await this.getEffectivePlan(userId);
+        const resolvedPlan = plan as SubscriptionPlan;
 
         // Expired or cancelled subscriptions get no gated features
         if (status !== 'active') return false;
 
-        return PLAN_FEATURES[plan].has(feature);
+        return PLAN_FEATURES[resolvedPlan].has(feature);
     },
 };

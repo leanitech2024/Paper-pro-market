@@ -34,10 +34,19 @@ function sanitizeInstrumentKeys(input: unknown): string[] {
     if (!Array.isArray(input)) return [];
     const keys = input
         .filter((k): k is string => typeof k === "string")
-        .map((k) => k.trim())
+        .map((k) => normalizeQuoteInstrumentKey(k))
         .filter((k) => k.length > 0);
 
     return Array.from(new Set(keys));
+}
+
+function normalizeQuoteInstrumentKey(raw: string): string {
+    const normalized = toInstrumentKey(String(raw || ""));
+    if (!normalized) return "";
+    if (ISIN_SUFFIX_RE.test(normalized)) {
+        return `NSE_EQ|${normalized}`;
+    }
+    return normalized;
 }
 
 function toUpstoxRequestInstrumentKey(raw: string): string {
@@ -183,11 +192,10 @@ async function resolveSymbolKeysToIsins(
 
     const textSymbols: string[] = [];
     const isinTokens: string[] = [];
-    const isinSuffixes: string[] = [];
     const pendingRequests = new Set<string>();
 
     for (const raw of instrumentKeys) {
-        const key = toInstrumentKey(raw);
+        const key = normalizeQuoteInstrumentKey(raw);
         if (!key) continue;
         const pipe = key.indexOf("|");
         if (pipe === -1) { symbolToIsinMap.set(key, key); continue; }
@@ -199,7 +207,6 @@ async function resolveSymbolKeysToIsins(
             pendingRequests.add(key);
             if (ISIN_SUFFIX_RE.test(suffix)) {
                 isinTokens.push(key);
-                isinSuffixes.push(suffix);
             } else {
                 textSymbols.push(suffix);
             }
@@ -228,7 +235,7 @@ async function resolveSymbolKeysToIsins(
                 rows.push(...symbolRows);
             }
 
-            const tokenCandidates = Array.from(new Set([...isinTokens, ...isinSuffixes]));
+            const tokenCandidates = Array.from(new Set(isinTokens));
             if (tokenCandidates.length > 0) {
                 const tokenRows = await db
                     .select({
@@ -364,7 +371,7 @@ export async function POST(req: NextRequest) {
         const instrumentKeys = Array.from(
             new Set(
                 requestKeys
-                    .map((key) => toInstrumentKey(key))
+                    .map((key) => normalizeQuoteInstrumentKey(key))
                     .filter((key) => key.length > 0)
             )
         );
@@ -382,11 +389,17 @@ export async function POST(req: NextRequest) {
         const cacheKey = buildQuotesCacheKey(instrumentKeys);
         const cached = quotesCache.get(cacheKey);
         if (cached && cached.expiresAt > Date.now()) {
+            const isStaleFallback = cached.source === "ltp-fallback";
             return NextResponse.json({
                 success: true,
                 data: cached.payload,
                 count: Object.keys(cached.payload).length,
                 source: cached.source,
+                dataSource: isStaleFallback ? "ltp-fallback" : "live",
+                staleWarning: isStaleFallback,
+                message: isStaleFallback
+                    ? "Live quotes unavailable, showing last traded price"
+                    : undefined,
                 cached: true,
                 timestamp: new Date().toISOString(),
             });
@@ -459,6 +472,8 @@ export async function POST(req: NextRequest) {
                     data: responsePayload,
                     count: Object.keys(responsePayload).length,
                     source: "quotes",
+                    dataSource: "live",
+                    staleWarning: false,
                     timestamp: new Date().toISOString(),
                 });
             }
@@ -502,6 +517,9 @@ export async function POST(req: NextRequest) {
                 data: fallbackPayload,
                 count: Object.keys(fallbackPayload).length,
                 source: "ltp-fallback",
+                dataSource: "ltp-fallback",
+                staleWarning: true,
+                message: "Live quotes unavailable, showing last traded price",
                 timestamp: new Date().toISOString(),
             });
         }
@@ -514,6 +532,8 @@ export async function POST(req: NextRequest) {
                 data: {},
                 count: 0,
                 source: "empty",
+                dataSource: "live",
+                staleWarning: false,
                 timestamp: new Date().toISOString(),
             });
         }

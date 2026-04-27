@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, Suspense } from "react";
+import { useCallback, useEffect, useMemo, useState, Suspense } from "react";
 import dynamic from "next/dynamic";
 import { EquityTradingForm } from "@/domains/trading/components/equity/equity-trading-form";
 import { Stock } from "@paper-market/core";
@@ -32,7 +32,8 @@ const headerBorderClass = "border-b border-slate-200/80 dark:border-white/[0.08]
 
 export default function EquityPage({ initialSymbol }: { initialSymbol?: string }) {
   const { isMobile, isDesktop } = useTradeViewport();
-  const { getCurrentInstruments, stocksBySymbol } = useMarketStore();
+  const getCurrentInstruments = useMarketStore((state) => state.getCurrentInstruments);
+  const stocksBySymbol = useMarketStore((state) => state.stocksBySymbol);
 
   const [searchModalOpen, setSearchModalOpen] = useState(false);
   const [showOrderForm, setShowOrderForm] = useState(false);
@@ -81,18 +82,18 @@ export default function EquityPage({ initialSymbol }: { initialSymbol?: string }
     if (isMobile) setMobilePanel("watchlist");
   }, [isMobile]);
 
-  const handleSelectStock = (stock: Stock) => {
+  const handleSelectStock = useCallback((stock: Stock) => {
     setSelectedSymbol(stock.symbol);
     setSelectedFallback(stock);
     if (isMobile) setMobilePanel("chart");
-  };
+  }, [isMobile]);
 
-  const handleClearSelection = () => {
+  const handleClearSelection = useCallback(() => {
     setSelectedSymbol(null);
     setSelectedFallback(null);
-  };
+  }, []);
 
-  const chartNode = (
+  const chartNode = useMemo(() => (
     <div className="h-full w-full">
       {selectedSymbol ? (
         <Suspense fallback={<Skeleton className="h-full w-full" />}>
@@ -114,9 +115,9 @@ export default function EquityPage({ initialSymbol }: { initialSymbol?: string }
         </div>
       )}
     </div>
-  );
+  ), [selectedSymbol, selectedStock, isMobile, showOrderForm, isDesktop]);
 
-  const watchlistNode = (
+  const watchlistNode = useMemo(() => (
     <div className="h-full">
       <WatchlistPanel
         instruments={currentInstruments}
@@ -126,25 +127,27 @@ export default function EquityPage({ initialSymbol }: { initialSymbol?: string }
         onClearSelection={handleClearSelection}
       />
     </div>
-  );
+  ), [currentInstruments, selectedSymbol, handleSelectStock, handleClearSelection]);
 
-  const orderPanelNode = selectedStock ? (
-    <div className="h-full min-h-0 overflow-y-auto">
-      <EquityTradingForm
-        selectedStock={selectedStock}
-        onStockSelect={handleSelectStock}
-        instruments={currentInstruments}
-        sheetMode
-        onOpenSearch={() => setSearchModalOpen(true)}
-      />
-    </div>
-  ) : (
-    <div className="flex h-full items-center justify-center p-4 text-xs text-slate-500 dark:text-slate-400">
-      Select a stock to place an order.
-    </div>
-  );
+  const orderPanelNode = useMemo(() => (
+    selectedStock ? (
+      <div className="h-full min-h-0 overflow-y-auto">
+        <EquityTradingForm
+          selectedStock={selectedStock}
+          onStockSelect={handleSelectStock}
+          instruments={currentInstruments}
+          sheetMode
+          onOpenSearch={() => setSearchModalOpen(true)}
+        />
+      </div>
+    ) : (
+      <div className="flex h-full items-center justify-center p-4 text-xs text-slate-500 dark:text-slate-400">
+        Select a stock to place an order.
+      </div>
+    )
+  ), [selectedStock, currentInstruments, handleSelectStock]);
 
-  const tabletWatchlistNode = (
+  const tabletWatchlistNode = useMemo(() => (
     <div className="h-full min-h-0 overflow-hidden bg-transparent p-2">
       <div className={`h-full min-h-0 overflow-hidden ${panelClass} shadow-sm`}>
         <div
@@ -155,9 +158,9 @@ export default function EquityPage({ initialSymbol }: { initialSymbol?: string }
         <div className="h-[calc(100%-37px)] min-h-0 overflow-hidden">{watchlistNode}</div>
       </div>
     </div>
-  );
+  ), [watchlistNode]);
 
-  const tabletOrderNode = (
+  const tabletOrderNode = useMemo(() => (
     <div className="h-full min-h-0 overflow-hidden bg-transparent p-2">
       <div className={`h-full min-h-0 overflow-hidden ${panelClass} shadow-sm`}>
         <div
@@ -168,17 +171,17 @@ export default function EquityPage({ initialSymbol }: { initialSymbol?: string }
         <div className="h-[calc(100%-37px)] min-h-0 overflow-hidden">{orderPanelNode}</div>
       </div>
     </div>
-  );
+  ), [orderPanelNode]);
 
-  const mobileChartNode = (
+  const mobileChartNode = useMemo(() => (
     <div className="h-full min-h-0 bg-transparent p-2 pb-3">
       <div className={`h-full min-h-0 overflow-hidden ${chartPanelClass} shadow-sm`}>
         {chartNode}
       </div>
     </div>
-  );
+  ), [chartNode]);
 
-  const mobileWatchlistNode = (
+  const mobileWatchlistNode = useMemo(() => (
     <div className="h-full min-h-0 bg-transparent p-2 pb-3">
       <div className={`h-full min-h-0 overflow-hidden ${chartPanelClass} shadow-sm`}>
         <div className={`flex items-center justify-between px-3 py-2 ${headerBorderClass}`}>
@@ -202,9 +205,9 @@ export default function EquityPage({ initialSymbol }: { initialSymbol?: string }
         <div className="h-[calc(100%-56px)] min-h-0 overflow-hidden">{watchlistNode}</div>
       </div>
     </div>
-  );
+  ), [watchlistNode]);
 
-  const mobileChartNodeWithHeader = (
+  const mobileChartNodeWithHeader = useMemo(() => (
     <div className="h-full min-h-0 bg-transparent p-2 pb-3">
       <div className={`h-full min-h-0 overflow-hidden ${panelClass} shadow-sm`}>
         <div className={`flex items-center justify-between px-3 py-2 ${headerBorderClass}`}>
@@ -236,13 +239,13 @@ export default function EquityPage({ initialSymbol }: { initialSymbol?: string }
         <div className="h-[calc(100%-49px)] min-h-0 overflow-hidden">{chartNode}</div>
       </div>
     </div>
-  );
+  ), [chartNode]);
 
   const mobileMainNode = mobilePanel === "watchlist" ? mobileWatchlistNode : mobileChartNodeWithHeader;
 
   // Removed mobileTopBarNode as per user request
 
-  const mobileOrderDrawerNode = (
+  const mobileOrderDrawerNode = useMemo(() => (
     <div className="h-[86vh] min-h-0 overflow-hidden bg-background">
       <div className="border-b border-slate-200/80 px-4 py-3 dark:border-white/[0.08]">
         <p className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-500 dark:text-slate-400">
@@ -254,7 +257,7 @@ export default function EquityPage({ initialSymbol }: { initialSymbol?: string }
       </div>
       <div className="h-[calc(100%-62px)] min-h-0 overflow-y-auto">{orderPanelNode}</div>
     </div>
-  );
+  ), [selectedStock, orderPanelNode]);
 
   return (
     <>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, Suspense } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { TerminalHeader } from "@/domains/trading/components/options/TerminalHeader";
 import { OptionChainTable } from "@/domains/trading/components/options/OptionChainTable";
@@ -115,8 +115,10 @@ function OptionsPageContent() {
   const isFetching = useMarketStore(
     (s) => s.isFetchingChain && s.fetchingOptionChainKey === chainKey,
   );
-  const selectPrice = useMarketStore((s) => s.selectPrice);
-  const selectQuote = useMarketStore((s) => s.selectQuote);
+  const underlyingPrice = useMarketStore((s) => Number(s.selectPrice(underlying) || 0));
+  const underlyingChangePercent = useMarketStore(
+    (s) => Number(s.selectQuote(underlying)?.changePercent || 0),
+  );
 
   const expiries = useMemo(() => optionChain?.expiries ?? [], [optionChain?.expiries]);
 
@@ -183,16 +185,8 @@ function OptionsPageContent() {
     return map;
   }, [chainRows]);
 
-  const underlyingQuote = selectQuote(underlying);
-  const chainPrice = Number(optionChain?.underlyingPrice || 0);
-  const fallbackPrice = Number(selectPrice(underlying) || 0);
-  const underlyingPrice =
-    (Number.isFinite(chainPrice) && chainPrice > 0 ? chainPrice : fallbackPrice) || 0;
-
-  const chainChange = Number(optionChain?.underlyingChangePercent || 0);
-  const quoteChange = Number(underlyingQuote?.changePercent || 0);
-  const changePercent =
-    Number.isFinite(chainChange) && chainChange !== 0 ? chainChange : quoteChange;
+  const changePercent = underlyingChangePercent;
+  const roundedPrice = Math.round(underlyingPrice / 50) * 50;
 
   const atmStrike = useMemo(() => {
     if (!chainRows.length || !Number.isFinite(underlyingPrice) || underlyingPrice <= 0) return null;
@@ -206,11 +200,11 @@ function OptionsPageContent() {
       }
     }
     return best;
-  }, [chainRows, underlyingPrice]);
+  }, [chainRows, roundedPrice]);
 
   const daysToExpiry = getDaysToExpiry(selectedExpiry);
 
-  const handleSearchSelect = (stock: Stock) => {
+  const handleSearchSelect = useCallback((stock: Stock) => {
     skipResetRef.current = true;
     setUnderlying(resolveUnderlying(stock));
     const exp = toDateKey(stock.expiryDate);
@@ -218,17 +212,17 @@ function OptionsPageContent() {
     setSelectedContract(stock);
     setMode("single");
     if (isMobile) setMobileView("chain");
-  };
+  }, [isMobile]);
 
-  const handleOpenSearch = () => {
+  const handleOpenSearch = useCallback(() => {
     openSearch({
       mode: "OPTION",
       placeholder: "Search option contracts...",
       onSelect: handleSearchSelect
     });
-  };
+  }, [handleSearchSelect, openSearch]);
 
-  const handleSelectChainSymbol = (symbol: string, side: "BUY" | "SELL" = "BUY") => {
+  const handleSelectChainSymbol = useCallback((symbol: string, side: "BUY" | "SELL" = "BUY") => {
     const selectedRow = chainRows.find((r) => r.ce?.symbol === symbol || r.pe?.symbol === symbol);
     if (!selectedRow) return;
 
@@ -240,20 +234,9 @@ function OptionsPageContent() {
         : undefined;
     if (!leg) return;
 
-    const token = leg.instrumentToken || optionTokenBySymbol[symbol];
+    const token = leg.instrumentToken;
     if (!token) return;
-
-    let chainLtp = 0;
-    for (const rowItem of chainRows) {
-      if (rowItem.ce?.symbol === symbol && rowItem.ce.ltp > 0) {
-        chainLtp = rowItem.ce.ltp;
-        break;
-      }
-      if (rowItem.pe?.symbol === symbol && rowItem.pe.ltp > 0) {
-        chainLtp = rowItem.pe.ltp;
-        break;
-      }
-    }
+    const chainLtp = leg.ltp > 0 ? leg.ltp : 0;
 
     const expiryValue = optionChain?.expiry || selectedExpiry;
     const expiryDate = expiryValue ? new Date(`${expiryValue}T00:00:00`) : undefined;
@@ -281,9 +264,9 @@ function OptionsPageContent() {
     setInitialSide(side);
     setMode("single");
     if (isMobile) setMobileOrderOpen(true);
-  };
+  }, [chainRows, optionChain, selectedExpiry, isMobile]);
 
-  const handleModeChange = (nextMode: TradeMode) => {
+  const handleModeChange = useCallback((nextMode: TradeMode) => {
     setMode(nextMode);
     if (nextMode === "strategy") {
       setSelectedContract(null);
@@ -291,9 +274,9 @@ function OptionsPageContent() {
       return;
     }
     if (isMobile && mobileView === "strategy") setMobileView("chain");
-  };
+  }, [isMobile, mobileView]);
 
-  const renderPanel = (sheetMode = false) => {
+  const renderPanel = useCallback((sheetMode = false) => {
     if (mode === "strategy") {
       return (
         <div className="h-full overflow-y-auto">
@@ -329,7 +312,27 @@ function OptionsPageContent() {
         onSearchClick={handleOpenSearch}
       />
     );
-  };
+  }, [
+    atmStrike,
+    chainRows,
+    daysToExpiry,
+    handleOpenSearch,
+    initialSide,
+    mode,
+    selectedContract,
+    selectedExpiry,
+    underlying,
+    underlyingPrice,
+  ]);
+
+  const panelNode = useMemo(
+    () => renderPanel(false),
+    [mode, selectedContract, underlyingPrice, daysToExpiry, initialSide, chainRows, renderPanel],
+  );
+  const mobilePanelNode = useMemo(
+    () => renderPanel(true),
+    [mode, selectedContract, underlyingPrice, daysToExpiry, initialSide, chainRows, renderPanel],
+  );
 
   const headerNode = (
     <TerminalHeader
@@ -380,7 +383,7 @@ function OptionsPageContent() {
     mobileView === "positions"
       ? <PositionsCards instrumentFilter="options" />
       : mobileView === "strategy"
-      ? <div className="h-full min-h-0 overflow-y-auto">{renderPanel(true)}</div>
+      ? <div className="h-full min-h-0 overflow-y-auto">{mobilePanelNode}</div>
       : mobileChainNode;
 
   const mobileContentNode = (
@@ -571,7 +574,7 @@ function OptionsPageContent() {
         }
         desktopRight={
           <div className={`h-full min-h-0 overflow-hidden ${panelClass}`}>
-            <div className="h-full min-h-0 overflow-y-auto">{renderPanel()}</div>
+            <div className="h-full min-h-0 overflow-y-auto">{panelNode}</div>
           </div>
         }
         desktopRightWidth="340px"
@@ -583,14 +586,14 @@ function OptionsPageContent() {
         tabletLeft={undefined}
         tabletRight={
           <div className={`h-full min-h-0 overflow-hidden ${panelClass}`}>
-            <div className="h-full min-h-0 overflow-y-auto">{renderPanel()}</div>
+            <div className="h-full min-h-0 overflow-y-auto">{panelNode}</div>
           </div>
         }
         mobileContent={mobileContentNode}
         mobileOrderTitle={`${underlying} options order ticket`}
         mobileOrderOpen={mobileOrderOpen}
         onMobileOrderOpenChange={setMobileOrderOpen}
-        mobileOrderDrawer={renderPanel(true)}
+        mobileOrderDrawer={mobilePanelNode}
         footer={<BottomBar />}
       />
     </div>
