@@ -1,7 +1,7 @@
 import { and, eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { orders } from "@paper-market/core/db";
-import type { Instrument } from "@paper-market/core";
+import { toDateKey, type Instrument } from "@paper-market/core";
 import { ApiError } from "@/lib/errors";
 import { instrumentRepository } from "@/domains/market/server/instruments/repository";
 import type {
@@ -101,13 +101,6 @@ function normalizeUnderlyingSymbol(raw: string): string {
         MIDCAP: "MIDCAP",
     };
     return aliases[value] || aliases[compact] || value;
-}
-
-function toDateKey(raw: Date | string | null | undefined): string {
-    if (!raw) return "";
-    const date = raw instanceof Date ? raw : new Date(raw);
-    if (Number.isNaN(date.getTime())) return "";
-    return date.toISOString().slice(0, 10);
 }
 
 function sanitizeKey(input: string): string {

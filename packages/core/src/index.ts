@@ -50,6 +50,10 @@ export * from "./utils/market-hours.js";
 export * from "./utils/holiday-sync.js";
 export * from "./utils/dashboard-metrics.js";
 export * from "./utils/performance-utils.js";
+export * from "./utils/format.js";
+export * from "./utils/numbers.js";
+export * from "./utils/dates.js";
+export * from "./utils/logger.js";
 
 // Trading Universe & Configuration
 export * from "./trading/universe.js";

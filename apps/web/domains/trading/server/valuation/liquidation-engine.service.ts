@@ -11,7 +11,7 @@ import { isTradingEnabled } from "@/lib/system-control";
 import { LedgerService } from "@/domains/platform/server/accounting/ledger/ledger.service";
 import { MarginCalculatorService } from "@/domains/trading/server/margin/margin-calculator.service";
 import { instrumentStore } from "@/domains/market/stores/instrument.store";
-import { OrderPipelineService } from "@/domains/trading/server/pipeline/order-pipeline.service";
+import { eventBus } from "@/lib/event-bus";
 
 type AccountState = "NORMAL" | "MARGIN_STRESSED" | "LIQUIDATING";
 
@@ -257,16 +257,22 @@ export class LiquidationEngineService {
                 rejectionReason: "FORCED_LIQUIDATION",
             };
 
-            const order = await OrderPipelineService.placeOrder(userId, orderPayload, {
-                force,
-                isClosingOrder: true,
+            eventBus.emit("liquidation.order.requested", {
+                userId,
+                payload: orderPayload,
+                options: {
+                    force,
+                    isClosingOrder: true,
+                },
             });
+
+            // We return true because the request was successfully emitted.
+            // The actual order placement happens asynchronously via event listener to break cycles.
 
             logger.warn(
                 {
                     event: "POSITION_FORCE_CLOSED_ORDER_PLACED",
                     userId,
-                    orderId: order.id,
                     instrumentToken: position.instrumentToken,
                     side,
                     quantity,

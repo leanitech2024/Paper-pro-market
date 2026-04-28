@@ -10,7 +10,7 @@
  * API: GET https://api.upstox.com/v2/market/holidays/:date  (YYYY-MM-DD)
  */
 
-import { getIstDateKey } from "./market-hours.js";
+import { getIstDateKey } from "./dates.js";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 

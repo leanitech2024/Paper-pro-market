@@ -6,6 +6,8 @@ import {
   calculateMaxDrawdownPct,
   getIstDayBoundsUtc,
   roundTo,
+  toFiniteNumber,
+  toNullableNumber,
 } from "@paper-market/core";
 import type { DashboardOverviewData, DashboardPosition } from "@paper-market/core";
 import { WalletService } from "@/domains/platform/server/accounting/wallet/wallet.service";
@@ -13,17 +15,6 @@ import { realTimeMarketService } from "@/domains/market/server/feeds/realtime-ma
 import { logger } from "@/lib/logger";
 
 const STALE_THRESHOLD_SEC = 20;
-
-function toFiniteNumber(value: unknown): number {
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : 0;
-}
-
-function toNullableNumber(value: unknown): number | null {
-  if (value === null || value === undefined) return null;
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : null;
-}
 
 function isOrderSide(value: unknown): value is "BUY" | "SELL" {
   return value === "BUY" || value === "SELL";
@@ -139,6 +130,7 @@ export class DashboardService {
     // into memory. For active traders with thousands of trades this was an OOM risk.
     const { start: dayStartUtc, end: dayEndUtc } = getIstDayBoundsUtc(asOf);
 
+    // Safe: Drizzle sql`` tagged template — values are parameterized and columns are referenced safely
     const [pnlAgg] = await db
       .select({
         closedPnL: sql<number>`COALESCE(SUM(CASE WHEN ${orders.realizedPnL} IS NOT NULL THEN ${orders.realizedPnL}::numeric ELSE 0 END), 0)`,

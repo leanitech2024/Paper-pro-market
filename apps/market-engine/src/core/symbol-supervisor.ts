@@ -1,5 +1,6 @@
 // UpstoxWebSocket will be imported from the upstox directory
 import type { UpstoxWebSocket } from '../upstox/websocket.js';
+import { logger } from '../lib/logger.js';
 
 // ═══════════════════════════════════════════════════════════
 // 📊 SYMBOL SUPERVISOR: Reference-counted subscription manager
@@ -50,7 +51,7 @@ export class SymbolSupervisor {
                     
                     if (batch.length > 0) {
                         this.ws.subscribe(batch); // Batch call!
-                        console.log(`🔔 Subscribed (batch ${batch.length}): ${batch.join(', ')}`);
+                        logger.info({ count: batch.length, symbols: batch }, "Subscribed to symbols batch");
                     }
                     
                     this.pending.clear();
@@ -58,7 +59,7 @@ export class SymbolSupervisor {
                 }, 50); // 50ms batching window
             }
         } else {
-            console.log(`🔔 Ref++ ${symbol} (count: ${count + 1})`);
+            logger.debug({ symbol, count: count + 1 }, "Symbol reference increased");
         }
     }
     
@@ -93,13 +94,13 @@ export class SymbolSupervisor {
 
                     if (batch.length > 0) {
                         this.ws.unsubscribe(batch);
-                        console.log(`🔕 Unsubscribed (batch ${batch.length}): ${batch.join(', ')}`);
+                        logger.info({ count: batch.length, symbols: batch }, "Unsubscribed from symbols batch");
                     }
                 }, 5000);
             }
         } else {
             this.active.set(symbol, count - 1);
-            console.log(`🔕 Ref-- ${symbol} (count: ${count - 1})`);
+            logger.debug({ symbol, count: count - 1 }, "Symbol reference decreased");
         }
     }
     
@@ -129,7 +130,7 @@ export class SymbolSupervisor {
         if (this.pending.size > 0) {
             const batch = Array.from(this.pending);
             this.ws.subscribe(batch);
-            console.log(`🔔 Flushed pending (${batch.length}): ${batch.join(', ')}`);
+            logger.info({ count: batch.length, symbols: batch }, "Flushed pending subscriptions");
             this.pending.clear();
         }
     }
@@ -152,7 +153,7 @@ export class SymbolSupervisor {
 
         if (batch.length > 0) {
             this.ws.unsubscribe(batch);
-            console.log(`🔕 Flushed unsub pending (${batch.length}): ${batch.join(', ')}`);
+            logger.info({ count: batch.length, symbols: batch }, "Flushed pending unsubscribes");
         }
     }
 }

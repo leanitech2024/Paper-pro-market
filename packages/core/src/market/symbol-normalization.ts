@@ -116,3 +116,19 @@ export function symbolToIndexInstrumentKey(symbol: string): string | null {
   return null;
 }
 
+export function toIndexInstrumentSuffix(instrumentToken: string): string {
+    const key = String(instrumentToken || '').toUpperCase();
+    if (key.includes('NIFTY_50') || key.includes('NIFTY 50')) return 'NIFTY';
+    if (key.includes('BANKNIFTY') || key.includes('NIFTY BANK')) return 'BANKNIFTY';
+    if (key.includes('FINNIFTY') || key.includes('FIN_SERVICE')) return 'FINNIFTY';
+    return '';
+}
+
+export function canonicalizeUnderlyingSymbol(symbol: string): string {
+    const s = String(symbol || "").toUpperCase();
+    if (s === "NIFTY 50" || s === "NIFTY") return "NIFTY";
+    if (s === "NIFTY BANK" || s === "BANKNIFTY") return "BANKNIFTY";
+    if (s === "NIFTY FIN SERVICE" || s === "FINNIFTY") return "FINNIFTY";
+    return s;
+}
+

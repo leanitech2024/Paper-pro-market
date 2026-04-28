@@ -9,7 +9,7 @@ import { EmptyPanel } from "@/domains/trading/components/options/EmptyPanel";
 import { StrategyBuilderPanel } from "@/domains/trading/components/options/StrategyBuilderPanel";
 import { BottomBar } from "@/domains/trading/components/options/BottomBar";
 import { OptionChainRow } from "@/domains/trading/components/options/types";
-import { Stock } from "@paper-market/core";
+import { Stock, formatPct, toDateKey } from "@paper-market/core";
 import { useMarketStore } from "@/domains/market/stores/market.store";
 import { AdaptiveTradeLayout } from "@/domains/trading/components/layout/AdaptiveTradeLayout";
 import { PositionsCards } from "@/domains/trading/components/mobile/PositionsCards";
@@ -23,13 +23,6 @@ type MobileView = "chain" | "positions" | "strategy";
 
 function normalizeKey(v: string): string {
   return String(v || "").trim().toUpperCase().replace(/\s+/g, "");
-}
-
-function toDateKey(raw: Date | string | undefined): string {
-  if (!raw) return "";
-  const d = raw instanceof Date ? raw : new Date(raw);
-  if (Number.isNaN(d.getTime())) return "";
-  return d.toISOString().slice(0, 10);
 }
 
 function buildOptionChainKey(symbol: string, expiry?: string): string {
@@ -66,11 +59,6 @@ function formatExpiryChip(dateKey: string): string {
 function formatLtp(value: number): string {
   if (!Number.isFinite(value) || value <= 0) return "--";
   return value.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
-
-function formatPct(value: number): string {
-  if (!Number.isFinite(value)) return "--";
-  return `${value > 0 ? "+" : ""}${value.toFixed(2)}%`;
 }
 
 const panelClass =

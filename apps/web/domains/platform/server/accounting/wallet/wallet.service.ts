@@ -163,9 +163,6 @@ type WalletJournalOptions = {
 
 export class WalletService {
 
-    static async createWallet(userId: string, tx?: TxLike): Promise<Wallet> {
-        return this.getWallet(userId, tx);
-    }
 
     static async getWallet(userId: string, tx?: TxLike): Promise<Wallet> {
         const executor = tx || db;

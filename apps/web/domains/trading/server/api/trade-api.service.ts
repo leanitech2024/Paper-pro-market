@@ -1,3 +1,5 @@
+import { clientLogger } from "@/lib/client-logger";
+
 export async function submitOrder(payload: Record<string, unknown>) {
   const res = await fetch("/api/v1/orders", {
     method: "POST",
@@ -52,7 +54,7 @@ export async function submitOrder(payload: Record<string, unknown>) {
       );
     })();
 
-    console.error("Place Order API Failed:", {
+    clientLogger.error("Place Order API Failed", {
       status: res.status,
       errorCode,
       data,

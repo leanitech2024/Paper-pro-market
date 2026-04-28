@@ -73,11 +73,8 @@ async function main() {
         };
     });
 
-    console.log("PORT ENV:", process.env.PORT);
-    console.log("SERVER STARTING ON:", PORT);
-
     await fastify.listen({ port: PORT, host: '0.0.0.0' });
-    console.log("SERVER LISTENING ON:", PORT);
+    logger.info({ port: PORT }, "Server listening");
     logger.info({ host: '0.0.0.0', port: PORT }, 'HTTP + WebSocket server started');
     logger.info('✅ Market Engine is running');
 

@@ -1,4 +1,4 @@
-import { tickBus } from "@paper-market/core";
+import { tickBus, toFiniteNumber } from "@paper-market/core";
 import { toInstrumentKey } from "@paper-market/core";
 import type { NormalizedTick } from "../core/types.js";
 import { logger } from "./logger.js";
@@ -18,12 +18,6 @@ let flushTimer: NodeJS.Timeout | null = null;
 
 const pendingByInstrument = new Map<string, MarketLtpCacheRecord>();
 const prevCloseByInstrument = new Map<string, number>();
-
-const toFiniteNumber = (value: unknown): number | null => {
-  const num = Number(value);
-  return Number.isFinite(num) ? num : null;
-};
-
 const buildRecordFromTick = (tick: NormalizedTick): MarketLtpCacheRecord | null => {
   const instrumentKey = toInstrumentKey(tick.instrumentKey || "");
   if (!instrumentKey) return null;

@@ -1,16 +1,6 @@
 import { LiveUpdatesSlice, MarketSlice, Quote } from '@/domains/trading/types/trading.types';
-import { candleEngine } from "@paper-market/core";
+import { candleEngine, toFiniteNumber, toDateKey } from "@paper-market/core";
 import { toCanonicalSymbol, toInstrumentKey, toSymbolKey } from "@paper-market/core";
-
-const toFiniteNumber = (value: unknown): number =>
-  Number.isFinite(Number(value)) ? Number(value) : 0;
-
-function toDateKey(raw?: string): string {
-  if (!raw) return "";
-  const parsed = new Date(raw);
-  if (Number.isNaN(parsed.getTime())) return "";
-  return parsed.toISOString().slice(0, 10);
-}
 
 function buildOptionChainKey(symbol: string, expiry?: string): string {
   const normalizedSymbol = String(symbol || "").trim().toUpperCase();

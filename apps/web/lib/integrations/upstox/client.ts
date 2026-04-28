@@ -53,7 +53,13 @@ export class UpstoxClient {
         // For now, returning a mock or existing token to satisfy contract.
         // In production, this MUST call https://api.upstox.com/v2/login/authorization/token
 
-        this.accessToken = "mock_access_token";
+        this.accessToken = process.env.UPSTOX_MOCK_TOKEN ?? "";
+        if (!this.accessToken) {
+            throw new Error(
+                "UPSTOX_MOCK_TOKEN is required in mock mode. " +
+                "Set it in .env.local"
+            );
+        }
         this.tokenExpiry = Date.now() + (24 * 60 * 60 * 1000); // 24 hours
         return this.accessToken;
     }

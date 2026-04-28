@@ -1,4 +1,5 @@
 import { ISeriesApi, CandlestickData } from 'lightweight-charts';
+import { clientLogger } from '@/lib/client-logger';
 
 // ═══════════════════════════════════════════════════════════
 // 📊 CHART CONTROLLER: Instance-based direct chart manipulation
@@ -34,7 +35,7 @@ export class ChartController {
 
     constructor(chartId: string) {
         this.chartId = chartId;
-        console.log(`📊 ChartController created: ${chartId}`);
+        clientLogger.info(`ChartController created: ${chartId}`);
     }
 
     /**
@@ -42,12 +43,12 @@ export class ChartController {
      */
     setSeries(series: ISeriesApi<'Candlestick'> | null) {
         if (this.isDestroyed) {
-            console.warn(`⚠️ ChartController [${this.chartId}]: Cannot set series - controller is destroyed`);
+            clientLogger.warn(`ChartController [${this.chartId}]: Cannot set series - controller is destroyed`);
             return;
         }
         this.series = series;
         if (series) {
-            console.log(`✅ Series attached to ChartController: ${this.chartId}`);
+            clientLogger.info(`Series attached to ChartController: ${this.chartId}`);
         }
     }
 
@@ -67,7 +68,7 @@ export class ChartController {
         const series = this.series;
         
         if (!series) {
-            console.warn(`⚠️ ChartController: No series attached for ${this.chartId}`);
+            clientLogger.warn(`ChartController: No series attached for ${this.chartId}`);
             return;
         }
 
@@ -96,13 +97,13 @@ export class ChartController {
 
                         // Sample logging (every 100 updates)
                         if (this.updateCount % 100 === 0) {
-                            console.log(`📈 ChartController [${this.chartId}]: ${this.updateCount} updates processed`);
+                            clientLogger.info(`ChartController [${this.chartId}]: ${this.updateCount} updates processed`);
                         }
 
                         this.pendingUpdate = null;
                     } catch (err) {
                         // Series destroyed during RAF callback
-                        console.warn(`⚠️ ChartController [${this.chartId}]: Series destroyed during update`, err);
+                        clientLogger.warn(`ChartController [${this.chartId}]: Series destroyed during update`, err);
                     }
                 }
                 this.rafId = null;
@@ -118,7 +119,7 @@ export class ChartController {
     setData(data: CandlestickData[]) {
         // 🔥 CRITICAL: Check if destroyed first
         if (this.isDestroyed) {
-            console.warn(`⚠️ ChartController [${this.chartId}]: Cannot setData - controller is destroyed`);
+            clientLogger.warn(`ChartController [${this.chartId}]: Cannot setData - controller is destroyed`);
             return;
         }
         
@@ -127,7 +128,7 @@ export class ChartController {
         const series = this.series;
         
         if (!series) {
-            console.warn(`⚠️ ChartController: No series attached for ${this.chartId}`);
+            clientLogger.warn(`ChartController: No series attached for ${this.chartId}`);
             return;
         }
 
@@ -150,10 +151,10 @@ export class ChartController {
         // This allows infinite scroll to work properly
         try {
             series.setData(sortedData);
-            console.log(`📊 ChartController [${this.chartId}]: Set ${sortedData.length} candles`);
+            clientLogger.info(`ChartController [${this.chartId}]: Set ${sortedData.length} candles`);
         } catch (err) {
             // Series was destroyed mid-call (rapid stock switching)
-            console.warn(`⚠️ ChartController [${this.chartId}]: Series destroyed during setData`, err);
+            clientLogger.warn(`ChartController [${this.chartId}]: Series destroyed during setData`, err);
         }
     }
 
@@ -183,6 +184,6 @@ export class ChartController {
         }
         this.series = null;
         this.pendingUpdate = null;
-        console.log(`🗑️ ChartController destroyed: ${this.chartId}`);
+        clientLogger.info(`ChartController destroyed: ${this.chartId}`);
     }
 }

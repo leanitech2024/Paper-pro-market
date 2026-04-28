@@ -125,7 +125,6 @@ export function ChartContainer({ symbol, headerSymbol, instrumentKey, onSearchCl
   useChartHotkeysEffect(symbol);
 
   const {
-    hoveredCandle,
     setHoveredCandle,
     legendData
   } = useChartHoverInfo(historicalData, showVolume, volumeData);

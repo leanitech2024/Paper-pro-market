@@ -16,6 +16,7 @@
  */
 
 import { getNseHolidays, isNseTradingHoliday } from "./holiday-sync.js";
+import { getIstDateKey } from "./dates.js";
 
 // ─── Env-var fallback (sync, for backwards-compat) ───────────────────────────
 
@@ -45,20 +46,6 @@ const ENV_MARKET_HOLIDAYS_IST = loadHolidaySet();
 
 // ─── Date helpers ─────────────────────────────────────────────────────────────
 
-export function getIstDateKey(now: Date = new Date()): string {
-    const parts = new Intl.DateTimeFormat("en-CA", {
-        timeZone: "Asia/Kolkata",
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit",
-    }).formatToParts(now);
-
-    const year = parts.find((p) => p.type === "year")?.value ?? "0000";
-    const month = parts.find((p) => p.type === "month")?.value ?? "00";
-    const day = parts.find((p) => p.type === "day")?.value ?? "00";
-
-    return `${year}-${month}-${day}`;
-}
 
 // ─── IST weekday + time parser ────────────────────────────────────────────────
 

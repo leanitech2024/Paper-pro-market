@@ -1,5 +1,5 @@
 import { marketSimulation } from "@/domains/market/server/feeds/market-simulation.service";
-import { OptionChainInput } from "@paper-market/core";
+import { OptionChainInput, toDateKey } from "@paper-market/core";
 import { UpstoxService } from "@/domains/market/server/feeds/upstox-feed.service";
 import { instrumentRepository } from "@/domains/market/server/instruments/repository";
 import { symbolToIndexInstrumentKey } from "@paper-market/core";
@@ -20,13 +20,6 @@ function normalizeUnderlyingSymbol(raw: string): string {
     if (!value) return "";
     const compact = value.replace(/\s+/g, "");
     return UNDERLYING_ALIAS[value] || UNDERLYING_ALIAS[compact] || value;
-}
-
-function toDateKey(raw: Date | string | null | undefined): string {
-    if (!raw) return "";
-    const value = raw instanceof Date ? raw : new Date(raw);
-    if (Number.isNaN(value.getTime())) return "";
-    return value.toISOString().slice(0, 10);
 }
 
 function toIstDayNumber(date: Date): number {

@@ -2,6 +2,7 @@
 
 import { useMemo } from "react";
 import { cn } from "@/lib/utils";
+import { formatCurrency } from "@paper-market/core";
 
 type AccountState = "NORMAL" | "MARGIN_STRESSED" | "LIQUIDATING";
 type RiskLevel = "LOW" | "MODERATE" | "HIGH";
@@ -16,14 +17,6 @@ type PostTradeRiskPreviewProps = {
 
 function clamp(value: number, min: number, max: number): number {
     return Math.min(max, Math.max(min, value));
-}
-
-function formatCurrency(value: number): string {
-    return new Intl.NumberFormat("en-IN", {
-        style: "currency",
-        currency: "INR",
-        maximumFractionDigits: 0,
-    }).format(value);
 }
 
 function resolveRiskLevel(accountState: AccountState, marginUsedPct: number): RiskLevel {

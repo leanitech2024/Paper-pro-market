@@ -9,6 +9,7 @@ import { WalletService } from "@/domains/platform/server/accounting/wallet/walle
 import { bootstrapUserLedgerState } from "@/domains/platform/server/accounting/ledger/ledger-bootstrap.service";
 import { WatchlistService } from "@/domains/market/server/catalog/watchlist.service";
 import { SubscriptionService } from "@/domains/platform/server/subscription/subscription.service";
+import { logger } from "@/lib/logger";
 
 export async function POST(req: NextRequest) {
     try {
@@ -38,7 +39,7 @@ export async function POST(req: NextRequest) {
             .returning();
 
         await db.transaction(async (tx) => {
-            await WalletService.createWallet(user.id, tx);
+            await WalletService.getWallet(user.id, tx);
             await bootstrapUserLedgerState(user.id, tx);
             await SubscriptionService.createTrialSubscription(user.id, tx);
         });
@@ -46,7 +47,7 @@ export async function POST(req: NextRequest) {
         try {
             await WatchlistService.ensureDefaultWatchlist(user.id);
         } catch (err) {
-            console.error("Failed to create default watchlist during signup:", err);
+            logger.error({ err, userId: user.id }, "Failed to create default watchlist during signup");
         }
 
         return NextResponse.json(

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { PositionService } from "@/domains/trading/server/positions/position.service";
+import { OrderService } from "@/domains/trading/server/order/order.service";
 import { handleError } from "@/lib/errors";
 import { logger } from "@/lib/logger";
 import { z } from "zod";
@@ -31,7 +31,7 @@ export async function POST(
         logger.info({ userId: session.user.id, positionId, quantity }, "Closing position");
 
         // Close position via service
-        const result = await PositionService.closePosition(
+        const result = await OrderService.closePosition(
             session.user.id,
             positionId,
             quantity

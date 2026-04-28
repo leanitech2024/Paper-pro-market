@@ -1,5 +1,6 @@
 import { NormalizedTick } from './market-data.types.js';
 import { isValidTick } from './tick-validation.js';
+import { logger } from '../utils/logger.js';
 
 const MAX_TICK_LISTENERS = 50;
 
@@ -41,7 +42,7 @@ class TickBus {
     on(_event: 'tick', handler: (tick: NormalizedTick) => void): void {
         this.listeners.add(handler);
         if (this.listeners.size > MAX_TICK_LISTENERS) {
-            console.warn(`⚠️ TickBus listener count exceeded safe limit (${this.listeners.size} > ${MAX_TICK_LISTENERS})`);
+            logger.warn({ count: this.listeners.size, limit: MAX_TICK_LISTENERS }, "TickBus listener count exceeded safe limit");
         }
     }
 
@@ -76,7 +77,7 @@ class TickBus {
             if (!globalState.__TPS_INTERVAL) {
                 globalState.__TPS_INTERVAL = setInterval(() => {
                     const tps = (globalState.__TPS || 0) / 5;
-                    console.log("TICKS/SEC:", tps.toFixed(1));
+                    logger.debug({ tps: Number(tps.toFixed(1)) }, "TICKS/SEC");
                     globalState.__TPS = 0;
                 }, 5000);
             }
@@ -117,7 +118,7 @@ class TickBus {
                     try {
                         handler(t);
                     } catch (err) {
-                        console.error('❌ TickBus listener error:', err);
+                        logger.error({ err }, 'TickBus listener error');
                     }
                 });
             });
@@ -127,7 +128,7 @@ class TickBus {
 
         // Sample logging (1% of ticks to avoid spam)
         if (process.env.DEBUG_MARKET === 'true' && this.tickCount % 100 === 0) {
-            console.log(`📊 TickBus: ${this.tickCount} total ticks processed`);
+            logger.debug({ count: this.tickCount }, "TickBus ticks processed");
         }
     }
 
@@ -178,6 +179,6 @@ if (process.env.NODE_ENV !== 'production') {
 if (process.env.DEBUG_MARKET === 'true' && typeof process !== 'undefined' && process.memoryUsage && !globalState.__MEMORY_INTERVAL) {
     globalState.__MEMORY_INTERVAL = setInterval(() => {
         const m = process.memoryUsage();
-        console.log("HEAP MB:", (m.heapUsed / 1024 / 1024).toFixed(1));
+        logger.debug({ heapUsedMb: Number((m.heapUsed / 1024 / 1024).toFixed(1)) }, "HEAP MB");
     }, 15000);
 }

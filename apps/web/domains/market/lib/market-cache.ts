@@ -1,4 +1,4 @@
-import { toInstrumentKey } from "@paper-market/core";
+import { toInstrumentKey, toFiniteNumber } from "@paper-market/core";
 
 export const CACHE_TTL_SECONDS = 3600;
 export const CACHE_TTL_JITTER_MAX_SECONDS = 300;
@@ -29,12 +29,6 @@ const asObject = (value: unknown): Record<string, unknown> | null => {
   if (typeof value === "object") return value as Record<string, unknown>;
   return null;
 };
-
-const toFiniteNumber = (value: unknown): number | null => {
-  const num = Number(value);
-  return Number.isFinite(num) ? num : null;
-};
-
 const normalizeKey = (instrumentKey: string): string => toInstrumentKey(instrumentKey);
 export const ltpKey = (instrumentKey: string): string =>
   `${cachePrefix}:v1:ltp:${normalizeKey(instrumentKey)}`;

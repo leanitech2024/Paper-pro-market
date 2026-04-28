@@ -252,7 +252,7 @@ export class PositionService {
             );
             const totalCostStr = LedgerService.add(currentCostStr, tradeCostStr);
             const totalQty = Math.abs(currentQuantity) + tradeQuantity;
-            // Divide back Ã¢â‚¬â€ keep as float for the position row (string stored at 2dp)
+            // Divide back Ã¢â‚¬â€  keep as float for the position row (string stored at 2dp)
             newAvgPriceNum = parseFloat(totalCostStr) / totalQty;
         } else {
             // Decreasing / closing: realize PnL using BigInt path so precision
@@ -287,102 +287,4 @@ export class PositionService {
 
         return { newQuantity, newAvgPrice, newRealizedPnL, tradeRealizedPnL };
     }
-
-    /**
-     * Close a position (full or partial) by creating an opposite order.
-     * For paper trading simplicity, we'll only support full close.
-     */
-    static async closePosition(
-        userId: string,
-        positionId: string,
-        quantity?: number
-    ) {
-        try {
-            // Get the position
-            const [position] = await db
-                .select()
-                .from(positions)
-                .where(and(
-                    eq(positions.id, positionId),
-                    eq(positions.userId, userId)
-                ))
-                .limit(1);
-
-            if (!position) {
-                throw new ApiError("Position not found", 404, "POSITION_NOT_FOUND");
-            }
-
-            // Get instrument for validation
-            // Get from Repository (Fast & Consistent)
-            if (!instrumentStore.isReady()) {
-                await instrumentStore.initialize();
-            }
-            if (!instrumentStore.isReady()) {
-                throw new ApiError("Instrument store not ready", 503, "INSTRUMENT_STORE_NOT_READY");
-            }
-
-            const instrumentToken = requireInstrumentTokenForIdentityLookup({
-                context: "PositionService.closePosition",
-                instrumentToken: position.instrumentToken,
-                symbol: position.symbol,
-            });
-
-            const instrument = instrumentStore.getByToken(instrumentToken);
-
-            if (!instrument) {
-                throw new ApiError("Instrument not found", 404, "INSTRUMENT_NOT_FOUND");
-            }
-
-            // Determine close quantity (full close for paper trading)
-            const closeQuantity = quantity || Math.abs(position.quantity);
-            
-            // Validate quantity
-            if (closeQuantity > Math.abs(position.quantity)) {
-                throw new ApiError(
-                    `Cannot close ${closeQuantity} units. Position only has ${Math.abs(position.quantity)} units.`,
-                    400,
-                    "INVALID_QUANTITY"
-                );
-            }
-
-            // Create opposite order (BUY position Ã¢â€ â€™ SELL order, SELL position Ã¢â€ â€™ BUY order)
-            const oppositeSide: "BUY" | "SELL" = position.quantity > 0 ? "SELL" : "BUY";
-            const resolvedProductType: ProductType =
-                position.productType === "MIS" ? "MIS" : "CNC";
-
-            // Import OrderService to place the closing order
-            const { OrderService } = await import("@/domains/trading/server/order/order.service");
-            
-            const closeOrder = await OrderService.placeOrder(userId, {
-                symbol: position.symbol,
-                instrumentToken,
-                side: oppositeSide,
-                quantity: closeQuantity,
-                orderType: "MARKET", // Always use MARKET for closing
-                productType: resolvedProductType,
-                leverage: position.leverage ?? 1,
-            }, { isClosingOrder: true }); // Skip margin/balance check Ã¢â‚¬â€ margin already blocked
-
-            logger.info({ 
-                userId, 
-                positionId, 
-                symbol: position.symbol, 
-                closeQuantity,
-                orderId: closeOrder.id 
-            }, "Position close order placed");
-
-            return {
-                orderId: closeOrder.id,
-                positionId: position.id,
-                symbol: position.symbol,
-                closedQuantity: closeQuantity,
-                side: oppositeSide
-            };
-        } catch (err) {
-            if (err instanceof ApiError) throw err;
-            logger.error({ err: err, userId, positionId }, "Failed to close position");
-            throw new ApiError("Failed to close position", 500, "POSITION_CLOSE_FAILED");
-        }
-    }
 }
-

@@ -85,7 +85,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                 })
                 .returning({ id: users.id });
 
-              await WalletService.createWallet(created.id, tx);
+              await WalletService.getWallet(created.id, tx);
               await bootstrapUserLedgerState(created.id, tx);
               await SubscriptionService.createTrialSubscription(created.id, tx);
 

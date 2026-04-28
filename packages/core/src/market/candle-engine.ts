@@ -1,5 +1,6 @@
 import { NormalizedTick, RealtimeCandle as Candle, CandleUpdate } from './market-data.types.js';
 import { EventEmitter } from 'events';
+import { logger } from '../utils/logger.js';
 
 // ═══════════════════════════════════════════════════════════
 // 📊 CANDLE CONTEXT: Per-symbol+interval state isolation
@@ -41,7 +42,7 @@ export class CandleEngine extends EventEmitter {
         if (interval) {
             const key = `${instrumentKey}:${interval}`;
             this.contexts.delete(key);
-            if (process.env.DEBUG_MARKET === 'true') console.log(`🔄 Reset candle context: ${key}`);
+            if (process.env.DEBUG_MARKET === 'true') logger.debug({ key }, "Reset candle context");
         } else {
             // Reset all intervals for this symbol
             let count = 0;
@@ -51,7 +52,7 @@ export class CandleEngine extends EventEmitter {
                     count++;
                 }
             }
-            if (process.env.DEBUG_MARKET === 'true') console.log(`🔄 Reset ${count} candle contexts for ${instrumentKey}`);
+            if (process.env.DEBUG_MARKET === 'true') logger.debug({ count, instrumentKey }, "Reset multiple candle contexts");
         }
     }
 
@@ -77,7 +78,7 @@ export class CandleEngine extends EventEmitter {
              
              if (tick.timestamp < candleStartTime) {
                  if (process.env.DEBUG_MARKET === 'true') {
-                     console.warn(`⚠️ Stale tick ignored: ${displaySymbol} @ ${tick.timestamp} < ${candleStartTime}`);
+                     logger.warn({ displaySymbol, tickTimestamp: tick.timestamp, candleStartTime }, "Stale tick ignored");
                  }
                  return null;
              }
@@ -121,7 +122,7 @@ export class CandleEngine extends EventEmitter {
             // Check if gap is too large (market was closed)
             const timeDiff = tickTimeSeconds - (ctx.lastBucket * interval);
             if (timeDiff >= MAX_GAP) {
-                if (process.env.DEBUG_MARKET === 'true') console.log(`⚠️ Large gap detected for ${displaySymbol}: ${timeDiff}s (market was closed)`);
+                if (process.env.DEBUG_MARKET === 'true') logger.warn({ displaySymbol, timeDiff }, "Large gap detected");
             }
             isNewCandle = true;
         }
@@ -143,7 +144,7 @@ export class CandleEngine extends EventEmitter {
 
             // Sample logging (10% of new candles)
             if (process.env.DEBUG_MARKET === 'true' && Math.random() < 0.1) {
-                console.log(`✅ NEW Candle: ${displaySymbol} @ ${new Date(alignedTime * 1000).toISOString()}`);
+                logger.debug({ displaySymbol, time: new Date(alignedTime * 1000).toISOString() }, "NEW Candle");
             }
 
             const result: CandleUpdate = {
@@ -173,7 +174,7 @@ export class CandleEngine extends EventEmitter {
 
             // Sample logging (1% of updates to avoid spam)
             if (process.env.DEBUG_MARKET === 'true' && Math.random() < 0.01) {
-                console.log(`📈 UPDATE: ${displaySymbol} O${updated.open} H${updated.high} L${updated.low} C${updated.close}`);
+                logger.debug({ displaySymbol, o: updated.open, h: updated.high, l: updated.low, c: updated.close }, "Candle update");
             }
 
             const result: CandleUpdate = {

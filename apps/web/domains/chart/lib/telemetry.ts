@@ -1,3 +1,5 @@
+import { clientLogger } from "@/lib/client-logger";
+
 export type AnalysisTelemetryLevel = "info" | "warn" | "error";
 
 export type AnalysisTelemetryEvent = {
@@ -8,10 +10,14 @@ export type AnalysisTelemetryEvent = {
 
 export function trackAnalysisEvent(event: AnalysisTelemetryEvent) {
   const level = event.level || "info";
-  const logger =
-    level === "error" ? console.error : level === "warn" ? console.warn : console.info;
+  const logFn =
+    level === "error"
+      ? clientLogger.error
+      : level === "warn"
+      ? clientLogger.warn
+      : clientLogger.info;
 
-  logger(`[analysis:${event.name}]`, event.payload || {});
+  logFn(`[analysis:${event.name}]`, event.payload || {});
 
   if (typeof window !== "undefined") {
     window.dispatchEvent(

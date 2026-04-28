@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 import { config as loadEnv } from "dotenv";
 import { existsSync } from "fs";
+import { logger } from "./lib/logger";
 
 // Load envs since we run from outside Next.js
 const envPath =
@@ -13,11 +14,15 @@ loadEnv({ path: envPath });
 const { db, pool } = createDb(process.env.DATABASE_URL!);
 
 const EMAIL = "john@gmail.com";
-const PASSWORD = "123456";
+const PASSWORD = process.env.SEED_ADMIN_PASSWORD as string;
+if (!PASSWORD) {
+  logger.error("SEED_ADMIN_PASSWORD env var is required");
+  process.exit(1);
+}
 
 async function main() {
   try {
-    console.log(`Ensuring admin user ${EMAIL}...`);
+    logger.info(`Ensuring admin user ${EMAIL}...`);
     const hashedPassword = await bcrypt.hash(PASSWORD, 10);
 
     const [existing] = await db
@@ -33,7 +38,7 @@ async function main() {
         .update(users)
         .set({ password: hashedPassword, role: "admin" })
         .where(eq(users.id, userId));
-      console.log("Updated user:", userId);
+      logger.info({ userId }, "Updated user");
     } else {
       const [created] = await db
         .insert(users)
@@ -46,7 +51,7 @@ async function main() {
         })
         .returning({ id: users.id });
       userId = created.id;
-      console.log("Created user:", userId);
+      logger.info({ userId }, "Created user");
     }
 
     const [wallet] = await db
@@ -56,10 +61,10 @@ async function main() {
       .limit(1);
     if (!wallet) {
       await db.insert(wallets).values({ userId });
-      console.log("Wallet created.");
+      logger.info("Wallet created.");
     }
 
-    console.log("Upserting PRO subscription...");
+    logger.info("Upserting PRO subscription...");
     const now = new Date();
     const periodEnd = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
     await db
@@ -83,11 +88,11 @@ async function main() {
           updatedAt: now,
         },
       });
-    console.log("PRO subscription set.");
+    logger.info("PRO subscription set.");
     
-    console.log("Done database updates.");
+    logger.info("Done database updates.");
   } catch (err) {
-    console.error("Error setting up user:", err);
+    logger.error({ err }, "Error setting up user");
   } finally {
     await pool.end();
   }

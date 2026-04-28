@@ -6,6 +6,8 @@ import {
 } from "technicalindicators";
 import type { IndicatorConfig } from "@/domains/chart/stores/analysis.store";
 import { trackAnalysisEvent } from "@/domains/chart/lib/telemetry";
+import { toDateKey } from "@paper-market/core";
+import { clientLogger } from "@/lib/client-logger";
 
 type CandleLike = {
   time: number;
@@ -90,14 +92,6 @@ function setCache(key: string, value: ComputedIndicator) {
     const firstKey = indicatorCache.keys().next().value;
     if (firstKey) indicatorCache.delete(firstKey);
   }
-}
-
-function toDateKey(epochSeconds: number): string {
-  const date = new Date(epochSeconds * 1000);
-  const y = date.getUTCFullYear();
-  const m = `${date.getUTCMonth() + 1}`.padStart(2, "0");
-  const d = `${date.getUTCDate()}`.padStart(2, "0");
-  return `${y}-${m}-${d}`;
 }
 
 function computeVwap(candles: CandleLike[]) {

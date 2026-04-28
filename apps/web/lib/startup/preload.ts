@@ -11,6 +11,7 @@
  * @see prewarm.ts for the actual service initialization sequence.
  */
 import { prewarmCore } from "@/lib/startup/prewarm";
+import { logger } from "@/lib/logger";
 
 export async function preloadCore() {
     await prewarmCore();
@@ -33,7 +34,7 @@ function shouldRunCorePreload(): boolean {
 
 if (shouldRunCorePreload()) {
     preloadCore().catch((err) => {
-        console.error("[FATAL] Core preload failed:", err);
+        logger.fatal({ err }, "[FATAL] Core preload failed");
     });
 }
 

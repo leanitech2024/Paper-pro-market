@@ -1,4 +1,5 @@
 import { ChartController } from './chart-controller';
+import { clientLogger } from '@/lib/client-logger';
 
 // ═══════════════════════════════════════════════════════════
 // 📊 CHART REGISTRY: Global chart controller access
@@ -20,7 +21,7 @@ class ChartRegistry {
      */
     register(instrumentKey: string, controller: ChartController) {
         this.controllers.set(instrumentKey, controller);
-        console.log(`📋 ChartRegistry: Registered controller for ${instrumentKey}`);
+        clientLogger.info(`ChartRegistry: Registered controller for ${instrumentKey}`);
     }
 
     /**
@@ -28,7 +29,7 @@ class ChartRegistry {
      */
     unregister(instrumentKey: string) {
         this.controllers.delete(instrumentKey);
-        console.log(`📋 ChartRegistry: Unregistered controller for ${instrumentKey}`);
+        clientLogger.info(`ChartRegistry: Unregistered controller for ${instrumentKey}`);
     }
 
     /**

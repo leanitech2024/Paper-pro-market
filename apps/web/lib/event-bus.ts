@@ -25,6 +25,12 @@ export type EventBusEvents = {
     "price.tick": PriceTickEvent;
     "order.executed": OrderExecutedEvent;
     "position.changed": PositionChangedEvent;
+    "mtm.refresh.immediate": { userId: string };
+    "liquidation.order.requested": {
+        userId: string;
+        payload: any;
+        options?: { force?: boolean; isClosingOrder?: boolean };
+    };
 };
 
 class TypedEventBus {

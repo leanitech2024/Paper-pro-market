@@ -13,17 +13,12 @@ import { useMarketStore } from "@/domains/market/stores/market.store";
 import { useSearchStore } from "@/domains/watchlist/stores/search.store";
 import { Search, Plus, Trash2, FolderPlus, FolderOpen, AlertCircle, X, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { toInstrumentKey } from "@paper-market/core";
+import { toInstrumentKey, formatPct } from "@paper-market/core";
 import { toast } from "sonner";
 
 function formatPrice(val: number): string {
   if (!Number.isFinite(val) || val <= 0) return "--";
   return val.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
-
-function formatPct(val: number): string {
-  if (!Number.isFinite(val)) return "--";
-  return `${val > 0 ? "+" : ""}${val.toFixed(2)}%`;
 }
 
 export default function WatchlistPage() {

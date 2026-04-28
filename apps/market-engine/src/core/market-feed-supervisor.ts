@@ -1,6 +1,7 @@
 import { EventEmitter } from "events";
 import { UpstoxWebSocket } from "../upstox/websocket.js";
 import { SymbolSupervisor } from "./symbol-supervisor.js";
+import { logger } from "../lib/logger.js";
 
 type SessionState = "NORMAL" | "EXPECTED_SILENCE" | "SUSPECT_OUTAGE";
 
@@ -73,7 +74,7 @@ export class MarketFeedSupervisor extends EventEmitter {
       this.checkHealth();
     }, 15000);
 
-    console.log("MarketFeedSupervisor initialized");
+    logger.info("MarketFeedSupervisor initialized");
   }
 
   private syncConnectionState() {
@@ -83,25 +84,25 @@ export class MarketFeedSupervisor extends EventEmitter {
   async initialize() {
     this.syncConnectionState();
     if (this.isConnected) {
-      console.log("Market feed already connected");
+      logger.info("Market feed already connected");
       return;
     }
 
     if (!this.shouldExpectTicks()) {
-      console.log("Skipping market feed connect: session closed (symbols retained)");
+      logger.info("Skipping market feed connect: session closed (symbols retained)");
       return;
     }
 
-    console.log("Connecting to market feed...");
+    logger.info("Connecting to market feed...");
     await this.ws.connect((data: unknown) => {
       this.handleTick(data);
     });
 
     this.syncConnectionState();
     if (this.isConnected) {
-      console.log("Market feed connected");
+      logger.info("Market feed connected");
     } else {
-      console.log("Market feed connect initiated (awaiting open event)");
+      logger.info("Market feed connect initiated (awaiting open event)");
     }
   }
 
@@ -175,8 +176,9 @@ export class MarketFeedSupervisor extends EventEmitter {
     if (!this.shouldExpectTicks()) {
       this.sessionState = "EXPECTED_SILENCE";
       const holidayTag = this.isTradingHoliday() ? `holiday ${getIstDateKey()}` : "session closed";
-      console.log(
-        `Market closed (${holidayTag}, ${tickRate.toFixed(1)} tps, last tick ${(silenceMs / 1000).toFixed(0)}s ago) - status: IDLE`
+      logger.info(
+        { holidayTag, tickRate: Number(tickRate.toFixed(1)), silenceMs },
+        "Market closed (IDLE)"
       );
       this.tickCount = 0;
       return;
@@ -189,11 +191,12 @@ export class MarketFeedSupervisor extends EventEmitter {
     }
 
     this.sessionState = "NORMAL";
-    console.log(`Health: ${tickRate.toFixed(1)} tps, last tick ${(silenceMs / 1000).toFixed(0)}s ago`);
+    logger.debug({ tickRate: Number(tickRate.toFixed(1)), silenceMs }, "Market feed health check");
 
     if (authCooldownRemainingMs > 0) {
-      console.warn(
-        `Auth cooldown active (${Math.ceil(authCooldownRemainingMs / 1000)}s), skipping reconnect`
+      logger.warn(
+        { authCooldownRemainingMs },
+        "Auth cooldown active, skipping reconnect"
       );
       this.tickCount = 0;
       return;
@@ -201,7 +204,7 @@ export class MarketFeedSupervisor extends EventEmitter {
 
     if (silenceMs > 60000 && !this.reconnectInProgress) {
       this.sessionState = "SUSPECT_OUTAGE";
-      console.error(`Feed silent ${(silenceMs / 1000).toFixed(0)}s - reconnecting`);
+      logger.error({ silenceMs }, "Feed silent - reconnecting");
       void this.reconnect();
     }
 
@@ -224,10 +227,11 @@ export class MarketFeedSupervisor extends EventEmitter {
 
       if (this.reconnectFailures > this.MAX_FAILURES_PER_WINDOW) {
         if (!this.circuitBreakerOpen) {
-          console.error(
-            `Circuit breaker open: ${this.reconnectFailures} failures in ${this.FAILURE_WINDOW_MS / 1000}s`
+          logger.error(
+            { failures: this.reconnectFailures, windowMs: this.FAILURE_WINDOW_MS },
+            "Circuit breaker open"
           );
-          console.error(`Cooling down for ${this.CIRCUIT_BREAKER_COOLDOWN_MS / 1000}s...`);
+          logger.warn({ cooldownMs: this.CIRCUIT_BREAKER_COOLDOWN_MS }, "Cooling down");
           this.circuitBreakerOpen = true;
         }
 
@@ -236,12 +240,12 @@ export class MarketFeedSupervisor extends EventEmitter {
         this.reconnectFailures = 0;
         this.lastFailureWindow = Date.now();
         this.circuitBreakerOpen = false;
-        console.log("Circuit breaker closed, resuming reconnects");
+        logger.info("Circuit breaker closed, resuming reconnects");
       }
 
       const authCooldownRemainingMs = this.ws.getAuthCooldownRemainingMs();
       if (authCooldownRemainingMs > 0) {
-        console.warn(`Delaying reconnect for auth cooldown (${Math.ceil(authCooldownRemainingMs / 1000)}s)`);
+        logger.warn({ authCooldownRemainingMs }, "Delaying reconnect for auth cooldown");
         await new Promise((resolve) => setTimeout(resolve, authCooldownRemainingMs));
       }
 
@@ -254,8 +258,9 @@ export class MarketFeedSupervisor extends EventEmitter {
       const delay = this.RECONNECT_DELAYS[Math.min(this.reconnectAttempts, this.RECONNECT_DELAYS.length - 1)] ?? 30000;
       this.reconnectAttempts = Math.min(this.reconnectAttempts + 1, this.RECONNECT_DELAYS.length - 1);
 
-      console.log(
-        `Reconnecting in ${delay}ms (attempt ${this.reconnectAttempts}, failures: ${this.reconnectFailures})`
+      logger.info(
+        { delay, attempt: this.reconnectAttempts, failures: this.reconnectFailures },
+        "Reconnecting"
       );
       await new Promise((resolve) => setTimeout(resolve, delay));
 
@@ -263,14 +268,14 @@ export class MarketFeedSupervisor extends EventEmitter {
 
       const symbols = this.supervisor.getActiveSymbols();
       if (symbols.length > 0) {
-        console.log(`Resubscribing to ${symbols.length} symbols after reconnect`);
+        logger.info({ count: symbols.length }, "Resubscribing to symbols after reconnect");
         this.supervisor.flushPending();
       }
 
       this.reconnectAttempts = 0;
-      console.log("Reconnect successful");
+      logger.info("Reconnect successful");
     } catch (err) {
-      console.error("Reconnect failed:", err);
+      logger.error({ err }, "Reconnect failed");
     } finally {
       this.reconnectInProgress = false;
       this.syncConnectionState();
@@ -322,7 +327,7 @@ export class MarketFeedSupervisor extends EventEmitter {
     clearInterval(this.healthCheckInterval);
     this.ws.disconnect();
     this.removeAllListeners();
-    console.log("MarketFeedSupervisor destroyed");
+    logger.info("MarketFeedSupervisor destroyed");
   }
 }
 

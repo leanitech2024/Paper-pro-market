@@ -1,6 +1,7 @@
 import { ChartDataSlice, MarketSlice } from '@/domains/trading/types/trading.types';
 import { isMarketOpenIST } from '@paper-market/core';
 import { toCanonicalSymbol, toInstrumentKey } from '@paper-market/core';
+import { clientLogger } from '@/lib/client-logger';
 
 // Helper to add color to volume based on candle open/close
 const enrichVolumeWithColor = (volume: any[], candles: any[]) => {
@@ -101,11 +102,11 @@ export const createChartDataSlice: MarketSlice<any> = (set, get) => ({
   fetchMoreHistory: async (symbol: string, range: string, endTime: number, instrumentKey?: string) => {
       // Prevent fetching if already loading or no more history
       if (get().isFetchingHistory) {
-          console.log('⏸️ fetchMoreHistory: Already fetching, skipping');
+          clientLogger.info('fetchMoreHistory: Already fetching, skipping');
           return;
       }
       if (!get().hasMoreHistory) {
-          console.log('⏸️ fetchMoreHistory: No more history available, skipping');
+          clientLogger.info('fetchMoreHistory: No more history available, skipping');
           return;
       }
 
@@ -123,19 +124,19 @@ export const createChartDataSlice: MarketSlice<any> = (set, get) => ({
           if (range) queryParams += `&range=${range}`;
           queryParams += `&toDate=${toDateStr}`; // Pagination cursor
   
-          console.log(`📊 Fetching more history: ${symbol}, range=${range}, toDate=${toDateStr}`);
+          clientLogger.info(`📊 Fetching more history: ${symbol}, range=${range}, toDate=${toDateStr}`);
           
           const res = await fetch(`/api/v1/market/history?${queryParams}`);
           const data = await res.json();
   
           if (data.success) {
               const { candles, volume } = data.data;
-              console.log(`📊 Received ${candles.length} candles from API`);
+              clientLogger.info(`📊 Received ${candles.length} candles from API`);
               
               // 🔥 CRITICAL: Broker returned empty → no more history
               if (candles.length === 0) {
                   set({ isFetchingHistory: false, isInitialLoad: false, hasMoreHistory: false });
-                  console.log('📊 No more history available');
+                  clientLogger.info('📊 No more history available');
                   return; 
               }
 
@@ -164,7 +165,7 @@ export const createChartDataSlice: MarketSlice<any> = (set, get) => ({
                   (mergedOldestTime !== null && mergedOldestTime < previousOldestTime);
 
               if (appendedCount <= 0 && !extendedFurtherBack) {
-                  console.log('Pagination reached overlap-only window, setting hasMoreHistory=false');
+                  clientLogger.info('Pagination reached overlap-only window, setting hasMoreHistory=false');
                   set({ hasMoreHistory: false, isInitialLoad: false });
               } else {
                   set({
@@ -172,13 +173,13 @@ export const createChartDataSlice: MarketSlice<any> = (set, get) => ({
                       volumeData: mergedVol
                   });
 
-                  console.log(`Loaded ${Math.max(appendedCount, 0)} merged candles. Total: ${merged.length}`);
+                  clientLogger.info(`Loaded ${Math.max(appendedCount, 0)} merged candles. Total: ${merged.length}`);
               }
           } else {
-              console.error('📊 API returned error:', data.error);
+              clientLogger.error('📊 API returned error:', data.error);
           }
       } catch (err) {
-          console.error("Fetch More History Failed", err);
+          clientLogger.error("Fetch More History Failed", err);
       } finally {
           set({ isFetchingHistory: false, isInitialLoad: false });
       }
@@ -231,7 +232,7 @@ export const createChartDataSlice: MarketSlice<any> = (set, get) => ({
         if (range) queryParams += `&range=${range}`;
         else queryParams += `&timeframe=${timeframe}`;
 
-        console.log(`📊 Fetching history: ${canonicalSymbol}, range=${range || timeframe}, interval=${detectedInterval}`);
+        clientLogger.info(`📊 Fetching history: ${canonicalSymbol}, range=${range || timeframe}, interval=${detectedInterval}`);
         
         const res = await fetch(`/api/v1/market/history?${queryParams}`);
         const data = await res.json();
@@ -289,12 +290,12 @@ export const createChartDataSlice: MarketSlice<any> = (set, get) => ({
                 simulatedInstrumentKey: resolvedInstrumentKey
             });
 
-            console.log(`📊 Initial load: ${sortedCandles.length} candles`);
+            clientLogger.info(`📊 Initial load: ${sortedCandles.length} candles`);
         } else {
-            console.error("Failed to fetch history:", data.error);
+            clientLogger.error("Failed to fetch history:", data.error);
         }
     } catch (err) {
-        console.error("Chart data fetch error", err);
+        clientLogger.error("Chart data fetch error", err);
     } finally {
         if (get().currentRequestId === requestId) {
             set({ isFetchingHistory: false, isInitialLoad: false });

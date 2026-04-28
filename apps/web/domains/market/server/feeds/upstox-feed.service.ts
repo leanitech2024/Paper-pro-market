@@ -2,6 +2,7 @@ import { db } from "@/lib/db";
 import { upstoxTokens, instruments } from "@paper-market/core/db";
 import { eq, gt, desc } from "drizzle-orm";
 import { logger } from "@/lib/logger";
+import { toInstrumentKey, canonicalizeUnderlyingSymbol, toIndexInstrumentSuffix } from "@paper-market/core";
 import { ApiError } from "@/lib/errors";
 import { cache, CacheKeys } from "@/lib/cache";
 import { upstoxRateLimiter } from "@/lib/rate-limit";
@@ -29,9 +30,9 @@ export class UpstoxService {
     redirectUri: process.env.UPSTOX_REDIRECT_URI || "",
   };
 
-  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  // â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• 
   // ðŸš¨ PHASE 3: Token Cache (Prevent DB hits on reconnect)
-  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  // â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• 
   // WHY: Reconnect path must be memory-only. DB hits = latency spikes.
   // Reconnect storms â†’ DB storms â†’ system latency (cascade failure)
   private static cachedToken: string | null = null;
@@ -48,30 +49,6 @@ export class UpstoxService {
 
   private static normalizeSymbolKey(value: string): string {
     return value.replace(/\s+/g, "").toUpperCase();
-  }
-
-  private static canonicalizeUnderlyingSymbol(raw: string): string {
-    const trimmed = String(raw || "").trim();
-    const normalized = this.normalizeSymbolKey(trimmed);
-    const indexAliases: Record<string, string> = {
-      NIFTY: "NIFTY 50",
-      NIFTY50: "NIFTY 50",
-      NIFTY_50: "NIFTY 50",
-      BANKNIFTY: "NIFTY BANK",
-      NIFTYBANK: "NIFTY BANK",
-      FINNIFTY: "NIFTY FIN SERVICE",
-      NIFTYFINSERVICE: "NIFTY FIN SERVICE",
-    };
-
-    return indexAliases[normalized] || trimmed.toUpperCase();
-  }
-
-  private static toIndexInstrumentSuffix(symbol: string): string {
-    return symbol
-      .toLowerCase()
-      .split(" ")
-      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-      .join(" ");
   }
 
   /**
@@ -460,10 +437,6 @@ export class UpstoxService {
     private static requestInflights = new Map<string, Promise<any[]>>();
 
     /**
-     * Resolve valid candle source to prevent dual-fetching
-     */
-    
-    /**
      * Get today's date in IST timezone (YYYY-MM-DD format)
      * ðŸ”¥ CRITICAL: Never mix UTC + IST in trading systems
      */
@@ -481,12 +454,6 @@ export class UpstoxService {
         fromDate: string,
         toDate: string
     ): 'intraday' | 'historical' {
-        // ðŸ”¥ CRITICAL FIX: Use IST timezone consistently
-        // Mixing UTC (.toISOString()) with IST (orchestrator) causes:
-        // - Duplicate fetch windows
-        // - Overlapping merges
-        // - Phantom pagination
-        // - Missing candles
         const today = this.todayIST();
 
         // ðŸŸ¢ ROUTING RULE: If requesting today's data with 1-minute interval -> Use Intraday endpoint
@@ -494,23 +461,8 @@ export class UpstoxService {
             return "intraday";
         }
 
-        // âœ… REMOVED: Incorrect 3-day limit validation
-        // Upstox API V3 supports:
-        // - 1-15 minute intervals: 1 MONTH max retrieval
-        // - >15 minute intervals: 1 QUARTER max retrieval
-        // Let Upstox API handle validation and return proper errors
-
         return "historical";
     }
-
-   /**
-    * Fetch Historical Candle Data (API V3)
-    * @param instrumentKey - NSE_EQ|INE...
-    * @param unit - minutes, hours, days, weeks, months
-    * @param interval - 1, 3, 5, 30, etc.
-    * @param fromDate - YYYY-MM-DD
-    * @param toDate - YYYY-MM-DD
-    */
 
    static async getHistoricalCandleData(
        instrumentKey: string, 
@@ -519,19 +471,6 @@ export class UpstoxService {
        fromDate: string, 
        toDate: string
     ): Promise<any[]> {
-        // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-        // ðŸš¨ CRITICAL RULE: Single Routing Authority
-        // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-        // This method is the ONLY place that decides between Intraday/Historical endpoints.
-        // Do NOT call getIntraDayCandleData() separately from the outside.
-        // The CandleOrchestrator relies on this internal routing.
-        
-        // ðŸŸ¢ ROUTING TABLE: Decide Source Logic
-        
-        // ðŸŸ¢ ROUTING TABLE: Decide Source Logic
-        // Service layer must NEVER mutate request parameters
-        // CandleOrchestrator is the SINGLE AUTHORITY for date resolution
-
         // ðŸŸ¢ ROUTING EXECUTION
         const source = this.resolveCandleSource(interval, fromDate, toDate);
         
@@ -543,18 +482,13 @@ export class UpstoxService {
         // 1. Generate Cache Key (with unit to prevent collisions)
         const cacheKey = CacheKeys.historicalCandles(instrumentKey, unit, interval, fromDate, toDate);
 
-        // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-        // âš¡ LOAD SPIKE PREVENTION: Request Coalescing
-        // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
         if (this.requestInflights.has(cacheKey)) {
-            // logger.debug({ cacheKey }, "âš¡ Coalescing inflight request");
             return this.requestInflights.get(cacheKey)!;
         }
 
         // 2. Check Cache
         const cachedData = cache.get(cacheKey) as any[];
         if (cachedData) {
-            // logger.debug({ cacheKey }, "History served from CACHE");
             return cachedData;
         }
 
@@ -586,71 +520,31 @@ export class UpstoxService {
                 if (data.status === "success" && data.data && data.data.candles) {
                     let candles = data.data.candles;
                     
-                    console.log(`ðŸ” Service: Received ${candles.length} raw candles from Upstox`);
-                    
-                    // ðŸ”¥ CRITICAL FIX: HARD numeric validation at service layer
-                    // Service must guarantee clean data - orchestrator should NEVER be defensive
-                    // Upstox can return: "0" (string), NaN, null volume, partial candles (especially near market open)
                     const beforeFilterCount = candles.length;
                     candles = candles.filter((c: any) => {
                         if (!c || !Array.isArray(c) || c.length < 6) {
-                            console.warn('âš ï¸ Service: Skipping malformed candle:', c);
                             return false;
                         }
                         
-                        // Convert and validate OHLC
                         const open = Number(c[1]);
                         const high = Number(c[2]);
                         const low = Number(c[3]);
                         const close = Number(c[4]);
                         const volume = Number(c[5]);
                         
-                        if (!Number.isFinite(open) || !Number.isFinite(high) || 
-                            !Number.isFinite(low) || !Number.isFinite(close) ||
-                            !Number.isFinite(volume)) {
-                            console.warn('âš ï¸ Service: Skipping candle with invalid numbers:', {
-                                timestamp: c[0],
-                                open: c[1],
-                                high: c[2],
-                                low: c[3],
-                                close: c[4],
-                                volume: c[5]
-                            });
-                            return false;
-                        }
-                        
-                        return true;
+                        return (Number.isFinite(open) && Number.isFinite(high) && 
+                            Number.isFinite(low) && Number.isFinite(close) &&
+                            Number.isFinite(volume));
                     });
                     
-                    console.log(`ðŸ” Service: Filtered ${beforeFilterCount - candles.length} invalid candles, ${candles.length} remaining`);
-                    
-                    if (candles.length === 0) {
-                        console.warn('âš ï¸ Service: All candles filtered out - no valid data from Upstox');
-                        return [];
-                    }
-                    
-                    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-                    // ðŸ”— BRIDGE GAP: Merge Intraday Data for 1-minute intervals
-                    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-                    // Problem: Historical endpoint returns completed candles up to some point in the past
-                    // Live candles start at current time, creating a visual gap
-                    // Solution: Fetch today's intraday data and merge it with historical data
-                    const today = this.todayIST(); // ðŸ”¥ FIX: Use IST consistently
+                    const today = this.todayIST();
                     const shouldMergeIntraday = unit === "minutes" && interval === "1" && toDate === today;
-                    
-                    console.log('ðŸ” Intraday Merge Check:', { interval, toDate, today, shouldMergeIntraday });
                     
                     if (shouldMergeIntraday) {
                         try {
-                            logger.debug({ instrumentKey }, "ðŸ”— Fetching intraday data to bridge gap");
-                            console.log('ðŸ”— Fetching intraday data to bridge gap for', instrumentKey);
                             const intradayCandles = await this.getIntraDayCandleData(instrumentKey, unit, interval);
                             
                             if (intradayCandles.length > 0) {
-                                // ðŸ”¥ CRITICAL FIX: Normalize timestamps to Unix time BEFORE deduplication
-                                // Problem: "2026-02-09T09:15:00+05:30" vs "2026-02-09T03:45:00Z" are same moment
-                                // but string comparison fails â†’ duplicates slip through â†’ chart crash
-                                // Solution: Convert to Unix time first, then dedupe
                                 const historicalTimestamps = new Set(
                                     candles.map((c: any) => new Date(c[0]).getTime())
                                 );
@@ -658,41 +552,18 @@ export class UpstoxService {
                                     (c: any) => !historicalTimestamps.has(new Date(c[0]).getTime())
                                 );
                                 
-                                console.log('ðŸ”— Intraday Merge:', {
-                                    historicalCount: candles.length,
-                                    intradayTotal: intradayCandles.length,
-                                    intradayNew: newIntradayCandles.length,
-                                    lastHistorical: candles[candles.length - 1]?.[0],
-                                    firstIntraday: intradayCandles[0]?.[0]
-                                });
-                                
-                                // Combine and sort by timestamp
                                 candles = [...candles, ...newIntradayCandles].sort((a, b) => {
                                     const timeA = new Date(a[0]).getTime();
                                     const timeB = new Date(b[0]).getTime();
                                     return timeA - timeB;
                                 });
-                                
-                                logger.debug({ 
-                                    historical: candles.length - newIntradayCandles.length, 
-                                    intraday: newIntradayCandles.length,
-                                    total: candles.length 
-                                }, "ðŸ”— Merged intraday data with historical");
-                                
-                                console.log('âœ… Merged! Total candles:', candles.length);
-                            } else {
-                                console.log('âš ï¸ No intraday candles returned');
                             }
                         } catch (err) {
-                            // Don't fail the whole request if intraday fetch fails
-                            console.error('âŒ Failed to fetch intraday data:', err);
-                            logger.warn({ instrumentKey, err }, "Failed to fetch intraday data for merge");
+                            logger.error({ err }, 'Failed to fetch intraday data');
                         }
                     }
                     
-                    // 3. Store in Cache
-                    let ttl = 1000 * 60 * 5; // Default 5 min for 1m
-                    
+                    let ttl = 1000 * 60 * 5; 
                     if (interval === "day" || interval === "week" || interval === "month") {
                         ttl = 1000 * 60 * 60 * 24; 
                     } else if (parseInt(interval) >= 60) {
@@ -704,41 +575,30 @@ export class UpstoxService {
                     cache.set(cacheKey, candles, { ttl } as any);
                     return candles;
                 }
-                
-                console.warn("âš ï¸ Upstox API returned no candles:", { instrumentKey, unit, interval, fromDate, toDate, response: data });
                 return [];
             } catch (err) {
-                console.error("âŒ Historical Data Fetch Failed:", err);
-                logger.error({ instrumentKey, interval, err }, "Historical fetch exception");
+                logger.error({ err }, "Historical Data Fetch Failed");
                 return [];
             }
         })();
 
-        // Track Inflight
         this.requestInflights.set(cacheKey, fetchPromise);
 
         try {
             return await fetchPromise;
         } finally {
-            // Cleanup inflight map
             this.requestInflights.delete(cacheKey);
         }
    }
 
-   /**
-    * Search for instruments
-    * @param query - search query (e.g. RELIANCE)
-    * @param segment - optional segment (e.g. equity) - unused in simple search
-    */
   static async searchInstruments(query: string, _segment?: string): Promise<any[]> {
        const token = await this.getSystemToken();
        if (!token) throw new Error("No token");
 
-       // Endpoint: /v2/market/search/instrument
        const url = `${UPSTOX_API_URL}/market/search/instrument?instrument_name=${encodeURIComponent(query)}`;
 
        try {
-           await upstoxRateLimiter.waitForToken("market-quote"); // Using market quote rate limit bucket
+           await upstoxRateLimiter.waitForToken("market-quote");
            const response = await fetch(url, {
                headers: {
                    Authorization: `Bearer ${token}`,
@@ -757,22 +617,15 @@ export class UpstoxService {
        }
    }
 
-    /**
-     * Resolve Instrument Key from Symbol (Cached)
-     * ðŸš¨ PHASE 4: Memory Cache to prevent DB spam
-     */
     static async resolveInstrumentKey(symbol: string): Promise<string> {
-        const canonicalSymbol = this.canonicalizeUnderlyingSymbol(symbol);
+        const canonicalSymbol = canonicalizeUnderlyingSymbol(symbol);
 
-        // 1. Check Cache (24h TTL)
         const cacheKey = CacheKeys.instrumentKey(canonicalSymbol);
         const cached = cache.get(cacheKey) as string;
         if (cached) {
-            // logger.debug({ symbol }, "Instrument Key resolved from CACHE");
             return cached;
         }
 
-        // 2. DB Lookup
         try {
             const [instrument] = await db
                 .select({ token: instruments.instrumentToken })
@@ -781,22 +634,20 @@ export class UpstoxService {
                 .limit(1);
             
             if (instrument) {
-                // 3. Cache Result
-                cache.set(cacheKey, instrument.token, { ttl: 86400000 }); // 24 hours
+                cache.set(cacheKey, instrument.token, { ttl: 86400000 });
                 return instrument.token;
             }
         } catch (err) {
             logger.error({ err: err, symbol }, "Instrument DB Lookup Failed");
         }
         
-        // 4. Fallback
         const isIndex =
           canonicalSymbol.includes("NIFTY") ||
           canonicalSymbol.includes("SENSEX") ||
           canonicalSymbol.includes("BANKEX");
 
         if (isIndex) {
-          return `NSE_INDEX|${this.toIndexInstrumentSuffix(canonicalSymbol)}`;
+          return `NSE_INDEX|${toIndexInstrumentSuffix(canonicalSymbol)}`;
         }
 
         return `NSE_EQ|${canonicalSymbol}`;
@@ -837,7 +688,7 @@ export class UpstoxService {
             }
             return [];
         } catch (err) {
-            console.error("Intraday Data Fetch Failed", err);
+            logger.error({ err }, "Intraday Data Fetch Failed");
             return [];
         }
     }

@@ -18,6 +18,7 @@ import type { OptionChainRow, StrategyKind } from "@/domains/trading/components/
 import type { MultiLegPayoffLeg } from "@/domains/trading/lib/options/multi-leg-payoff";
 import { findBreakevenPrices, generateMultiLegPayoffSeries } from "@/domains/trading/lib/options/multi-leg-payoff";
 import { cn } from "@/lib/utils";
+import { toDateKey } from "@paper-market/core";
 
 type PreviewSummary = {
   totalPremium: number;
@@ -49,13 +50,6 @@ type StrategyPreviewResponse = {
   legs: PreviewLeg[];
   summary: PreviewSummary;
 };
-
-function toDateKey(raw: Date | string | undefined): string {
-  if (!raw) return "";
-  const date = raw instanceof Date ? raw : new Date(raw);
-  if (Number.isNaN(date.getTime())) return "";
-  return date.toISOString().slice(0, 10);
-}
 
 function buildOptionChainKey(symbol: string, expiry?: string): string {
   const normalizedSymbol = String(symbol || "").trim().toUpperCase();

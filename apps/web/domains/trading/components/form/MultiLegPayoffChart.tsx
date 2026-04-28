@@ -19,6 +19,7 @@ import {
     type MultiLegPayoffPoint,
 } from "@/domains/trading/lib/options/multi-leg-payoff";
 import { Badge } from "@/components/ui/badge";
+import { formatCurrency } from "@paper-market/core";
 
 type MultiLegPayoffChartProps = {
     legs: MultiLegPayoffLeg[];
@@ -29,14 +30,6 @@ type MultiLegPayoffChartProps = {
     pointCount?: number;
     height?: number;
 };
-
-function formatCurrency(value: number): string {
-    return new Intl.NumberFormat("en-IN", {
-        style: "currency",
-        currency: "INR",
-        maximumFractionDigits: 0,
-    }).format(value);
-}
 
 function formatAxis(value: number): string {
     if (Math.abs(value) >= 100000) return `${Math.round(value / 1000)}k`;

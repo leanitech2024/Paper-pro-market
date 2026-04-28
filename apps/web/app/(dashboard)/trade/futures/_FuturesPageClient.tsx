@@ -5,7 +5,7 @@ import dynamic from "next/dynamic";
 import { GlobalSearchModal } from "@/domains/watchlist/components/search/GlobalSearchModal";
 import { FuturesTradingForm } from "@/domains/trading/components/futures/futures-trading-form";
 import { ChartLoadingIndicator } from "@/domains/chart/components/chart/ChartLoadingIndicator";
-import { Stock } from "@paper-market/core";
+import { Stock, formatPct } from "@paper-market/core";
 import { symbolToIndexInstrumentKey } from "@paper-market/core";
 import { AdaptiveTradeLayout } from "@/domains/trading/components/layout/AdaptiveTradeLayout";
 import { PositionsCards } from "@/domains/trading/components/mobile/PositionsCards";
@@ -86,11 +86,6 @@ async function fetchFuturesContracts(underlying: string): Promise<Stock[]> {
 function formatLtp(value: number): string {
   if (!Number.isFinite(value) || value <= 0) return "--";
   return value.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
-
-function formatPct(value: number): string {
-  if (!Number.isFinite(value)) return "--";
-  return `${value > 0 ? "+" : ""}${value.toFixed(2)}%`;
 }
 
 function formatExpiryShort(value: unknown): string {

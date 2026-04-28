@@ -83,10 +83,7 @@ export function MobileHeader({
       </div>
 
       <div
-        className="flex flex-nowrap items-center gap-1.5 overflow-x-auto overscroll-x-contain border-t border-slate-200/70 px-2 pb-2 pt-1.5 [scrollbar-width:none] dark:border-white/[0.06] [&::-webkit-scrollbar]:hidden"
-        style={{ touchAction: 'pan-x', WebkitOverflowScrolling: 'touch' }}
-        onTouchStart={(e) => e.stopPropagation()}
-        onTouchMove={(e) => e.stopPropagation()}
+        className="flex flex-nowrap items-center gap-1.5 overflow-x-auto overflow-y-hidden overscroll-x-contain border-t border-slate-200/70 px-2 pb-2 pt-1.5 [scrollbar-width:none] [touch-action:pan-x] [-webkit-overflow-scrolling:touch] dark:border-white/[0.06] [&::-webkit-scrollbar]:hidden"
       >
         {MOBILE_HEADER_MENUS.map((menu) => {
           const MenuIcon = resolveToolIcon(menu.icon);
@@ -96,10 +93,10 @@ export function MobileHeader({
 
           return (
             <DropdownMenu key={menu.id}>
-              <DropdownMenuTrigger asChild>
+              <DropdownMenuTrigger onPointerDown={(e) => e.stopPropagation()} asChild>
                 <button
                   className={cn(
-                    "flex h-12 min-w-[3.4rem] shrink-0 flex-col items-center justify-center gap-1 rounded-2xl border px-1.5 transition-all active:scale-95",
+                    "flex h-12 min-w-[3.4rem] shrink-0 flex-col items-center justify-center gap-1 rounded-2xl border px-1.5 transition-all",
                     isMenuActive
                       ? "border-blue-500/40 bg-blue-600/10 text-blue-500 dark:border-blue-400/30 dark:text-blue-400"
                       : "border-slate-200/70 bg-slate-50 text-slate-500 dark:border-white/[0.08] dark:bg-[#10192b] dark:text-slate-400",

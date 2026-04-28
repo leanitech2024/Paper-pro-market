@@ -227,6 +227,7 @@ export class MtmEngineService {
             tickBus.on("tick", this.onTick);
             eventBus.on("order.executed", this.onOrderExecuted);
             eventBus.on("position.changed", this.onPositionChanged);
+            eventBus.on("mtm.refresh.immediate", this.onRefreshImmediate);
 
             this.initialized = true;
             logger.info("MTM engine initialized (event-driven)");
@@ -239,12 +240,19 @@ export class MtmEngineService {
         }
     }
 
+    private readonly onRefreshImmediate = (payload: { userId: string }): void => {
+        if (payload?.userId) {
+            void this.refreshUserNow(payload.userId);
+        }
+    };
+
     async shutdown(): Promise<void> {
         if (!this.initialized) return;
 
         tickBus.off("tick", this.onTick);
         eventBus.off("order.executed", this.onOrderExecuted);
         eventBus.off("position.changed", this.onPositionChanged);
+        eventBus.off("mtm.refresh.immediate", this.onRefreshImmediate);
 
         this.initialized = false;
     }
@@ -354,7 +362,6 @@ export class MtmEngineService {
         if (unique.length === 0) return;
 
         const pending = unique
-            .filter((userId) => !this.refreshingUsers.has(userId))
             .map(async (userId) => {
                 this.refreshingUsers.add(userId);
                 try {

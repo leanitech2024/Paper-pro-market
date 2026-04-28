@@ -4,6 +4,7 @@ import React from "react";
 import type { DrawingRendererProps } from "./types";
 import { SEL_COLOR, GREEN_COLOR, RED_COLOR } from "./types";
 import type { PositionDrawing, TwoPointDrawing } from "@/domains/chart/stores/analysis.store";
+import { formatCurrency } from "@paper-market/core";
 
 const plotPadding = 8;
 const labelHeight = 22;
@@ -20,10 +21,6 @@ const dateFormatter = new Intl.DateTimeFormat("en-IN", {
 });
 
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
-
-function formatCurrency(value: number) {
-  return `Rs ${value.toFixed(2)}`;
-}
 
 function formatPercent(value: number) {
   const prefix = value > 0 ? "+" : "";

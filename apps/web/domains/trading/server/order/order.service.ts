@@ -3,11 +3,15 @@ import { orders } from "@paper-market/core/db";
 import { logger } from "@/lib/logger";
 import { ApiError } from "@/lib/errors";
 import { and, eq, lt, sql } from "drizzle-orm";
-import type { PlaceOrder, OrderQuery } from "@paper-market/core";
+import { positions } from "@paper-market/core/db";
+import { instrumentStore } from "@/domains/market/stores/instrument.store";
+import { requireInstrumentTokenForIdentityLookup } from "@/domains/trading/lib/token-identity-guard";
+import type { PlaceOrder, OrderQuery, ProductType } from "@paper-market/core";
 import { OrderPipelineService } from "@/domains/trading/server/pipeline/order-pipeline.service";
 import { WalletService } from "@/domains/platform/server/accounting/wallet/wallet.service";
 import { buildLedgerIdempotencyKey, resolveLedgerReferenceType } from "@/domains/trading/server/pipeline/order-ledger-keys";
 import { OrderStateMachineService } from "@/domains/trading/server/pipeline/order-state-machine.service";
+import { eventBus } from "@/lib/event-bus";
 
 function isApiErrorLike(
   error: unknown,
@@ -122,6 +126,93 @@ export class OrderService {
   }
 
   /**
+   * Close a position (full or partial) by creating an opposite order.
+   */
+  static async closePosition(
+    userId: string,
+    positionId: string,
+    quantity?: number
+  ) {
+    try {
+      // Get the position
+      const [position] = await db
+        .select()
+        .from(positions)
+        .where(and(
+          eq(positions.id, positionId),
+          eq(positions.userId, userId)
+        ))
+        .limit(1);
+
+      if (!position) {
+        throw new ApiError("Position not found", 404, "POSITION_NOT_FOUND");
+      }
+
+      // Get instrument for validation
+      if (!instrumentStore.isReady()) {
+        await instrumentStore.initialize();
+      }
+      if (!instrumentStore.isReady()) {
+        throw new ApiError("Instrument store not ready", 503, "INSTRUMENT_STORE_NOT_READY");
+      }
+
+      const instrumentToken = requireInstrumentTokenForIdentityLookup({
+        context: "OrderService.closePosition",
+        instrumentToken: position.instrumentToken,
+        symbol: position.symbol,
+      });
+
+      const instrument = instrumentStore.getByToken(instrumentToken);
+      if (!instrument) {
+        throw new ApiError("Instrument not found", 404, "INSTRUMENT_NOT_FOUND");
+      }
+
+      const closeQuantity = quantity || Math.abs(position.quantity);
+      if (closeQuantity > Math.abs(position.quantity)) {
+        throw new ApiError(
+          `Cannot close ${closeQuantity} units. Position only has ${Math.abs(position.quantity)} units.`,
+          400,
+          "INVALID_QUANTITY"
+        );
+      }
+
+      const oppositeSide: "BUY" | "SELL" = position.quantity > 0 ? "SELL" : "BUY";
+      const resolvedProductType: ProductType =
+        position.productType === "MIS" ? "MIS" : "CNC";
+
+      const closeOrder = await this.placeOrder(userId, {
+        symbol: position.symbol,
+        instrumentToken,
+        side: oppositeSide,
+        quantity: closeQuantity,
+        orderType: "MARKET",
+        productType: resolvedProductType,
+        leverage: position.leverage ?? 1,
+      }, { isClosingOrder: true });
+
+      logger.info({
+        userId,
+        positionId,
+        symbol: position.symbol,
+        closeQuantity,
+        orderId: closeOrder.id
+      }, "Position close order placed");
+
+      return {
+        orderId: closeOrder.id,
+        positionId: position.id,
+        symbol: position.symbol,
+        closedQuantity: closeQuantity,
+        side: oppositeSide
+      };
+    } catch (err) {
+      if (err instanceof ApiError) throw err;
+      logger.error({ err: err, userId, positionId }, "Failed to close position");
+      throw new ApiError("Failed to close position", 500, "POSITION_CLOSE_FAILED");
+    }
+  }
+
+  /**
    * Get orders for a user with optional filters.
    */
   static async getOrders(userId: string, filters: OrderQuery = {}) {
@@ -170,3 +261,13 @@ export class OrderService {
     }
   }
 }
+
+// Global listener for liquidation requests to break circular dependency with MTM engine
+eventBus.on("liquidation.order.requested", (payload) => {
+  if (payload?.userId && payload?.payload) {
+    OrderService.placeOrder(payload.userId, payload.payload, payload.options || {})
+      .catch((err) => {
+        logger.error({ err, userId: payload.userId }, "Liquidation order placement failed via event");
+      });
+  }
+});

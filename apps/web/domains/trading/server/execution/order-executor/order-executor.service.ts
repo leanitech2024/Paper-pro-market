@@ -4,9 +4,8 @@ import { type NewTrade, type ProductType, type PlaceOrder } from "@paper-market/
 import { logger } from "@/lib/logger";
 import { ApiError } from "@/lib/errors";
 import { performance } from "node:perf_hooks";
-import { mtmEngineService } from "@/domains/trading/server/valuation/mtm-engine.service";
 import { MarginCalculatorService } from "@/domains/trading/server/margin/margin-calculator.service";
-import { and, asc, eq, ne, or, sql } from "drizzle-orm";
+import { and, asc, eq, or, sql } from "drizzle-orm";
 import { requireInstrumentTokenForIdentityLookup } from "@/domains/trading/lib/token-identity-guard";
 import { FillEngineService } from "@/domains/trading/server/execution/fill-engine.service";
 import { assertTradingEnabled, isTradingEnabled } from "@/lib/system-control";
@@ -18,6 +17,7 @@ import { resolveEffectiveLeverage } from "@paper-market/core";
 import { SlTargetChildOrderService } from "@/domains/trading/server/execution/sl-target-child-order.service";
 import { resolveLedgerReferenceType } from "@/domains/trading/server/pipeline/order-ledger-keys";
 import { OrderStateMachineService } from "@/domains/trading/server/pipeline/order-state-machine.service";
+import { OrderExecutionBatchProcessor } from "./batch-processor";
 
 import {
     calculateMarginDeltas,
@@ -48,117 +48,17 @@ export class OrderExecutorService {
         return resolveWajOperationType(order);
     }
 
-    private static resolveOptionPremiumReferenceType(
-        side: "BUY" | "SELL",
-        closingQuantity: number,
-        openingQuantity: number
-    ) {
-        return resolveOptionPremiumReferenceType(side, closingQuantity, openingQuantity);
-    }
 
     static async executeOpenOrders(): Promise<number> {
-        try {
-            if (!isTradingEnabled()) {
-                return 0;
-            }
-
-            const staleThreshold = new Date(Date.now() - 30_000);
-            const candidates = await db
-                .select({ id: orders.id })
-                .from(orders)
-                .where(
-                    or(
-                        eq(orders.status, "OPEN"),
-                        and(
-                            eq(orders.status, "PROCESSING"),
-                            sql`${orders.updatedAt} < ${staleThreshold}`
-                        )
-                    )
-                )
-                .limit(1);
-
-            if (candidates.length === 0) {
-                return 0;
-            }
-
-            const staleProcessing = await db
-                .update(orders)
-                .set({ status: "OPEN", updatedAt: new Date() })
-                .where(
-                    and(
-                        eq(orders.status, "PROCESSING"),
-                        sql`${orders.updatedAt} < ${staleThreshold}`
-                    )
-                )
-                .returning({ id: orders.id });
-
-            if (staleProcessing.length > 0) {
-                logger.warn(
-                    { count: staleProcessing.length, ids: staleProcessing.map((o) => o.id) },
-                    "Recovered stale PROCESSING orders back to OPEN"
-                );
-            }
-
-            const batchSize = 100;
-            const claimCandidates = db
-                .select({ id: orders.id })
-                .from(orders)
-                .where(
-                    and(
-                        eq(orders.status, "OPEN"),
-                        sql`${orders.childOrderType} IS NULL`
-                    )
-                )
-                .orderBy(asc(orders.createdAt))
-                .limit(batchSize);
-
-            const claimedOrders = await OrderStateMachineService.batchTransition(claimCandidates, "OPEN", "PROCESSING");
-
-            if (claimedOrders.length === 0) return 0;
-
-            let executedCount = 0;
-
-            const reopenOrder = async (orderId: string) => {
-                try {
-                    await OrderStateMachineService.transition(orderId, "PROCESSING", "OPEN");
-                } catch (err) {
-                    if (err instanceof ApiError && (err.code === "TRANSITION_FAILED" || err.code === "INVALID_STATE_TRANSITION")) {
-                        logger.debug(
-                            { err: err, orderId },
-                            "Order already left PROCESSING; skipping reopen"
-                        );
-                        return;
-                    }
-                    throw err;
-                }
-            };
-
-            for (const order of claimedOrders) {
-                try {
-                    const executed = await this.tryExecuteOrder(order);
-                    if (executed) {
-                        executedCount++;
-                    } else {
-                        await reopenOrder(order.id);
-                    }
-                } catch (err) {
-                    logger.error(
-                        { err: err, orderId: order.id },
-                        "Failed to execute individual order"
-                    );
-                    await reopenOrder(order.id);
-                }
-            }
-
-            if (executedCount > 0) {
-                logger.info({ executedCount }, "Orders executed");
-            }
-
-            return executedCount;
-        } catch (err) {
-            logger.error({ err: err }, "Failed to execute open orders");
-            throw new ApiError("Execution engine failed", 500, "EXECUTION_FAILED");
+        const executedCount = await OrderExecutionBatchProcessor.executeBatch(
+            (order) => this.tryExecuteOrder(order)
+        );
+        
+        if (executedCount > 0) {
+            logger.info({ executedCount }, "Orders executed batches completed");
         }
+        
+        return executedCount;
     }
 
     static async tryExecuteOrder(
@@ -219,187 +119,17 @@ export class OrderExecutorService {
 
         try {
             const transactionStartMs = performance.now();
-            await db.transaction(async (tx) => {
-                const resolvedLeverage = resolveEffectiveLeverage(
-                    (order as any).leverage ?? options.leverage
-                );
-                const resolvedProductType: ProductType =
-                    order.productType === "MIS" ? "MIS" : "CNC";
-
-                const orderPayload = buildExecutionOrderPayload({
-                    instrumentToken,
-                    order,
-                    fillQuantity,
-                    executionPrice: finalExecutionPrice,
-                    resolvedProductType,
-                    resolvedLeverage,
-                });
-
-                const [existingPositionBefore] = await tx
-                    .select({
-                        quantity: positions.quantity,
-                        averagePrice: positions.averagePrice,
-                    })
-                    .from(positions)
-                    .where(
-                        and(
-                            eq(positions.userId, order.userId),
-                            eq(positions.instrumentToken, instrumentToken)
-                        )
-                    )
-                    .for('update')
-                    .limit(1);
-
-                const marginStartMs = performance.now();
-                const marginRequired = await MarginCalculatorService.calculateRequiredMargin(
-                    orderPayload,
-                    instrument
-                );
-                marginMs = performance.now() - marginStartMs;
-                const ledgerReferenceType = resolveLedgerReferenceType(order);
-                const reservedMargin = Number(order.reservedMargin ?? 0);
-
-                const previousQuantity = Number(existingPositionBefore?.quantity ?? 0);
-                const previousAveragePrice = Number(existingPositionBefore?.averagePrice ?? finalExecutionPrice);
-                const tradeDelta = order.side === "BUY" ? fillQuantity : -fillQuantity;
-                const {
-                    openingQuantity,
-                    closingQuantity,
-                    projectedQuantity,
-                } = calculateOpeningClosingQuantities(previousQuantity, tradeDelta);
-
-                const {
-                    marginToRelease,
-                    marginBlockDelta,
-                    marginReserveReleaseDelta,
-                } = calculateMarginDeltas({
-                    fillQuantity,
-                    marginRequired,
-                    openingQuantity,
-                    closingQuantity,
-                    reservedMargin,
-                });
-
-                const { realizedPnl } = calculateRealizedPnl({
-                    finalExecutionPrice,
-                    previousAveragePrice,
-                    previousQuantity,
-                    closingQuantity,
-                });
-
-                const {
-                    optionMarginToBlock,
-                    optionMarginToRelease,
-                    optionMarginBlockDelta,
-                    optionReserveReleaseDelta,
-                } = await calculateOptionMarginDeltas({
-                    instrument,
-                    previousQuantity,
-                    projectedQuantity,
-                    finalExecutionPrice,
-                    reservedMargin,
-                });
-
-                const plannedLedgerKeys = buildPlannedLedgerKeys({
-                    order,
-                    instrumentType: instrument.instrumentType,
-                    orderSide: order.side,
-                    marginBlockDelta,
-                    marginReserveReleaseDelta,
-                    marginToRelease,
-                    closingQuantity,
-                    realizedPnl,
-                    optionMarginBlockDelta,
-                    optionReserveReleaseDelta,
-                    optionMarginToRelease,
-                });
-
-                const preparedJournal = await WriteAheadJournalService.prepare(
-                    {
-                        journalId: order.id,
-                        operationType: this.resolveWajOperationType(order),
-                        userId: order.userId,
-                        referenceId: order.id,
-                        payload: {
-                            orderId: order.id,
-                            userId: order.userId,
-                            instrumentToken,
-                            side: order.side,
-                            orderType: order.orderType,
-                            fillQuantity,
-                            executionPrice: finalExecutionPrice,
-                            priceSource,
-                            marginRequired,
-                            exitReason: order.exitReason,
-                            rejectionReason: order.rejectionReason,
-                            idempotencyKeys: plannedLedgerKeys,
-                        },
-                    },
-                    tx
-                );
-
-                try {
-                    const ledgerStartMs = performance.now();
-                    const ledgerSequences: number[] = [];
-                    const newTrade: NewTrade = buildNewTradeRecord({
-                        order,
-                        instrumentToken,
-                        fillQuantity,
-                        finalExecutionPrice,
-                    });
-
-                    await OrderStateMachineService.transition(order.id, "PROCESSING", "FILLED", tx, {
-                        executionPrice: finalExecutionPrice.toString(),
-                        executedAt: new Date(),
-                    });
-
-                    const [trade] = await tx.insert(trades).values(newTrade).returning();
-
-                    await executeInstrumentSettlement({
-                        tx,
-                        order,
-                        instrument,
-                        trade,
-                        finalExecutionPrice,
-                        fillQuantity,
-                        ledgerReferenceType,
-                        reservedMargin,
-                        marginRequired,
-                        closingQuantity,
-                        openingQuantity,
-                        realizedPnl,
-                        marginBlockDelta,
-                        marginReserveReleaseDelta,
-                        marginToRelease,
-                        optionMarginBlockDelta,
-                        optionReserveReleaseDelta,
-                        optionMarginToRelease,
-                        ledgerSequences,
-                    });
-
-                    if (!order.childOrderType && (order.stopLossPrice || order.targetPrice)) {
-                        await SlTargetChildOrderService.spawnChildOrders(
-                            { ...order, executionPrice: finalExecutionPrice.toString() },
-                            finalExecutionPrice,
-                            tx
-                        );
-                    }
-                    ledgerMs = performance.now() - ledgerStartMs;
-                    await WriteAheadJournalService.commit(preparedJournal.journalId, tx, {
-                        ledgerSequences,
-                        mutationMeta: {
-                            orderId: order.id,
-                            tradeId: trade.id,
-                            priceSource,
-                        },
-                    });
-                } catch (mutationError) {
-                    await WriteAheadJournalService.abort(
-                        preparedJournal.journalId,
-                        undefined,
-                        mutationError instanceof Error ? mutationError.message : "EXECUTION_MUTATION_FAILED"
-                    );
-                    throw mutationError;
+            await this.executeWithinTransaction({
+                order,
+                instrument,
+                instrumentToken,
+                finalExecutionPrice,
+                fillQuantity,
+                priceSource,
+                options,
+                onMetrics: (m) => {
+                    marginMs = m.marginMs;
+                    ledgerMs = m.ledgerMs;
                 }
             });
             executionMs = performance.now() - transactionStartMs;
@@ -429,35 +159,19 @@ export class OrderExecutorService {
                 instrumentToken,
                 reason: "ORDER_EXECUTED",
             });
-            try {
-                await mtmEngineService.refreshUserNow(order.userId);
-            } catch (refreshError) {
-                logger.warn(
-                    { err: refreshError, orderId: order.id, userId: order.userId },
-                    "MTM refresh after execution failed"
-                );
-            }
-
-            const totalMs = performance.now() - startMs;
-            const metricsPayload = {
-                event: "ORDER_EXECUTION_TIMING",
-                orderId: order.id,
+            eventBus.emit("mtm.refresh.immediate", {
                 userId: order.userId,
-                instrumentToken,
-                order_validation_ms: 0,
-                margin_ms: Number(marginMs.toFixed(2)),
-                ledger_ms: Number(ledgerMs.toFixed(2)),
-                execution_ms: Number(executionMs.toFixed(2)),
-                total_ms: Number(totalMs.toFixed(2)),
-            };
-            
-            if (totalMs > 500) {
-                logger.error(metricsPayload, "ORDER_EXECUTION_TIMING");
-            } else if (totalMs > 250) {
-                logger.warn(metricsPayload, "ORDER_EXECUTION_TIMING");
-            } else if (Math.random() < 0.1) {
-                logger.info(metricsPayload, "ORDER_EXECUTION_TIMING");
-            }
+            });
+
+            this.logExecutionMetrics({
+                startMs,
+                marginMs,
+                ledgerMs,
+                executionMs,
+                order,
+                instrumentToken
+            });
+
             return true;
         } catch (err: unknown) {
             const apiErr = err instanceof ApiError ? err : null;
@@ -476,7 +190,7 @@ export class OrderExecutorService {
 
             logger.error(
                 { err: err, orderId: order.id },
-                "Unexpected execution error ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â restoring order to OPEN for retry"
+                "Unexpected execution error ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â  restoring order to OPEN for retry"
             );
             await db.update(orders)
                 .set({
@@ -488,6 +202,236 @@ export class OrderExecutorService {
                     logger.error({ err: restoreErr, orderId: order.id }, "Failed to restore PROCESSING order to OPEN")
                 );
             throw err;
+        }
+    }
+
+    private static async executeWithinTransaction(params: {
+        order: typeof orders.$inferSelect;
+        instrument: any;
+        instrumentToken: string;
+        finalExecutionPrice: number;
+        fillQuantity: number;
+        priceSource: string;
+        options: { leverage?: number };
+        onMetrics: (m: { marginMs: number; ledgerMs: number }) => void;
+    }) {
+        const { order, instrument, instrumentToken, finalExecutionPrice, fillQuantity, priceSource, options, onMetrics } = params;
+        
+        await db.transaction(async (tx) => {
+            const resolvedLeverage = resolveEffectiveLeverage(
+                (order as any).leverage ?? options.leverage
+            );
+            const resolvedProductType: ProductType =
+                order.productType === "MIS" ? "MIS" : "CNC";
+
+            const orderPayload = buildExecutionOrderPayload({
+                instrumentToken,
+                order,
+                fillQuantity,
+                executionPrice: finalExecutionPrice,
+                resolvedProductType,
+                resolvedLeverage,
+            });
+
+            const [existingPositionBefore] = await tx
+                .select({
+                    quantity: positions.quantity,
+                    averagePrice: positions.averagePrice,
+                })
+                .from(positions)
+                .where(
+                    and(
+                        eq(positions.userId, order.userId),
+                        eq(positions.instrumentToken, instrumentToken)
+                    )
+                )
+                .for('update')
+                .limit(1);
+
+            const marginStartMs = performance.now();
+            const marginRequired = await MarginCalculatorService.calculateRequiredMargin(
+                orderPayload,
+                instrument
+            );
+            const marginMs = performance.now() - marginStartMs;
+            
+            const ledgerReferenceType = resolveLedgerReferenceType(order);
+            const reservedMargin = Number(order.reservedMargin ?? 0);
+
+            const previousQuantity = Number(existingPositionBefore?.quantity ?? 0);
+            const previousAveragePrice = Number(existingPositionBefore?.averagePrice ?? finalExecutionPrice);
+            const tradeDelta = order.side === "BUY" ? fillQuantity : -fillQuantity;
+            const {
+                openingQuantity,
+                closingQuantity,
+                projectedQuantity,
+            } = calculateOpeningClosingQuantities(previousQuantity, tradeDelta);
+
+            const {
+                marginToRelease,
+                marginBlockDelta,
+                marginReserveReleaseDelta,
+            } = calculateMarginDeltas({
+                fillQuantity,
+                marginRequired,
+                openingQuantity,
+                closingQuantity,
+                reservedMargin,
+            });
+
+            const { realizedPnl } = calculateRealizedPnl({
+                finalExecutionPrice,
+                previousAveragePrice,
+                previousQuantity,
+                closingQuantity,
+            });
+
+            const {
+                optionMarginBlockDelta,
+                optionReserveReleaseDelta,
+                optionMarginToRelease,
+            } = await calculateOptionMarginDeltas({
+                instrument,
+                previousQuantity,
+                projectedQuantity,
+                finalExecutionPrice,
+                reservedMargin,
+            });
+
+            const plannedLedgerKeys = buildPlannedLedgerKeys({
+                order,
+                instrumentType: instrument.instrumentType,
+                orderSide: order.side,
+                marginBlockDelta,
+                marginReserveReleaseDelta,
+                marginToRelease,
+                closingQuantity,
+                realizedPnl,
+                optionMarginBlockDelta,
+                optionReserveReleaseDelta,
+                optionMarginToRelease,
+            });
+
+            const preparedJournal = await WriteAheadJournalService.prepare(
+                {
+                    journalId: order.id,
+                    operationType: this.resolveWajOperationType(order),
+                    userId: order.userId,
+                    referenceId: order.id,
+                    payload: {
+                        orderId: order.id,
+                        userId: order.userId,
+                        instrumentToken,
+                        side: order.side,
+                        orderType: order.orderType,
+                        fillQuantity,
+                        executionPrice: finalExecutionPrice,
+                        priceSource,
+                        marginRequired,
+                        exitReason: order.exitReason,
+                        rejectionReason: order.rejectionReason,
+                        idempotencyKeys: plannedLedgerKeys,
+                    },
+                },
+                tx
+            );
+
+            try {
+                const ledgerStartMs = performance.now();
+                const ledgerSequences: number[] = [];
+                const newTrade: NewTrade = buildNewTradeRecord({
+                    order,
+                    instrumentToken,
+                    fillQuantity,
+                    finalExecutionPrice,
+                });
+
+                await OrderStateMachineService.transition(order.id, "PROCESSING", "FILLED", tx, {
+                    executionPrice: finalExecutionPrice.toString(),
+                    executedAt: new Date(),
+                });
+
+                const [trade] = await tx.insert(trades).values(newTrade).returning();
+
+                await executeInstrumentSettlement({
+                    tx,
+                    order,
+                    instrument,
+                    trade,
+                    finalExecutionPrice,
+                    fillQuantity,
+                    ledgerReferenceType,
+                    reservedMargin,
+                    marginRequired,
+                    closingQuantity,
+                    openingQuantity,
+                    realizedPnl,
+                    marginBlockDelta,
+                    marginReserveReleaseDelta,
+                    marginToRelease,
+                    optionMarginBlockDelta,
+                    optionReserveReleaseDelta,
+                    optionMarginToRelease,
+                    ledgerSequences,
+                });
+
+                if (!order.childOrderType && (order.stopLossPrice || order.targetPrice)) {
+                    await SlTargetChildOrderService.spawnChildOrders(
+                        { ...order, executionPrice: finalExecutionPrice.toString() },
+                        finalExecutionPrice,
+                        tx
+                    );
+                }
+                const ledgerMs = performance.now() - ledgerStartMs;
+                onMetrics({ marginMs, ledgerMs });
+                
+                await WriteAheadJournalService.commit(preparedJournal.journalId, tx, {
+                    ledgerSequences,
+                    mutationMeta: {
+                        orderId: order.id,
+                        tradeId: trade.id,
+                        priceSource,
+                    },
+                });
+            } catch (mutationError) {
+                await WriteAheadJournalService.abort(
+                    preparedJournal.journalId,
+                    undefined,
+                    mutationError instanceof Error ? mutationError.message : "EXECUTION_MUTATION_FAILED"
+                );
+                throw mutationError;
+            }
+        });
+    }
+
+    private static logExecutionMetrics(params: {
+        startMs: number;
+        marginMs: number;
+        ledgerMs: number;
+        executionMs: number;
+        order: { id: string, userId: string };
+        instrumentToken: string;
+    }) {
+        const { startMs, marginMs, ledgerMs, executionMs, order, instrumentToken } = params;
+        const totalMs = performance.now() - startMs;
+        const metricsPayload = {
+            event: "ORDER_EXECUTION_TIMING",
+            orderId: order.id,
+            userId: order.userId,
+            instrumentToken,
+            order_validation_ms: 0,
+            margin_ms: Number(marginMs.toFixed(2)),
+            ledger_ms: Number(ledgerMs.toFixed(2)),
+            execution_ms: Number(executionMs.toFixed(2)),
+            total_ms: Number(totalMs.toFixed(2)),
+        };
+        
+        if (totalMs > 500) {
+            logger.error(metricsPayload, "ORDER_EXECUTION_TIMING");
+        } else if (totalMs > 250) {
+            logger.warn(metricsPayload, "ORDER_EXECUTION_TIMING");
+        } else if (Math.random() < 0.1) {
+            logger.info(metricsPayload, "ORDER_EXECUTION_TIMING");
         }
     }
 

@@ -17,6 +17,7 @@
 import { UpstoxService } from "@/domains/market/server/feeds/upstox-feed.service";
 import { subDays, subMonths, subYears } from "date-fns";
 import { toUnixSeconds } from "./time";
+import { logger } from "@/lib/logger";
 
 export interface CandleFetchParams {
     instrumentKey: string;
@@ -69,8 +70,9 @@ export class CandleOrchestrator {
         );
 
         if (this.shouldBackfillLatestSession(params, unit, interval, rawCandles)) {
-            console.log(
-                `Candle backfill: empty 1D session for ${params.instrumentKey} on ${toDate}, searching previous sessions`
+            logger.info(
+                { instrumentKey: params.instrumentKey, toDate },
+                "Candle backfill: empty 1D session, searching previous sessions"
             );
             rawCandles = await this.fetchLatestAvailableSessionCandles(
                 params.instrumentKey,
@@ -88,7 +90,7 @@ export class CandleOrchestrator {
         
         // Debug first/last if needed (Env controlled)
         if (process.env.DEBUG_MARKET === 'true' && rawCandles.length > 0) {
-            console.log(`ðŸŽ» Orchestrator: First ${rawCandles[0][0]}, Last ${rawCandles[rawCandles.length-1][0]}`);
+            logger.debug({ first: rawCandles[0][0], last: rawCandles[rawCandles.length-1][0] }, "Orchestrator: Candle range");
         }
 
         const formattedCandles: FormattedCandle[] = [];
