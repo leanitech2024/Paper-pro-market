@@ -42,8 +42,9 @@ export async function prewarm() {
         await instrumentRepository.initialize();
         logger.info('Instrument repository prewarmed successfully');
     } catch (err) {
-        logger.error({ err }, 'Failed to prewarm instrument repository');
-        // Don't throw ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â app should still start even if prewarm fails
+        const errorMsg = err instanceof Error ? err.message : String(err);
+        logger.error({ message: errorMsg }, 'Failed to prewarm instrument repository');
+        // Don't throw — app should still start even if prewarm fails
     }
 }
 

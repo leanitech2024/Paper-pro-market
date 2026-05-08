@@ -188,7 +188,8 @@ export class InstrumentRepository {
                     'InstrumentRepository loaded successfully'
                 );
             } catch (err) {
-                logger.error({ err }, 'Failed to initialize InstrumentRepository');
+                const errorMsg = err instanceof Error ? err.message : String(err);
+                logger.error({ message: errorMsg }, 'Failed to initialize InstrumentRepository');
                 this.initializationError = err as Error;
                 throw err;
             } finally {

@@ -11,7 +11,7 @@ import { warmHolidayCache } from '@paper-market/core';
 // ═══════════════════════════════════════════════════════════
 
 const rawPort = process.env.PORT;
-const PORT = Number(rawPort) || 3000;
+const PORT = Number(rawPort) || 4200;
 
 // Track engine readiness for the health endpoint
 let engineReady = false;
